@@ -13,13 +13,6 @@ public final class DiscordRPC {
 
     private static final String APP_ID = "1554952903758716989";
 
-    // [KB-FIXER-2]
-    // Flip to true ONLY after uploading oryvex.png and minecraft.png
-    // under Discord Developer Portal -> Rich Presence -> Art Assets.
-    // Until the assets exist, Discord strips the keys (and on some
-    // client builds drops the whole activity), so we default to false.
-    private static final boolean ENABLE_ASSETS = false;
-
     private static final int OP_HANDSHAKE = 0;
     private static final int OP_FRAME     = 1;
     private static final int OP_CLOSE     = 2;
@@ -55,7 +48,7 @@ public final class DiscordRPC {
             
             try {
                 sendHandshake();
-                String reply = readFrame(); // Wait for the initial READY frame
+                String reply = readFrame();
                 KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
                 
                 if (reply == null || !reply.contains("\"READY\"")) {
@@ -65,16 +58,16 @@ public final class DiscordRPC {
                     return;
                 }
                 
-                // Fixed: Discord IPC explicitly requires epoch in MILLISECONDS
-                startTime = System.currentTimeMillis() / 1000L; // [KB-FIXER-2] - SECONDS not ms
+                // FIXED: Discord IPC strictly expects timestamps in SECONDS
+                startTime = System.currentTimeMillis() / 1000L;
                 updatePresence(true);
                 
-                // Start a dedicated reader thread to prevent buffer overflows
+                // Dedicated reader thread to consume Discord responses
                 reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
                 reader.setDaemon(true);
                 reader.start();
                 
-                loop(); // Start the status update loop
+                loop();
             } catch (Exception e) {
                 KBClientMod.logger.warn("[KB-RPC] exception: " + e);
                 close();
@@ -147,8 +140,7 @@ public final class DiscordRPC {
         pipe.write(buf.array());
     }
 
-    // Completely replaced timeout-checking with a blocking read.
-    // Calling length() on a named pipe breaks IPC logic under Windows.
+    // A clean blocking read. Calling .length() on a named pipe breaks IPC logic under Windows.
     private static String readFrame() {
         try {
             if (pipe == null) return null;
@@ -173,6 +165,8 @@ public final class DiscordRPC {
                 if (running) stop();
                 break;
             }
+            // Optional: log frames returned by Discord for debugging
+            // KBClientMod.logger.info("[KB-RPC] <- " + frame);
         }
     }
 
@@ -236,6 +230,7 @@ public final class DiscordRPC {
                 + "}";
 
         try {
+            KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY");
             sendFrame(OP_FRAME, json);
         } catch (IOException e) {
             running = false;
