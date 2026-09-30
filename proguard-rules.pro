@@ -1,15 +1,9 @@
 -dontshrink
 -dontoptimize
--keepattributes *Annotation*,Signature,Exceptions,InnerClasses,EnclosingMethod
+-ignorewarnings
+-dontwarn **
 
-# Prevent build failures from unreferenced Minecraft/Forge classes
--dontwarn net.minecraft.**
--dontwarn net.minecraftforge.**
--dontwarn org.apache.**
--dontwarn com.google.**
--dontwarn io.netty.**
--dontwarn org.lwjgl.**
--dontwarn club.minnced.**
+-keepattributes *Annotation*,Signature,Exceptions,InnerClasses,EnclosingMethod
 
 # Keep Forge mod entry points and event handlers intact for reflection
 -keep @net.minecraftforge.fml.common.Mod class * { *; }
