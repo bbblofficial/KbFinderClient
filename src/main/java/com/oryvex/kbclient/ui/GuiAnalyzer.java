@@ -67,11 +67,11 @@ public class GuiAnalyzer extends FadeScreen {
             this.buttonList.add(tabs[i]);
         }
 
-        String[] labels = { "Import", "Copy YAML", "Export", "Reset", "Pause", "Reconnect", "Close" };
-        int bw = Math.min(62, (pw - 20) / 7);
-        int total = 7 * bw + 6 * 4;
+        String[] labels = { "Import", "Copy YAML", "Export", "Reset", "Pause", "Close" };
+        int bw = Math.min(76, (pw - 20) / 6);
+        int total = 6 * bw + 5 * 4;
         int bx = (this.width - total) / 2;
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 6; i++) {
             UiButton b = new UiButton(100 + i, bx + i * (bw + 4), this.height - 26, bw, 18, labels[i]).delay(120 + i * 40L);
             if (i == 0) b.style = UiButton.PRIMARY;
             if (i == 3) b.style = UiButton.DANGER;
@@ -135,10 +135,6 @@ public class GuiAnalyzer extends FadeScreen {
                 tracker.setRecording(!tracker.isRecording());
                 break;
             case 105:
-                if (this.mc != null && this.mc.thePlayer != null) this.mc.thePlayer.sendChatMessage("/findkb []");
-                toast("Sent /findkb []", true);
-                break;
-            case 106:
                 closeTo(parent);
                 break;
             default:
