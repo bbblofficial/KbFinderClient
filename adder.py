@@ -3,22 +3,24 @@
 """
 adder.py - Adds Discord Rich Presence support to the KB Client (Forge 1.8.9) project.
 
-Run this from the project root (where build.gradle lives):
+This version has ZERO external dependencies - it talks the Discord IPC protocol
+directly over the local socket. No shading, no ForgeGradle 2.1 headaches.
+
+Run from the project root (where build.gradle lives):
     python adder.py
 
 What it does:
-  1. Creates src/main/java/com/oryvex/kbclient/DiscordRPC.java
-  2. Patches KBClientMod.java  (starts RPC + shutdown hook)
-  3. Patches Settings.java     (adds discordRpc preference)
-  4. Patches GuiKbOptions.java (adds the toggle button)
-  5. Patches build.gradle      (adds the discord-rpc dependency + shading)
+  1. Creates src/main/java/com/oryvex/kbclient/DiscordRPC.java (dependency-free)
+  2. Patches KBClientMod.java   (starts RPC + shutdown hook)
+  3. Patches Settings.java      (adds the discordRpc preference)
+  4. Patches GuiKbOptions.java  (adds the toggle button)
+  5. CLEANS build.gradle        (removes any previous 'shade'/'java-discord-rpc' block)
   6. Backs up every modified file to .fixer_backup/<timestamp>/
 
 Safe to re-run: already-applied patches are detected and skipped.
 """
 
 import os
-import re
 import sys
 import shutil
 import datetime
@@ -38,17 +40,16 @@ BACKUP = os.path.join(ROOT, ".fixer_backup", STAMP)
 # Helpers
 # ---------------------------------------------------------------------------
 def log(msg):
-    print(f"[adder] {msg}")
+    print("[adder] " + msg)
 
 def warn(msg):
-    print(f"[adder] !! {msg}")
+    print("[adder] !! " + msg)
 
 def die(msg):
-    print(f"[adder] FATAL: {msg}")
+    print("[adder] FATAL: " + msg)
     sys.exit(1)
 
 def backup(path):
-    """Copy `path` into the timestamped backup folder, preserving structure."""
     if not os.path.isfile(path):
         return
     rel = os.path.relpath(path, ROOT)
@@ -65,56 +66,67 @@ def write(path, text):
         f.write(text)
 
 def patch(path, old, new, label, required=True):
-    """
-    Replace `old` with `new` in `path`.
-    Returns True if the file was modified.
-    If `old` is not found and `new` is already present, it's a no-op.
-    If `old` is not found and `new` is not present either, it errors (required) or warns.
-    """
     if not os.path.isfile(path):
         if required:
-            die(f"missing file: {path}")
-        warn(f"skipping {label}: file not found ({path})")
+            die("missing file: " + path)
+        warn("skipping " + label + ": file not found (" + path + ")")
         return False
 
     text = read(path)
     if new in text and old not in text:
-        log(f"{label}: already applied, skipping")
+        log(label + ": already applied, skipping")
         return False
     if old not in text:
         if required:
-            die(f"{label}: anchor not found in {os.path.basename(path)}")
-        warn(f"{label}: anchor not found in {os.path.basename(path)}, skipping")
+            die(label + ": anchor not found in " + os.path.basename(path))
+        warn(label + ": anchor not found in " + os.path.basename(path) + ", skipping")
         return False
 
     backup(path)
     write(path, text.replace(old, new, 1))
-    log(f"{label}: patched {os.path.basename(path)}")
+    log(label + ": patched " + os.path.basename(path))
     return True
 
 # ---------------------------------------------------------------------------
-# 1. DiscordRPC.java
+# 1. DiscordRPC.java  (pure-Java IPC, no external dependency)
 # ---------------------------------------------------------------------------
 DISCORD_RPC_JAVA = r'''package com.oryvex.kbclient;
 
-import club.minnced.discord.rpc.DiscordEventHandlers;
-import club.minnced.discord.rpc.DiscordRPC;
-import club.minnced.discord.rpc.DiscordRichPresence;
 import net.minecraft.client.Minecraft;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+
 /**
- * Discord Rich Presence for KB Client.
+ * Minimal Discord Rich Presence client.
  *
- * Create a Discord Application at https://discord.com/developers/applications
- * and put its Application ID into APP_ID below. Upload image assets named
- * "oryvex" and "minecraft" in the Rich Presence -> Art Assets tab.
+ * Talks the Discord IPC protocol directly over the local socket:
+ *   - Linux/macOS: /tmp/discord-ipc-{0..9}   (unix domain socket)
+ *   - Windows:     \\?\pipe\discord-ipc-{0..9}
+ *
+ * No external dependency, so no shading / classloader headaches with
+ * ForgeGradle 2.1. If Discord is not running the call is a silent no-op.
+ *
+ * Setup:
+ *   1. Create an application at https://discord.com/developers/applications
+ *   2. Copy its Application ID into APP_ID below.
+ *   3. In "Rich Presence -> Art Assets" upload images named:
+ *        - "oryvex"    (large image)
+ *        - "minecraft" (small image)
  */
 public final class DiscordRPC {
+
     /** TODO: replace with your own Discord Application ID. */
     private static final String APP_ID = "1234567890123456789";
 
-    private static club.minnced.discord.rpc.DiscordRPC rpc;
-    private static DiscordRichPresence presence;
+    private static final int OP_HANDSHAKE = 0;
+    private static final int OP_FRAME     = 1;
+    private static final int OP_CLOSE     = 2;
+
+    private static RandomAccessFile pipe;
     private static Thread worker;
     private static volatile boolean running;
     private static long startTime;
@@ -129,53 +141,99 @@ public final class DiscordRPC {
             KBClientMod.logger.warn("[KBClient] Discord RPC disabled: set your APP_ID in DiscordRPC.java");
             return;
         }
+        if (!connect()) {
+            KBClientMod.logger.info("[KBClient] Discord is not running - RPC stays off");
+            return;
+        }
         try {
-            rpc = club.minnced.discord.rpc.DiscordRPC.INSTANCE;
-
-            DiscordEventHandlers handlers = new DiscordEventHandlers();
-            handlers.ready = user -> KBClientMod.logger.info("[KBClient] Discord RPC ready for " + user.username);
-            handlers.disconnected = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC disconnected: " + code + " " + msg);
-            handlers.errored = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC error: " + code + " " + msg);
-
-            rpc.Discord_Initialize(APP_ID, handlers, true, null);
-
+            sendHandshake();
             startTime = System.currentTimeMillis() / 1000L;
-            presence = new DiscordRichPresence();
-            presence.startTimestamp = startTime;
-            presence.largeImageKey = "oryvex";
-            presence.largeImageText = "KB Client 3.0";
-            presence.smallImageKey = "minecraft";
-            presence.smallImageText = "Minecraft 1.8.9";
-            presence.details = "In the menus";
-            presence.state = "Idle";
-            rpc.Discord_UpdatePresence(presence);
+            updatePresence(true);
+        } catch (IOException e) {
+            KBClientMod.logger.warn("[KBClient] Discord handshake failed: " + e);
+            close();
+            return;
+        }
 
-            running = true;
-            worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
-            worker.setDaemon(true);
-            worker.start();
+        running = true;
+        worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
+        worker.setDaemon(true);
+        worker.start();
+        KBClientMod.logger.info("[KBClient] Discord RPC started");
+    }
 
-            KBClientMod.logger.info("[KBClient] Discord RPC started");
-        } catch (Throwable t) {
-            KBClientMod.logger.error("[KBClient] Discord RPC init failed: " + t);
+    public static synchronized void stop() {
+        if (!running) return;
+        running = false;
+        try { sendFrame(OP_CLOSE, "{}"); } catch (IOException ignored) { }
+        if (worker != null) worker.interrupt();
+        close();
+        KBClientMod.logger.info("[KBClient] Discord RPC stopped");
+    }
+
+    public static boolean isRunning() { return running; }
+
+    // ------------------------------------------------------------------
+    // socket
+    // ------------------------------------------------------------------
+    private static boolean connect() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        boolean win = os.contains("win");
+        for (int i = 0; i < 10; i++) {
+            String path = win
+                    ? "\\\\?\\pipe\\discord-ipc-" + i
+                    : "/tmp/discord-ipc-" + i;
+            try {
+                pipe = new RandomAccessFile(path, "rw");
+                KBClientMod.logger.info("[KBClient] connected to " + path);
+                return true;
+            } catch (IOException ignored) {
+                // try next index
+            }
+        }
+        return false;
+    }
+
+    private static void close() {
+        if (pipe != null) {
+            try { pipe.close(); } catch (IOException ignored) { }
+            pipe = null;
         }
     }
 
+    private static void sendHandshake() throws IOException {
+        String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+        sendFrame(OP_HANDSHAKE, json);
+    }
+
+    private static synchronized void sendFrame(int op, String json) throws IOException {
+        if (pipe == null) throw new IOException("not connected");
+        byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+        ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
+        buf.putInt(op);
+        buf.putInt(payload.length);
+        buf.put(payload);
+        pipe.write(buf.array());
+    }
+
+    // ------------------------------------------------------------------
+    // presence loop
+    // ------------------------------------------------------------------
     private static void loop() {
         while (running) {
             try {
-                rpc.Discord_RunCallbacks();
-                updatePresence();
+                updatePresence(false);
                 Thread.sleep(2000L);
             } catch (InterruptedException e) {
                 break;
             } catch (Throwable t) {
                 KBClientMod.logger.warn("[KBClient] Discord RPC loop error: " + t);
+                break;
             }
         }
     }
 
-    private static void updatePresence() {
+    private static void updatePresence(boolean force) {
         Minecraft mc = Minecraft.getMinecraft();
         String details;
         String state;
@@ -195,37 +253,62 @@ public final class DiscordRPC {
                     ? mc.getCurrentServerData().serverIP
                     : "Unknown server";
             details = "Playing on " + ip;
-            int players = (mc.theWorld != null) ? mc.theWorld.playerEntities.size() : 0;
+            int players = mc.theWorld.playerEntities.size();
             state = players + " players online";
         }
 
-        if (details.equals(lastDetails) && state.equals(lastState)) return;
+        if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
         lastDetails = details;
         lastState = state;
 
-        presence.details = details;
-        presence.state = state;
-        presence.startTimestamp = startTime;
-        rpc.Discord_UpdatePresence(presence);
-    }
+        String json = "{"
+                + "\"cmd\":\"SET_ACTIVITY\","
+                + "\"args\":{"
+                +   "\"pid\":" + currentPid() + ","
+                +   "\"activity\":{"
+                +     "\"details\":" + quote(details) + ","
+                +     "\"state\":" + quote(state) + ","
+                +     "\"timestamps\":{\"start\":" + startTime + "},"
+                +     "\"assets\":{"
+                +       "\"large_image\":\"oryvex\","
+                +       "\"large_text\":\"KB Client 3.0\","
+                +       "\"small_image\":\"minecraft\","
+                +       "\"small_text\":\"Minecraft 1.8.9\""
+                +     "}"
+                +   "}"
+                + "},"
+                + "\"nonce\":\"" + System.nanoTime() + "\""
+                + "}";
 
-    public static synchronized void stop() {
-        if (!running) return;
-        running = false;
         try {
-            if (worker != null) worker.interrupt();
-            if (rpc != null) {
-                rpc.Discord_ClearPresence();
-                rpc.Discord_Shutdown();
-            }
-        } catch (Throwable ignored) { }
-        rpc = null;
-        presence = null;
-        KBClientMod.logger.info("[KBClient] Discord RPC stopped");
+            sendFrame(OP_FRAME, json);
+        } catch (IOException e) {
+            KBClientMod.logger.warn("[KBClient] Discord send failed, stopping: " + e);
+            running = false;
+        }
     }
 
-    public static boolean isRunning() {
-        return running;
+    /** Best-effort PID lookup (Java 8 safe). Falls back to 0 which Discord accepts. */
+    private static long currentPid() {
+        try {
+            String name = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            int at = name.indexOf('@');
+            if (at > 0) return Long.parseLong(name.substring(0, at));
+        } catch (Throwable ignored) { }
+        return 0L;
+    }
+
+    private static String quote(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 2);
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' || c == '\\') sb.append('\\').append(c);
+            else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+            else sb.append(c);
+        }
+        sb.append('"');
+        return sb.toString();
     }
 }
 '''
@@ -233,11 +316,12 @@ public final class DiscordRPC {
 def create_discord_rpc():
     path = os.path.join(SRC, "DiscordRPC.java")
     if os.path.isfile(path):
-        log("DiscordRPC.java: already exists, skipping")
-        return
-    os.makedirs(SRC, exist_ok=True)
+        backup(path)
+        log("DiscordRPC.java: overwriting existing file")
+    else:
+        os.makedirs(SRC, exist_ok=True)
+        log("DiscordRPC.java: creating")
     write(path, DISCORD_RPC_JAVA)
-    log("DiscordRPC.java: created")
 
 # ---------------------------------------------------------------------------
 # 2. KBClientMod.java
@@ -245,7 +329,6 @@ def create_discord_rpc():
 def patch_kbclientmod():
     path = os.path.join(SRC, "KBClientMod.java")
 
-    # (a) start RPC in init()
     patch(
         path,
         "        ClientRegistry.registerKeyBinding(openKey);\n"
@@ -265,7 +348,6 @@ def patch_kbclientmod():
 def patch_settings():
     path = os.path.join(UI, "Settings.java")
 
-    # (a) field
     patch(
         path,
         "    public static boolean customLoading = true;\n"
@@ -276,7 +358,6 @@ def patch_settings():
         "Settings field"
     )
 
-    # (b) load()
     patch(
         path,
         '            customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));\n'
@@ -287,7 +368,6 @@ def patch_settings():
         "Settings.load()"
     )
 
-    # (c) save()
     patch(
         path,
         '            p.setProperty("customLoading", String.valueOf(customLoading));\n'
@@ -304,7 +384,7 @@ def patch_settings():
 def patch_gui_options():
     path = os.path.join(UI, "GuiKbOptions.java")
 
-    # (a) field declaration
+    # (a) field
     patch(
         path,
         "    private UiButton bHud, bPart, bToast, bLoad, bFade;",
@@ -312,7 +392,7 @@ def patch_gui_options():
         "GuiKbOptions field"
     )
 
-    # (b) card height: add one more row (+bh+gap)
+    # (b) card height
     patch(
         path,
         "        cardH = 7 * (bh + gap) + 62;",
@@ -320,7 +400,7 @@ def patch_gui_options():
         "GuiKbOptions card height"
     )
 
-    # (c) add the button + shift Done/MC Options down by one row
+    # (c) buttons layout
     patch(
         path,
         '        bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);\n'
@@ -369,49 +449,55 @@ def patch_gui_options():
     )
 
 # ---------------------------------------------------------------------------
-# 5. build.gradle
+# 5. build.gradle cleanup
+#    Removes any previous 'shade' / 'java-discord-rpc' block that an older
+#    version of adder.py might have added. Adds nothing new.
 # ---------------------------------------------------------------------------
-GRADLE_BLOCK = """
-// ---- KB Client: Discord Rich Presence ---------------------------------------
-repositories {
-    maven { url 'https://jitpack.io' }
-}
-
-configurations {
-    shade
-    compile.extendsFrom shade
-}
-
-dependencies {
-    shade 'com.github.MinnDevelopment:java-discord-rpc:v2.0.2'
-}
-
-jar {
-    configurations.shade.each { dep ->
-        from(project.zipTree(dep)) {
-            exclude 'META-INF', 'META-INF/**'
-        }
-    }
-}
-// ----------------------------------------------------------------------------
-"""
-
-def patch_build_gradle():
+def clean_build_gradle():
     if not os.path.isfile(BUILD_GRADLE):
-        warn("build.gradle not found; skipping gradle patch")
+        warn("build.gradle not found; skipping cleanup")
         return
 
     text = read(BUILD_GRADLE)
-    if "java-discord-rpc" in text:
-        log("build.gradle: already patched, skipping")
-        return
+    original = text
 
-    backup(BUILD_GRADLE)
-    write(BUILD_GRADLE, text.rstrip() + "\n" + GRADLE_BLOCK)
-    log("build.gradle: appended Discord RPC block")
+    # Remove the block that the previous adder.py appended:
+    # it starts with the marker comment and runs to the closing '---' line.
+    marker_start = "// ---- KB Client: Discord Rich Presence"
+    marker_end = "// ----------------------------------------------------------------------------"
+
+    if marker_start in text:
+        i = text.find(marker_start)
+        # find the end marker AFTER i
+        j = text.find(marker_end, i)
+        if j != -1:
+            j += len(marker_end)
+            text = text[:i].rstrip() + "\n" + text[j:].lstrip()
+            log("build.gradle: removed old Discord RPC block")
+
+    # Also strip any leftover individual lines just in case.
+    leftover = [
+        "implementation 'club.minnced:java-discord-rpc",
+        "implementation 'com.github.MinnDevelopment:java-discord-rpc",
+        "shade 'club.minnced:java-discord-rpc",
+        "shade 'com.github.MinnDevelopment:java-discord-rpc",
+        "compile 'club.minnced:java-discord-rpc",
+        "compile 'com.github.MinnDevelopment:java-discord-rpc",
+    ]
+    lines = text.split("\n")
+    kept = [ln for ln in lines if not any(l in ln for l in leftover)]
+    if len(kept) != len(lines):
+        text = "\n".join(kept)
+        log("build.gradle: removed leftover discord-rpc dependency lines")
+
+    if text != original:
+        backup(BUILD_GRADLE)
+        write(BUILD_GRADLE, text)
+    else:
+        log("build.gradle: clean, nothing to remove")
 
 # ---------------------------------------------------------------------------
-# 6. Build sanity check
+# 6. Sanity check
 # ---------------------------------------------------------------------------
 def sanity_check():
     missing = []
@@ -434,15 +520,15 @@ def sanity_check():
 # ---------------------------------------------------------------------------
 def main():
     print("=" * 64)
-    print(" KB Client - Discord Rich Presence adder")
+    print(" KB Client - Discord Rich Presence adder (v2, dependency-free)")
     print("=" * 64)
-    print(f" project root : {ROOT}")
-    print(f" backup dir   : {os.path.relpath(BACKUP, ROOT)}")
+    print(" project root : " + ROOT)
+    print(" backup dir   : " + os.path.relpath(BACKUP, ROOT))
     print()
 
     if not os.path.isdir(SRC):
-        die(f"source dir not found: {SRC}\n"
-            f"Run this script from the project root (next to build.gradle).")
+        die("source dir not found: " + SRC + "\n"
+            "Run this script from the project root (next to build.gradle).")
 
     os.makedirs(BACKUP, exist_ok=True)
 
@@ -450,7 +536,7 @@ def main():
     patch_kbclientmod()
     patch_settings()
     patch_gui_options()
-    patch_build_gradle()
+    clean_build_gradle()
 
     print()
     if sanity_check():
@@ -467,7 +553,7 @@ def main():
     print("  3. Build:  ./gradlew build")
     print("  4. Run:    ./gradlew runClient")
     print()
-    print(f"Backups (if any) are in: {os.path.relpath(BACKUP, ROOT)}")
+    print(" Backups are in: " + os.path.relpath(BACKUP, ROOT))
 
 
 if __name__ == "__main__":
