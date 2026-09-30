@@ -5,7 +5,7 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
 
-/** Small immediate-mode drawing toolkit (rounded panels, bars, text, particles). */
+/** Small immediate-mode drawing toolkit (rounded panels, bars, text, gear, particles). */
 public final class Draw {
     private Draw() {}
 
@@ -27,7 +27,12 @@ public final class Draw {
         return (al << 24) | (color & 0xFFFFFF);
     }
 
-    /** red -> yellow -> green */
+    /** scale the existing alpha of a colour */
+    public static int fade(int color, float a) {
+        int al = (int) (((color >>> 24) & 255) * clamp(a));
+        return (al << 24) | (color & 0xFFFFFF);
+    }
+
     public static int confColor(double c) {
         float f = (float) Math.max(0, Math.min(1, c));
         return f < 0.5f ? lerp(Theme.BAD, Theme.WARN, f * 2f) : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
@@ -43,6 +48,12 @@ public final class Draw {
         Gui.drawRect(x, y, x + w, y + h, color);
     }
 
+    public static void vgradient(int w, int h, int top, int bottom) {
+        for (int y = 0; y < h; y += 3) {
+            Gui.drawRect(0, y, w, Math.min(h, y + 3), lerp(top, bottom, y / (float) h));
+        }
+    }
+
     public static void roundRect(int x, int y, int w, int h, int r, int color) {
         if (w <= 0 || h <= 0) return;
         r = Math.min(r, Math.min(w, h) / 2);
@@ -56,7 +67,6 @@ public final class Draw {
         }
     }
 
-    /** rounded panel with 1px border */
     public static void panel(int x, int y, int w, int h, int r, int fill, int border) {
         roundRect(x, y, w, h, r, border);
         roundRect(x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill);
@@ -72,12 +82,38 @@ public final class Draw {
         for (int i = 0; i < w; i += 6) Gui.drawRect(x + i, y, x + Math.min(w, i + 3), y + 1, color);
     }
 
+    /** pixel-art gear: 4 rotated bars + octagon body + hole */
+    public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
+        int R = Math.max(3, Math.round(r));
+        int t = Math.max(2, Math.round(r * 0.4f));
+        int b = Math.max(2, Math.round(r * 0.68f));
+        int hr = Math.max(1, Math.round(r * 0.3f));
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(cx, cy, 0f);
+        GlStateManager.rotate(angle, 0f, 0f, 1f);
+        for (int i = 0; i < 4; i++) {
+            GlStateManager.pushMatrix();
+            GlStateManager.rotate(i * 45f, 0f, 0f, 1f);
+            Gui.drawRect(-R, -t / 2, R, t - t / 2, color);
+            GlStateManager.popMatrix();
+        }
+        Gui.drawRect(-b, -b, b, b, color);
+        GlStateManager.pushMatrix();
+        GlStateManager.rotate(45f, 0f, 0f, 1f);
+        Gui.drawRect(-b, -b, b, b, color);
+        GlStateManager.popMatrix();
+        Gui.drawRect(-hr, -hr, hr, hr, hole);
+        GlStateManager.popMatrix();
+    }
+
     // ---- text -------------------------------------------------------------
     public static FontRenderer font() { return Minecraft.getMinecraft().fontRendererObj; }
 
     public static int width(String s, float scale) { return (int) (font().getStringWidth(s) * scale); }
 
     public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
+        // the vanilla font renderer draws near-zero alpha as fully opaque, so skip it
+        if (((color >>> 24) & 255) <= 4) return;
         GlStateManager.pushMatrix();
         GlStateManager.scale(scale, scale, 1f);
         font().drawString(s, x / scale, y / scale, color, shadow);

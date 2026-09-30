@@ -1,25 +1,39 @@
 package com.oryvex.kbclient;
 
+import com.oryvex.kbclient.ui.Fade;
+import com.oryvex.kbclient.ui.FadeScreen;
 import com.oryvex.kbclient.ui.GuiAnalyzer;
 import com.oryvex.kbclient.ui.GuiModernMenu;
 import com.oryvex.kbclient.ui.Hud;
+import com.oryvex.kbclient.ui.KBLoading;
+import com.oryvex.kbclient.ui.LoadingArt;
+import com.oryvex.kbclient.ui.Settings;
+import com.oryvex.kbclient.ui.UiButton;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.gui.GuiDownloadTerrain;
+import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.GuiOpenEvent;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -32,7 +46,7 @@ import org.lwjgl.input.Keyboard;
 public class KBClientMod {
     public static final String MODID = "kbclient";
     public static final String NAME = "KB Client";
-    public static final String VERSION = "2.0.0";
+    public static final String VERSION = "3.0.0";
     private static final String HOOK = "kb_client_handler";
 
     private static KBClientMod instance;
@@ -42,12 +56,10 @@ public class KBClientMod {
     private KeyBinding openKey;
     private Channel hookedChannel;
     private boolean pendingOpen;
-    private boolean hud = true;
+    private Object lastWorld;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
-    public boolean isHud() { return hud; }
-    public void setHud(boolean h) { hud = h; }
 
     /** Opened on the next tick, because chat closes itself right after running a command. */
     public void requestOpenAnalyzer() { pendingOpen = true; }
@@ -56,6 +68,7 @@ public class KBClientMod {
     public void preInit(FMLPreInitializationEvent e) {
         logger = e.getModLog();
         instance = this;
+        Settings.load();
     }
 
     @EventHandler
@@ -64,19 +77,68 @@ public class KBClientMod {
         ClientCommandHandler.instance.registerCommand(new KBCommand());
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
+        installLoading();
     }
 
+    /** swap Minecraft's loading renderer (world load/save) for the custom one */
+    private void installLoading() {
+        Minecraft mc = Minecraft.getMinecraft();
+        try {
+            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+            logger.info("[KBClient] custom loading screen installed");
+        } catch (Throwable t) {
+            logger.error("[KBClient] could not install loading screen: " + t);
+        }
+    }
+
+    // ---- screens + fades -----------------------------------------------------
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
+        Minecraft mc = Minecraft.getMinecraft();
         if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+
+        if (e.gui == null) {
+            // back to the game: soft world fade (not after chat)
+            if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                Fade.world.trigger(0.45f);
+            }
+        } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+            Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+        }
+    }
+
+    /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+    @SubscribeEvent
+    public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+        GuiScreen g = e.gui;
+        if (g == null || g instanceof FadeScreen) return;
+        if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+            LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+        }
+        Fade.screen.draw(g.width, g.height);
+    }
+
+    /** restyle the pause menu's Options button */
+    @SubscribeEvent
+    public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+        if (!(e.gui instanceof GuiIngameMenu)) return;
+        for (int i = 0; i < e.buttonList.size(); i++) {
+            GuiButton b = e.buttonList.get(i);
+            if (b.id == 0) {
+                UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                u.icon = UiButton.ICON_GEAR;
+                e.buttonList.set(i, u);
+            }
+        }
     }
 
     @SubscribeEvent
     public void onOverlay(RenderGameOverlayEvent.Post e) {
-        if (e.type != RenderGameOverlayEvent.ElementType.ALL || !hud) return;
+        if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer == null || mc.gameSettings.showDebugInfo || mc.currentScreen instanceof GuiAnalyzer) return;
-        Hud.render(mc, tracker);
+        if (mc.thePlayer == null) return;
+        if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+        Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
     }
 
     @SubscribeEvent
@@ -84,6 +146,11 @@ public class KBClientMod {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         tracker.tick();
+
+        if (mc.theWorld != lastWorld) {
+            lastWorld = mc.theWorld;
+            if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+        }
 
         while (openKey.isPressed()) {
             if (mc.currentScreen == null) pendingOpen = true;
@@ -93,7 +160,6 @@ public class KBClientMod {
             mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
         }
 
-        // (re)hook the network pipeline whenever the connection changes
         if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
             NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
             if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());

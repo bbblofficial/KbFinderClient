@@ -4,17 +4,13 @@ import com.oryvex.kbclient.KBTracker;
 import com.oryvex.kbclient.kb.KBProfile;
 import java.awt.Color;
 import java.io.IOException;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiMultiplayer;
-import net.minecraft.client.gui.GuiOptions;
-import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSelectWorld;
 
-public class GuiModernMenu extends GuiScreen {
+public class GuiModernMenu extends FadeScreen {
     private final KBTracker tracker;
-    private final long opened = System.currentTimeMillis();
-    private int panelX, panelY, panelW, panelH;
+    private int panelX, panelY, panelW, panelH, titleY;
 
     public GuiModernMenu(KBTracker tracker) {
         this.tracker = tracker;
@@ -23,70 +19,72 @@ public class GuiModernMenu extends GuiScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        int bw = 190, bh = 22, gap = 6;
-        int cx = this.width / 2;
-        int total = 5 * bh + 4 * gap;
-        int top = this.height / 2 - total / 2 + 22;
+        int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
+        int rows = 4;
+        int total = rows * bh + (rows - 1) * gap;
+        int top = this.height / 2 - total / 2 + 26;
         panelW = bw + 28;
         panelH = total + 28;
         panelX = cx - panelW / 2;
         panelY = top - 14;
+        titleY = Math.max(8, panelY - 72);
 
-        String[] names = { "Singleplayer", "Multiplayer", "Knockback Analyzer", "Options", "Quit Game" };
-        for (int i = 0; i < 5; i++) {
-            UiButton b = new UiButton(i + 1, cx - bw / 2, top + i * (bh + gap), bw, bh, names[i]);
-            if (i == 2) b.style = UiButton.PRIMARY;
-            if (i == 4) b.style = UiButton.DANGER;
-            this.buttonList.add(b);
-        }
+        int half = (bw - gap) / 2;
+        this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
+        this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
+        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(260));
+        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 3 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(330));
+        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 3 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(400));
     }
 
     @Override
     protected void actionPerformed(GuiButton b) throws IOException {
         switch (b.id) {
-            case 1: this.mc.displayGuiScreen(new GuiSelectWorld(this)); break;
-            case 2: this.mc.displayGuiScreen(new GuiMultiplayer(this)); break;
-            case 3: this.mc.displayGuiScreen(new GuiAnalyzer(tracker, this)); break;
-            case 4: this.mc.displayGuiScreen(new GuiOptions(this, this.mc.gameSettings)); break;
-            case 5: this.mc.shutdown(); break;
+            case 1: closeTo(new GuiSelectWorld(this)); break;
+            case 2: closeTo(new GuiMultiplayer(this)); break;
+            case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+            case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+            case 5:
+                closeThen(new Runnable() {
+                    @Override
+                    public void run() { mc.shutdown(); }
+                });
+                break;
             default: break;
         }
     }
 
     @Override
-    protected void keyTyped(char c, int key) throws IOException {
+    protected void onKey(char c, int key) throws IOException {
         // main menu cannot be closed with ESC
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
-        Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
-        Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+        if (Settings.particles) {
+            Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
+            Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+        }
 
         int cx = this.width / 2;
         float t = (System.currentTimeMillis() % 100000L) / 1000f;
 
-        // title
         String title = "ORYVEX";
         float sc = 4f;
         float tx = cx - fontRendererObj.getStringWidth(title) * sc / 2f;
-        int ty = Math.max(10, panelY - 66);
         for (int i = 0; i < title.length(); i++) {
             String ch = title.substring(i, i + 1);
             float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
             int col = Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000;
-            Draw.text(ch, tx, ty, col, sc, true);
+            Draw.text(ch, tx, titleY, col, sc, true);
             tx += fontRendererObj.getStringWidth(ch) * sc;
         }
-        String sub = "K N O C K B A C K   C L I E N T";
-        Draw.centered(sub, cx, ty + 38, Theme.MUTED, 0.9f, false);
-        Draw.rect(cx - 30, ty + 52, 60, 1, Theme.ACCENT_DK);
+        Draw.centered("K N O C K B A C K   C L I E N T", cx, titleY + 38, Theme.MUTED, 0.9f, false);
+        Draw.rect(cx - 30, titleY + 52, 60, 1, Theme.ACCENT_DK);
 
-        // button panel
-        Draw.panel(panelX, panelY, panelW, panelH, 8, 0xF00C121D, Theme.BORDER);
+        Draw.panel(panelX, panelY, panelW, panelH, 8, Theme.GLASS, Theme.BORDER);
 
-        // live profile pill
         KBProfile p = tracker.getProfile();
         if (p.hasData) {
             String s = "Last profile   " + p.summary() + "   (" + p.used + " hits)";
@@ -96,12 +94,10 @@ public class GuiModernMenu extends GuiScreen {
             Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
         }
 
-        Draw.text("KB Client " + "2.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+        Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
         Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
-
-        float k = 1f - Draw.clamp((System.currentTimeMillis() - opened) / 500f);
-        if (k > 0f) Gui.drawRect(0, 0, this.width, this.height, ((int) (k * 255f)) << 24);
+        drawFade();
     }
 }

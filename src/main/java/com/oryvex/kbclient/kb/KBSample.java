@@ -2,19 +2,17 @@ package com.oryvex.kbclient.kb;
 
 /** One knockback event (velocity packet) plus the context it happened in. */
 public final class KBSample {
+    public static final int WALK = 0, SPRINT = 1, AMBIGUOUS = 2;
+
     public final int id;
     public final long tick;
-
-    /** velocity from the packet, blocks/tick */
     public final double vx, vy, vz, h;
-    /** victim motion right BEFORE the packet was applied */
     public final double px, py, pz, pH;
     public final boolean victimSprint, victimGround;
-
     public final boolean hasAttacker;
+    public final int sprintState;
     public final boolean attackerSprint;
     public final int attackerKb;
-    /** unit horizontal vector pointing from attacker to victim */
     public final double ux, uz;
     public final double distance;
     public final String attacker;
@@ -22,7 +20,7 @@ public final class KBSample {
     public KBSample(int id, long tick, double vx, double vy, double vz,
                     double px, double py, double pz,
                     boolean victimSprint, boolean victimGround,
-                    boolean hasAttacker, boolean attackerSprint, int attackerKb,
+                    boolean hasAttacker, int sprintState, int attackerKb,
                     double ux, double uz, double distance, String attacker) {
         this.id = id;
         this.tick = tick;
@@ -37,7 +35,8 @@ public final class KBSample {
         this.victimSprint = victimSprint;
         this.victimGround = victimGround;
         this.hasAttacker = hasAttacker;
-        this.attackerSprint = attackerSprint;
+        this.sprintState = sprintState;
+        this.attackerSprint = sprintState == SPRINT;
         this.attackerKb = attackerKb;
         this.ux = ux;
         this.uz = uz;

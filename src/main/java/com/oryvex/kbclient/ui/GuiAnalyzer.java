@@ -3,28 +3,40 @@ package com.oryvex.kbclient.ui;
 import com.oryvex.kbclient.KBTracker;
 import com.oryvex.kbclient.kb.KBProfile;
 import com.oryvex.kbclient.kb.KBSample;
+import com.oryvex.kbclient.kb.KBYaml;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
-public class GuiAnalyzer extends GuiScreen {
+public class GuiAnalyzer extends FadeScreen {
     private static int lastTab = 0;
+    private static final int NT = 5;
+    private static final String[] TAB_NAMES = { "Overview", "Samples", "Graph", "YAML", "Compare" };
+    private static final String[] SHORT = {
+        "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZ", "EXTRA-VERT", "FRICTION",
+        "Y-LIMIT", "DT OVERRIDE", "DT VALUE", "DYNAMIC-LIMIT", "LIMIT-HORIZ", "H-LIMIT"
+    };
+
+    public static void openTab(int t) { lastTab = Math.max(0, Math.min(NT - 1, t)); }
 
     private final KBTracker tracker;
     private final GuiScreen parent;
     private KBProfile profile;
+    private KBProfile reference;
     private List<KBSample> samples = new ArrayList<KBSample>();
     private int tab;
     private int scroll;
     private int px, pw, y0, y1;
-    private final UiButton[] tabs = new UiButton[4];
+    private final UiButton[] tabs = new UiButton[NT];
     private UiButton pauseBtn;
     private String flash = "";
+    private boolean flashGood = true;
     private long flashUntil;
 
     public GuiAnalyzer(KBTracker tracker, GuiScreen parent) {
@@ -36,40 +48,41 @@ public class GuiAnalyzer extends GuiScreen {
 
     private void refresh() {
         profile = tracker.getProfile();
+        reference = tracker.getReference();
         samples = tracker.snapshot();
     }
 
     @Override
     public void initGui() {
         this.buttonList.clear();
-        pw = Math.min(this.width - 16, 440);
+        pw = Math.min(this.width - 16, 460);
         px = (this.width - pw) / 2;
         y0 = 68;
         y1 = this.height - 34;
 
-        String[] names = { "Overview", "Samples", "Graph", "YAML" };
-        int tw = Math.min(72, (pw - 12) / 4);
-        for (int i = 0; i < 4; i++) {
-            tabs[i] = new UiButton(10 + i, px + i * (tw + 4), 46, tw, 16, names[i]).style(UiButton.TAB);
+        int tw = Math.min(72, (pw - 16) / NT);
+        for (int i = 0; i < NT; i++) {
+            tabs[i] = new UiButton(10 + i, px + i * (tw + 4), 46, tw, 16, TAB_NAMES[i]).style(UiButton.TAB).delay(i * 40L);
             tabs[i].selected = (i == tab);
             this.buttonList.add(tabs[i]);
         }
 
-        String[] labels = { "Copy YAML", "Export", "Reset", "Pause", "Close" };
-        int bw = Math.min(84, (pw - 16) / 5);
-        int total = 5 * bw + 16;
+        String[] labels = { "Import", "Copy YAML", "Export", "Reset", "Pause", "Close" };
+        int bw = Math.min(76, (pw - 20) / 6);
+        int total = 6 * bw + 5 * 4;
         int bx = (this.width - total) / 2;
-        for (int i = 0; i < 5; i++) {
-            UiButton b = new UiButton(100 + i, bx + i * (bw + 4), this.height - 26, bw, 18, labels[i]);
+        for (int i = 0; i < 6; i++) {
+            UiButton b = new UiButton(100 + i, bx + i * (bw + 4), this.height - 26, bw, 18, labels[i]).delay(120 + i * 40L);
             if (i == 0) b.style = UiButton.PRIMARY;
-            if (i == 2) b.style = UiButton.DANGER;
-            if (i == 3) pauseBtn = b;
+            if (i == 3) b.style = UiButton.DANGER;
+            if (i == 4) pauseBtn = b;
             this.buttonList.add(b);
         }
     }
 
     @Override
     public void updateScreen() {
+        super.updateScreen();
         refresh();
         if (pauseBtn != null) pauseBtn.displayString = tracker.isRecording() ? "Pause" : "Resume";
     }
@@ -81,44 +94,48 @@ public class GuiAnalyzer extends GuiScreen {
         tab = t;
         lastTab = t;
         scroll = 0;
-        for (int i = 0; i < 4; i++) if (tabs[i] != null) tabs[i].selected = (i == t);
+        for (int i = 0; i < NT; i++) if (tabs[i] != null) tabs[i].selected = (i == t);
     }
 
-    private void toast(String s) {
+    private void toast(String s, boolean good) {
         flash = s;
-        flashUntil = System.currentTimeMillis() + 2500;
-    }
-
-    private void close() {
-        this.mc.displayGuiScreen(parent);
+        flashGood = good;
+        flashUntil = System.currentTimeMillis() + 3200;
     }
 
     @Override
     protected void actionPerformed(GuiButton b) throws IOException {
-        if (b.id >= 10 && b.id <= 13) { setTab(b.id - 10); return; }
+        if (b.id >= 10 && b.id < 10 + NT) { setTab(b.id - 10); return; }
         switch (b.id) {
-            case 100:
-                setClipboardString(profile.toYaml());
-                toast("YAML copied to clipboard");
+            case 100: {
+                KBYaml.Result r = tracker.importYaml(GuiScreen.getClipboardString());
+                refresh();
+                toast(r.parsed > 0 ? r.summary() : "Clipboard has no knockback YAML - copy a config first", r.complete());
+                if (r.parsed > 0) setTab(4);
                 break;
+            }
             case 101:
-                try {
-                    File f = tracker.export();
-                    toast("Saved " + f.getName());
-                } catch (Exception e) {
-                    toast("Export failed: " + e.getMessage());
-                }
+                setClipboardString(profile.toYaml());
+                toast("Detected YAML copied to clipboard", true);
                 break;
             case 102:
-                tracker.reset();
-                refresh();
-                toast("Samples cleared");
+                try {
+                    File f = tracker.export();
+                    toast("Saved " + f.getName(), true);
+                } catch (Exception e) {
+                    toast("Export failed: " + e.getMessage(), false);
+                }
                 break;
             case 103:
-                tracker.setRecording(!tracker.isRecording());
+                tracker.reset();
+                refresh();
+                toast("Samples cleared", true);
                 break;
             case 104:
-                close();
+                tracker.setRecording(!tracker.isRecording());
+                break;
+            case 105:
+                closeTo(parent);
                 break;
             default:
                 break;
@@ -126,11 +143,11 @@ public class GuiAnalyzer extends GuiScreen {
     }
 
     @Override
-    protected void keyTyped(char c, int key) throws IOException {
-        if (key == Keyboard.KEY_ESCAPE) { close(); return; }
-        if (key == Keyboard.KEY_RIGHT) setTab((tab + 1) % 4);
-        else if (key == Keyboard.KEY_LEFT) setTab((tab + 3) % 4);
-        else if (key >= Keyboard.KEY_1 && key <= Keyboard.KEY_4) setTab(key - Keyboard.KEY_1);
+    protected void onKey(char c, int key) throws IOException {
+        if (key == Keyboard.KEY_ESCAPE) { closeTo(parent); return; }
+        if (key == Keyboard.KEY_RIGHT) setTab((tab + 1) % NT);
+        else if (key == Keyboard.KEY_LEFT) setTab((tab + NT - 1) % NT);
+        else if (key >= Keyboard.KEY_1 && key < Keyboard.KEY_1 + NT) setTab(key - Keyboard.KEY_1);
         else if (key == Keyboard.KEY_UP) scroll = Math.max(0, scroll - 1);
         else if (key == Keyboard.KEY_DOWN) scroll++;
     }
@@ -145,15 +162,21 @@ public class GuiAnalyzer extends GuiScreen {
         }
     }
 
-    // ------------------------------------------------------------------------
+    private static int srcColor(int s) {
+        switch (s) {
+            case KBProfile.SRC_EST: return Theme.WARN;
+            case KBProfile.SRC_MEAS: return Theme.GOOD;
+            case KBProfile.SRC_IMP: return Theme.ACCENT2;
+            default: return Theme.DIM;
+        }
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
-        Draw.particles(this.width, this.height, 34, 0x22D3EE, 0.22f);
+        drawBackdrop(34);
 
-        // header
         Draw.text("KNOCKBACK ANALYZER", px, 11, Theme.TEXT, 1.4f, true);
-        Draw.text("Carbon / Spigot profile estimator - live from velocity packets", px, 28, Theme.MUTED, 0.75f, false);
+        Draw.text("Carbon / Spigot profile - detector + exact YAML import", px, 28, Theme.MUTED, 0.75f, false);
 
         boolean rec = tracker.isRecording();
         String st = (rec ? "LIVE" : "PAUSED") + "   " + profile.used + "/" + profile.total + " samples";
@@ -163,7 +186,7 @@ public class GuiAnalyzer extends GuiScreen {
         Draw.roundRect(chipX + 8, 17, 5, 5, 2, rec ? Theme.GOOD : Theme.WARN);
         Draw.text(st, chipX + 18, 15, Theme.SOFT, 0.85f, false);
         if (System.currentTimeMillis() < flashUntil) {
-            Draw.right(flash, px + pw, 32, Theme.GOOD, 0.8f, false);
+            Draw.right(flash, px + pw, 32, flashGood ? Theme.GOOD : Theme.WARN, 0.75f, false);
         } else {
             Draw.right(tracker.getServer(), px + pw, 32, Theme.DIM, 0.75f, false);
         }
@@ -172,51 +195,36 @@ public class GuiAnalyzer extends GuiScreen {
             case 0: drawOverview(); break;
             case 1: drawSamples(); break;
             case 2: drawGraph(); break;
-            default: drawYaml(); break;
+            case 3: drawYaml(); break;
+            default: drawCompare(); break;
         }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
+        drawFade();
     }
 
     // ---- overview ----------------------------------------------------------
-    private static String yn(boolean b) { return b ? "true" : "false"; }
-
     private void drawOverview() {
         KBProfile p = profile;
-        boolean has = p.hasData;
-        String[] labels = {
-            "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZONTAL",
-            "EXTRA-VERTICAL", "FRICTION", "Y-LIMIT", "H-LIMIT",
-            "DYNAMIC-LIMIT", "LIMIT-HORIZONTAL", "DAMAGE-TICKS.OVERRIDE", "DAMAGE-TICKS.VALUE"
-        };
-        String[] vals = {
-            yn(p.onePointSeven), KBProfile.f(p.horizontal, 4), KBProfile.f(p.vertical, 4), KBProfile.f(p.extraHorizontal, 4),
-            KBProfile.f(p.extraVertical, 4), KBProfile.f(p.friction, 3), KBProfile.f(p.yLimit, 3), KBProfile.f(p.hLimit, 3),
-            yn(p.dynamicLimit), yn(p.limitHorizontal), yn(p.damageTicksOverride), String.valueOf(p.damageTicksValue)
-        };
-        double[] conf = { p.cOps, p.cH, p.cV, p.cEH, p.cEV, p.cF, p.cYL, p.cHL, p.cDyn, p.cLimH, p.cDT, p.cDT };
-
         int cols = 4, rows = 3, gap = 4;
         int cw = (pw - gap * (cols - 1)) / cols;
-        int avail = y1 - y0;
         int tipH = 30;
-        int ch = Math.max(28, Math.min(40, (avail - tipH - gap * rows) / rows));
+        int ch = Math.max(28, Math.min(40, (y1 - y0 - tipH - gap * rows) / rows));
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < KBProfile.COUNT; i++) {
             int x = px + (i % cols) * (cw + gap);
             int y = y0 + (i / cols) * (ch + gap);
-            int cc = (has || i >= 10) ? Draw.confColor(conf[i]) : Theme.DIM;
+            boolean none = p.src[i] == KBProfile.SRC_NONE;
+            int cc = none ? Theme.DIM : Draw.confColor(p.conf[i]);
             Draw.panel(x, y, cw, ch, 4, Theme.PANEL, Theme.BORDER);
             Draw.roundRect(x + 1, y + 5, 2, ch - 10, 1, cc);
-            Draw.text(labels[i], x + 8, y + 5, Theme.MUTED, 0.68f, false);
-            String v = (has || i >= 10) ? vals[i] : "--";
-            if (i >= 10 && !has && p.cDT == 0) v = vals[i];
+            Draw.text(SHORT[i], x + 8, y + 5, Theme.MUTED, 0.68f, false);
+            Draw.right(KBProfile.SRC_TAG[p.src[i]], x + cw - 6, y + 5, srcColor(p.src[i]), 0.62f, false);
             float vs = ch >= 38 ? 1.3f : 1f;
-            Draw.text(v, x + 8, y + 14 + (ch >= 38 ? 1 : 0), Theme.TEXT, vs, true);
-            Draw.bar(x + 8, y + ch - 6, cw - 16, 2, has || i >= 10 ? conf[i] : 0, Theme.PANEL3, cc);
+            Draw.text(p.valueText(i), x + 8, y + 14 + (ch >= 38 ? 1 : 0), none ? Theme.MUTED : Theme.TEXT, vs, true);
+            Draw.bar(x + 8, y + ch - 6, cw - 16, 2, p.conf[i], Theme.PANEL3, cc);
         }
 
-        // tip strip
         int ty = y0 + rows * (ch + gap);
         int th = Math.min(tipH, y1 - ty);
         if (th >= 18) {
@@ -260,8 +268,9 @@ public class GuiAnalyzer extends GuiScreen {
             Draw.text(KBProfile.f(k.h, 4), px + cx[1], ry, Theme.TEXT, 0.85f, false);
             Draw.text(KBProfile.f(k.vy, 4), px + cx[2], ry, Theme.TEXT, 0.85f, false);
             Draw.text(KBProfile.f(k.pH, 3), px + cx[3], ry, Theme.SOFT, 0.85f, false);
-            Draw.text(k.hasAttacker ? (k.attackerSprint ? "SPR" : "WLK") : "--", px + cx[4], ry,
-                    k.attackerSprint ? Theme.WARN : Theme.GOOD, 0.85f, false);
+            String atk = !k.hasAttacker ? "--" : (k.sprintState == KBSample.AMBIGUOUS ? "???" : (k.attackerSprint ? "SPR" : "WLK"));
+            int atkCol = k.sprintState == KBSample.AMBIGUOUS ? Theme.DIM : (k.attackerSprint ? Theme.WARN : Theme.GOOD);
+            Draw.text(atk, px + cx[4], ry, atkCol, 0.85f, false);
             Draw.text(k.victimGround ? "gnd" : "air", px + cx[5], ry, k.victimGround ? Theme.SOFT : Theme.ACCENT2, 0.85f, false);
             Draw.text(KBProfile.f(k.distance, 1), px + cx[6], ry, Theme.SOFT, 0.85f, false);
             String nm = fontRendererObj.trimStringToWidth(k.attacker, Math.max(10, pw - cx[7] - 10));
@@ -283,7 +292,7 @@ public class GuiAnalyzer extends GuiScreen {
         Draw.roundRect(px + 72, y0 + 8, 6, 6, 2, Theme.ACCENT2);
         Draw.text("Vertical", px + 82, y0 + 7, Theme.SOFT, 0.8f, false);
         Draw.dashedH(px + 126, y0 + 11, 10, Theme.WARN);
-        Draw.text("fitted H / Y-LIMIT", px + 140, y0 + 7, Theme.MUTED, 0.8f, false);
+        Draw.text("fitted HORIZONTAL / Y-LIMIT", px + 140, y0 + 7, Theme.MUTED, 0.8f, false);
 
         int cx0 = px + 30, cx1 = px + pw - 10;
         int cy0 = y0 + 22, cy1 = y1 - 12;
@@ -352,6 +361,52 @@ public class GuiAnalyzer extends GuiScreen {
                     Draw.text(val, x + Draw.width(key, 0.85f), y, vc, 0.85f, false);
                 }
             }
+        }
+    }
+
+    // ---- compare (detected vs imported reference) ---------------------------
+    private void drawCompare() {
+        Draw.panel(px, y0, pw, y1 - y0, 5, Theme.PANEL, Theme.BORDER);
+        if (reference == null) {
+            float cy = y0 + (y1 - y0) / 2f - 14;
+            Draw.centered("No reference config loaded", px + pw / 2f, cy, Theme.SOFT, 1f, true);
+            Draw.centered("Copy a Carbon knockback YAML, then press Import", px + pw / 2f, cy + 14, Theme.MUTED, 0.85f, false);
+            Draw.centered("or use /kb import  |  /kb import file.yml  |  /kb sample", px + pw / 2f, cy + 26, Theme.DIM, 0.8f, false);
+            return;
+        }
+        int[] cx = { 8, 150, 226, 302, 372 };
+        String[] hd = { "KEY", "DETECTED", "REFERENCE", "DELTA", "STATUS" };
+        int hy = y0 + 6;
+        for (int i = 0; i < hd.length; i++) Draw.text(hd[i], px + cx[i], hy, Theme.ACCENT, 0.8f, false);
+        Draw.rect(px + 6, hy + 11, pw - 12, 1, Theme.BORDER);
+
+        int rowH = Math.max(9, Math.min(13, (y1 - y0 - 44) / KBProfile.COUNT));
+        int match = 0, close = 0, off = 0;
+        for (int i = 0; i < KBProfile.COUNT; i++) {
+            int y = hy + 16 + i * rowH;
+            if (i % 2 == 0) Draw.rect(px + 4, y - 2, pw - 8, rowH, 0x14FFFFFF);
+            int cmp = profile.compare(reference, i);
+            boolean hasDet = profile.src[i] != KBProfile.SRC_NONE;
+            Draw.text(KBProfile.KEYS[i], px + cx[0], y, Theme.SOFT, 0.8f, false);
+            Draw.text(hasDet ? profile.valueText(i) : profile.valueText(i) + " (def)", px + cx[1], y, hasDet ? Theme.TEXT : Theme.DIM, 0.8f, false);
+            Draw.text(reference.src[i] == KBProfile.SRC_NONE ? "--" : reference.valueText(i), px + cx[2], y, Theme.ACCENT2, 0.8f, false);
+            String delta = "-";
+            if (cmp >= 0 && !KBProfile.isBool(i)) delta = String.format(Locale.ROOT, "%+.4f", profile.numeric(i) - reference.numeric(i));
+            Draw.text(delta, px + cx[3], y, Theme.MUTED, 0.8f, false);
+            String status;
+            int sc;
+            if (cmp == 0) { status = "MATCH"; sc = Theme.GOOD; match++; }
+            else if (cmp == 1) { status = "CLOSE"; sc = Theme.WARN; close++; }
+            else if (cmp == 2) { status = "OFF"; sc = Theme.BAD; off++; }
+            else { status = "NO REF"; sc = Theme.DIM; }
+            Draw.text(status, px + cx[4], y, sc, 0.8f, false);
+        }
+        int fy = y1 - 22;
+        Draw.rect(px + 6, fy - 4, pw - 12, 1, Theme.BORDER);
+        Draw.text(match + " match   " + close + " close   " + off + " off", px + 8, fy, Theme.SOFT, 0.85f, false);
+        String imp = tracker.getLastImport();
+        if (imp != null && !imp.isEmpty()) {
+            Draw.text(fontRendererObj.trimStringToWidth(imp, (int) ((pw - 16) / 0.75f)), px + 8, fy + 10, Theme.MUTED, 0.75f, false);
         }
     }
 }

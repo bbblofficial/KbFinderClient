@@ -8,17 +8,18 @@ import java.util.List;
  * Solver for the Carbon / Spigot knockback model.
  *
  *   horizontal:  v_new = v_old / FRICTION + dir * (HORIZONTAL [+ EXTRA-HORIZONTAL if attacker sprints])
- *   vertical:    y_new = y_old / FRICTION + VERTICAL   [+ EXTRA-VERTICAL if attacker sprints]
- *                then clamped to Y-LIMIT
+ *   vertical:    y_new = y_old / FRICTION + VERTICAL   [+ EXTRA-VERTICAL if attacker sprints]  -> clamped to Y-LIMIT
  *
- * Steps: (A) grid-search FRICTION by minimising the within-group variance of the
- * residual, (B) detect clamped plateaus (limits), (C) medians per group give the
- * base / extra values, (D) hit-gap analysis gives DAMAGE-TICKS.
+ * (A) FRICTION: coarse + fine grid search on the within-group residual variance,
+ * (B) plateau detection for Y-LIMIT / H-LIMIT, (C) robust medians per group,
+ * (D) hit-gap analysis for DAMAGE-TICKS. Hits whose attacker sprint state was
+ * changing (W-tap) are excluded as ambiguous.
  */
 public final class KBEstimator {
     private KBEstimator() {}
 
     private static double conf(double n) { return 1.0 - Math.exp(-n / 3.0); }
+    private static double r4(double v) { return Math.rint(v * 10000.0) / 10000.0; }
 
     private static double median(List<Double> v) {
         if (v.isEmpty()) return 0;
@@ -26,6 +27,12 @@ public final class KBEstimator {
         Collections.sort(c);
         int n = c.size();
         return (n % 2 == 1) ? c.get(n / 2) : (c.get(n / 2 - 1) + c.get(n / 2)) / 2.0;
+    }
+
+    private static double max(List<Double> v) {
+        double m = -Double.MAX_VALUE;
+        for (double d : v) m = Math.max(m, d);
+        return m;
     }
 
     private static double std(List<Double> v) {
@@ -45,7 +52,6 @@ public final class KBEstimator {
         return hi - lo;
     }
 
-    /** residual variance for a candidate friction value */
     private static double cost(List<KBSample> fit, double f) {
         double inv = 1.0 / f;
         double[] sa = new double[2], sa2 = new double[2], sy = new double[2], sy2 = new double[2];
@@ -74,15 +80,16 @@ public final class KBEstimator {
         double base, extra, cB, cE, spr = 0, lb = 0;
         if (!w.isEmpty()) {
             base = median(w); cB = conf(w.size()); spr = std(w);
+            if (!wC.isEmpty() && max(wC) > base) { base = max(wC); lb = 1; }
             if (!s.isEmpty()) { extra = median(s) - base; cE = conf(Math.min(w.size(), s.size())); }
-            else if (!sC.isEmpty()) { extra = median(sC) - base; cE = 0.25; lb = 1; }
+            else if (!sC.isEmpty()) { extra = max(sC) - base; cE = 0.25; lb = 1; }
             else { extra = defExtra; cE = 0; }
         } else if (!s.isEmpty()) {
             extra = defExtra; base = median(s) - extra; cB = 0.25; cE = 0; spr = std(s);
         } else if (!wC.isEmpty() || !sC.isEmpty()) {
-            List<Double> any = new ArrayList<Double>(wC);
-            any.addAll(sC);
-            extra = defExtra; base = median(any) - (wC.isEmpty() ? extra : 0); cB = 0.2; cE = 0; lb = 1;
+            extra = defExtra;
+            if (!wC.isEmpty()) base = max(wC); else base = max(sC) - extra;
+            cB = 0.2; cE = 0; lb = 1;
         } else {
             base = 0; extra = defExtra; cB = 0; cE = 0;
         }
@@ -97,18 +104,20 @@ public final class KBEstimator {
             return p;
         }
 
-        // ---- usable samples: a nearby attacker, no Knockback enchant, non-empty packet
-        int ench = 0;
+        int ench = 0, amb = 0;
         List<KBSample> s = new ArrayList<KBSample>();
         for (KBSample k : all) {
             if (!k.hasAttacker) continue;
+            if (k.sprintState == KBSample.AMBIGUOUS) { amb++; continue; }
             if (k.attackerKb > 0) { ench++; continue; }
             if (k.h < 0.0005 && Math.abs(k.vy) < 0.0005) continue;
             s.add(k);
         }
         int n = s.size();
         p.used = n;
+        p.ambiguous = amb;
         if (ench > 0) p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
+        if (amb > 0) p.notes.add("Ignored " + amb + " hit(s) where the attacker's sprint state was changing (W-tap).");
         detectDamageTicks(all, p);
         if (n == 0) {
             p.notes.add("No usable hits yet (need a nearby attacking player).");
@@ -117,7 +126,7 @@ public final class KBEstimator {
         p.hasData = true;
         for (KBSample k : s) { if (k.attackerSprint) p.sprint++; else p.walk++; }
 
-        // ---- plateau detection (limits clamp many hits to the same value)
+        // ---- plateau detection
         double yMax = -10, hMax = 0;
         for (KBSample k : s) { yMax = Math.max(yMax, k.vy); hMax = Math.max(hMax, k.h); }
         boolean[] hPl = new boolean[n], yPl = new boolean[n];
@@ -143,23 +152,34 @@ public final class KBEstimator {
         double F = 2.0;
         if (moving >= 3) {
             double best = Double.MAX_VALUE, bestF = 2.0;
-            for (double f = 1.0; f <= 6.0001; f += 0.01) {
+            for (double f = 1.0; f <= 6.0001; f += 0.02) {
+                double c = cost(fit, f);
+                if (c < best - 1e-12) { best = c; bestF = f; }
+            }
+            double lo = Math.max(1.0, bestF - 0.02), hi = Math.min(6.0, bestF + 0.02);
+            for (double f = lo; f <= hi + 1e-9; f += 0.001) {
                 double c = cost(fit, f);
                 if (c < best - 1e-12) { best = c; bestF = f; }
             }
             double c2 = cost(fit, 2.0);
-            if (best < c2 * 0.6 && c2 - best > 1e-5) {
+            boolean informative = cost(fit, 1.5) - best > 1e-5 && cost(fit, 3.0) - best > 1e-5;
+            if (informative && Math.abs(bestF - 2.0) <= 0.02) {
+                F = 2.0;
+                p.frictionMeasured = true;
+                p.mark(KBProfile.I_F, conf(moving / 2.0));
+            } else if (best < c2 * 0.6 && c2 - best > 1e-5) {
                 F = bestF;
                 p.frictionMeasured = true;
-                p.cF = conf(moving / 2.0);
-                if (F <= 1.03 || F >= 5.97) { p.cF *= 0.4; p.notes.add("FRICTION hit the search boundary - result is unreliable."); }
+                double cf = conf(moving / 2.0);
+                if (F <= 1.03 || F >= 5.97) { cf *= 0.4; p.notes.add("FRICTION hit the search boundary - result is unreliable."); }
+                p.mark(KBProfile.I_F, cf);
             } else {
-                p.cF = 0.35;
-                p.notes.add("FRICTION matches the default 2.000 (no evidence of another value).");
+                p.mark(KBProfile.I_F, 0.35);
+                p.notes.add("FRICTION matches the default 2.0 (no evidence of another value).");
             }
         } else {
-            p.cF = 0;
-            p.notes.add("FRICTION defaulted to 2.000 - get hit while walking/strafing to measure it.");
+            p.mark(KBProfile.I_F, 0);
+            p.notes.add("FRICTION not measured - get hit while walking/strafing (pre-hit speed > 0.08).");
         }
         F = Math.round(F * 1000.0) / 1000.0;
         p.friction = F;
@@ -194,29 +214,32 @@ public final class KBEstimator {
         }
 
         double[] hr = solve(hw, hs, hwC, hsC, 0.5);
-        p.horizontal = hr[0]; p.extraHorizontal = hr[1]; p.cH = hr[2]; p.cEH = hr[3]; p.hSpread = hr[4];
-        if (hr[5] > 0) p.notes.add("EXTRA-HORIZONTAL is only a lower bound (hits were clamped by H-LIMIT).");
+        p.horizontal = r4(hr[0]); p.extraHorizontal = r4(hr[1]); p.hSpread = hr[4];
+        p.mark(KBProfile.I_H, hr[2]); p.mark(KBProfile.I_EH, hr[3]);
+        if (hr[5] > 0) p.notes.add("HORIZONTAL/EXTRA-HORIZONTAL are lower bounds (hits were clamped by H-LIMIT).");
 
         double[] vr = solve(vw, vs, vwC, vsC, 0.0);
-        p.vertical = vr[0]; p.extraVertical = vr[1]; p.cV = vr[2]; p.cEV = vr[3]; p.vSpread = vr[4];
-        if (vr[5] > 0) p.notes.add("EXTRA-VERTICAL is only a lower bound (hits were clamped by Y-LIMIT).");
+        p.vertical = r4(vr[0]); p.extraVertical = r4(vr[1]); p.vSpread = vr[4];
+        p.mark(KBProfile.I_V, vr[2]); p.mark(KBProfile.I_EV, vr[3]);
+        if (vr[5] > 0) p.notes.add("VERTICAL is a lower bound (clamped by Y-LIMIT). Get hit while FALLING (negative Y motion) to unclamp it.");
 
         if (p.walk == 0) p.notes.add("Need hits from a NON-sprinting attacker to separate HORIZONTAL from EXTRA-HORIZONTAL.");
-        if (p.sprint == 0) p.notes.add("Need hits from a SPRINTING attacker to measure the EXTRA-* values.");
+        if (p.sprint == 0) p.notes.add("Need hits from a SPRINTING attacker to measure EXTRA-HORIZONTAL / EXTRA-VERTICAL.");
 
         // ---- limits
-        p.yLimit = yMax;
-        if (yCapped) { p.cYL = conf(yPlN / 1.5); }
+        p.yLimit = r4(yMax);
+        if (yCapped) p.mark(KBProfile.I_YL, conf(yPlN / 1.5));
         else {
-            p.cYL = 0.25;
-            if (yMulti) p.notes.add("Y-LIMIT not confirmed - get hit in mid-air at different heights.");
+            p.mark(KBProfile.I_YL, 0.25);
+            p.notes.add("Y-LIMIT is only the highest vertical knockback seen - get hit in mid-air at different heights to confirm the cap.");
         }
-        p.hLimit = hMax;
+        p.hLimit = r4(hMax);
         p.limitHorizontal = hCapped;
-        p.cHL = hCapped ? conf(hPlN / 1.5) : 0.2;
-        p.cLimH = hCapped ? conf(hPlN / 1.5) : (moving >= 3 ? 0.55 : 0.15);
+        p.mark(KBProfile.I_LIMH, hCapped ? conf(hPlN / 1.5) : (moving >= 3 ? 0.55 : 0.15));
+        p.mark(KBProfile.I_HL, hCapped ? conf(hPlN / 1.5) : 0.15);
+        if (!hCapped) p.notes.add("H-LIMIT looks inactive (never clamped): shown value is the largest horizontal hit seen. Use /kb import for the exact file value.");
 
-        // ---- DYNAMIC-LIMIT (vertical zeroed when already above the limit)
+        // ---- DYNAMIC-LIMIT
         int airHigh = 0;
         boolean dyn = false;
         for (KBSample k : all) {
@@ -227,21 +250,20 @@ public final class KBEstimator {
             }
         }
         p.dynamicLimit = dyn;
-        p.cDyn = dyn ? 0.6 : (airHigh >= 2 ? 0.5 : 0.12);
+        p.mark(KBProfile.I_DYN, dyn ? 0.6 : (airHigh >= 2 ? 0.5 : 0.12));
 
-        // ---- ONE-POINT-SEVEN (heuristic: no sprint bonus at all)
+        // ---- ONE-POINT-SEVEN
         if (p.walk > 0 && p.sprint > 0) {
-            boolean flat = p.extraHorizontal < 0.02 && p.extraVertical < 0.02;
-            p.onePointSeven = flat;
-            p.cOps = 0.35;
+            p.onePointSeven = p.extraHorizontal < 0.02 && p.extraVertical < 0.02;
+            p.mark(KBProfile.I_OPS, 0.35);
         } else {
             p.onePointSeven = false;
-            p.cOps = 0.08;
+            p.mark(KBProfile.I_OPS, 0.08);
         }
         return p;
     }
 
-    /** DAMAGE-TICKS: a hit can land again once hurtTime <= max/2, so VALUE ~= 2 * shortest hit gap. */
+    /** hits can land again once noDamageTicks <= VALUE/2, so shortest gap g gives VALUE = 2g (or 2g-1). */
     private static void detectDamageTicks(List<KBSample> all, KBProfile p) {
         List<Integer> iv = new ArrayList<Integer>();
         KBSample prev = null;
@@ -253,25 +275,27 @@ public final class KBEstimator {
             }
             prev = k;
         }
+        p.damageTicksValue = 20;
+        p.damageTicksOverride = false;
         if (iv.isEmpty()) {
-            p.damageTicksValue = 20;
-            p.damageTicksOverride = false;
-            p.cDT = 0;
+            p.mark(KBProfile.I_DTO, 0);
+            p.mark(KBProfile.I_DTV, 0);
             p.notes.add("DAMAGE-TICKS unknown - have someone hit you rapidly.");
             return;
         }
         Collections.sort(iv);
         int m = iv.size() >= 4 ? iv.get(1) : iv.get(0);
-        if (m >= 9) {
-            p.damageTicksValue = 20;
-            p.damageTicksOverride = false;
-            p.cDT = iv.size() >= 3 ? 0.45 : 0.2;
-            if (m >= 10 && iv.size() >= 3) p.notes.add("Shortest hit gap is " + m + " ticks - consistent with vanilla 20 damage ticks.");
+        if (m >= 10) {
+            p.mark(KBProfile.I_DTO, iv.size() >= 3 ? 0.45 : 0.2);
+            p.mark(KBProfile.I_DTV, 0);
+            p.notes.add("Hit gap " + m + " ticks = vanilla 20. DAMAGE-TICKS.VALUE is not observable while OVERRIDE is false - use /kb import.");
         } else {
             p.damageTicksValue = Math.max(2, m * 2);
             p.damageTicksOverride = true;
-            p.cDT = iv.size() >= 4 ? 0.75 : 0.45;
-            p.notes.add("Shortest hit gap is " + m + " ticks -> DAMAGE-TICKS ~ " + (m * 2) + ".");
+            double c = iv.size() >= 4 ? 0.75 : 0.45;
+            p.mark(KBProfile.I_DTO, c);
+            p.mark(KBProfile.I_DTV, c * 0.8);
+            p.notes.add("Shortest hit gap " + m + " ticks -> DAMAGE-TICKS.VALUE is " + (m * 2) + " or " + (m * 2 - 1) + ".");
         }
     }
 }
