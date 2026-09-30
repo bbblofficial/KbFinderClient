@@ -17,9 +17,6 @@ public final class DiscordRPC {
     private static final int OP_FRAME     = 1;
     private static final int OP_CLOSE     = 2;
 
-    /** Activity type sent to Discord. 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing. */
-    private static final int ACTIVITY_TYPE_PLAYING = 0;
-
     private static RandomAccessFile pipe;
     private static Thread worker;
     private static Thread reader;
@@ -33,7 +30,7 @@ public final class DiscordRPC {
     public static synchronized void start() {
         if (running) return;
         running = true;
-
+        
         worker = new Thread(() -> {
             if (APP_ID.startsWith("1234")) {
                 KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
@@ -47,27 +44,27 @@ public final class DiscordRPC {
                 running = false;
                 return;
             }
-
+            
             try {
                 sendHandshake();
                 String reply = readFrame();
                 KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
-
+                
                 if (reply == null || !reply.contains("\"READY\"")) {
                     KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
                     close();
                     running = false;
                     return;
                 }
-
-                // Raw Discord IPC expects timestamps in MILLISECONDS.
+                
+                // Raw JSON IPC requires exact epoch milliseconds
                 startTime = System.currentTimeMillis();
                 updatePresence(true);
-
+                
                 reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
                 reader.setDaemon(true);
                 reader.start();
-
+                
                 loop();
             } catch (Exception e) {
                 KBClientMod.logger.warn("[KB-RPC] exception: " + e);
@@ -75,7 +72,7 @@ public final class DiscordRPC {
                 running = false;
             }
         }, "KBClient-DiscordRPC-Worker");
-
+        
         worker.setDaemon(true);
         worker.start();
     }
@@ -165,7 +162,8 @@ public final class DiscordRPC {
                 if (running) stop();
                 break;
             }
-            KBClientMod.logger.info("[KB-RPC] <- " + frame);
+            // Log raw response frames to see if Discord rejects the payload
+            // KBClientMod.logger.info("[KB-RPC] <- " + frame);
         }
     }
 
@@ -209,12 +207,14 @@ public final class DiscordRPC {
         lastState = state;
 
         long pid = currentPid();
+        
+        // Added "type": 0 (Playing) and "instance": true to force the status to show on the profile
         String json = "{"
                 + "\"cmd\":\"SET_ACTIVITY\","
                 + "\"args\":{"
                 +   "\"pid\":" + pid + ","
                 +   "\"activity\":{"
-                +     "\"type\":" + ACTIVITY_TYPE_PLAYING + ","   // <-- "Playing" verb
+                +     "\"type\":0,"
                 +     "\"details\":" + quote(details) + ","
                 +     "\"state\":" + quote(state) + ","
                 +     "\"timestamps\":{\"start\":" + startTime + "},"
@@ -223,14 +223,15 @@ public final class DiscordRPC {
                 +       "\"large_text\":\"KB Client 3.0\","
                 +       "\"small_image\":\"minecraft\","
                 +       "\"small_text\":\"Minecraft 1.8.9\""
-                +     "}"
+                +     "},"
+                +     "\"instance\":true"
                 +   "}"
                 + "},"
                 + "\"nonce\":\"" + System.nanoTime() + "\""
                 + "}";
 
         try {
-            KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY (type=" + ACTIVITY_TYPE_PLAYING + ")");
+            KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY");
             sendFrame(OP_FRAME, json);
         } catch (IOException e) {
             running = false;

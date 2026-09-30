@@ -62,7 +62,7 @@ public final class DiscordRPC {
                     return;
                 }
                 
-                // FIXED: Raw Discord IPC strictly expects timestamps in MILLISECONDS.
+                // Raw JSON IPC requires exact epoch milliseconds
                 startTime = System.currentTimeMillis();
                 updatePresence(true);
                 
@@ -167,8 +167,8 @@ public final class DiscordRPC {
                 if (running) stop();
                 break;
             }
-            // Enabled log frames to catch any silent Discord rejection errors 
-            KBClientMod.logger.info("[KB-RPC] <- " + frame);
+            // Log raw response frames to see if Discord rejects the payload
+            // KBClientMod.logger.info("[KB-RPC] <- " + frame);
         }
     }
 
@@ -212,11 +212,14 @@ public final class DiscordRPC {
         lastState = state;
 
         long pid = currentPid();
+        
+        // Added "type": 0 (Playing) and "instance": true to force the status to show on the profile
         String json = "{"
                 + "\"cmd\":\"SET_ACTIVITY\","
                 + "\"args\":{"
                 +   "\"pid\":" + pid + ","
                 +   "\"activity\":{"
+                +     "\"type\":0,"
                 +     "\"details\":" + quote(details) + ","
                 +     "\"state\":" + quote(state) + ","
                 +     "\"timestamps\":{\"start\":" + startTime + "},"
@@ -225,7 +228,8 @@ public final class DiscordRPC {
                 +       "\"large_text\":\"KB Client 3.0\","
                 +       "\"small_image\":\"minecraft\","
                 +       "\"small_text\":\"Minecraft 1.8.9\""
-                +     "}"
+                +     "},"
+                +     "\"instance\":true"
                 +   "}"
                 + "},"
                 + "\"nonce\":\"" + System.nanoTime() + "\""
