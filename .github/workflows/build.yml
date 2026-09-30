@@ -1,0 +1,40 @@
+name: Build KB Client 1.8.9
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+
+      - name: Install & Configure Gradle 4.10.3
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+          unzip -q gradle-4.10.3-bin.zip
+          export PATH=$PWD/gradle-4.10.3/bin:$PATH
+          gradle wrapper --gradle-version 4.10.3
+          chmod +x gradlew
+
+      - name: Build Mod with Gradle
+        run: |
+          ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload Mod Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KBClient-1.8.9
+          path: build/libs/*.jar
