@@ -1,8 +1,8 @@
 package com.oryvex.kbclient.ui;
 
+import net.minecraft.client.LoadingScreenRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.LoadingScreenRenderer;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.shader.Framebuffer;
@@ -31,13 +31,6 @@ public class KBLoading extends LoadingScreenRenderer {
     }
 
     @Override
-    public void resetProgressAndMessage(String message) {
-        if (!Settings.customLoading) { super.resetProgressAndMessage(message); return; }
-        begin(message);
-        frame();
-    }
-
-    @Override
     public void displaySavingString(String message) {
         if (!Settings.customLoading) { super.displaySavingString(message); return; }
         begin(message);
@@ -60,11 +53,6 @@ public class KBLoading extends LoadingScreenRenderer {
         if (!Settings.customLoading) { super.setLoadingProgress(p); return; }
         progress = p;
         if (System.currentTimeMillis() - lastFrame >= 30L) frame();
-    }
-
-    @Override
-    public void setDoneWorking() {
-        if (!Settings.customLoading) super.setDoneWorking();
     }
 
     private void frame() {
