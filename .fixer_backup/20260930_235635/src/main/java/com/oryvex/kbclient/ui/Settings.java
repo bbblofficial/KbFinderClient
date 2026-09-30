@@ -48,7 +48,6 @@ public final class Settings {
             p.setProperty("particles", String.valueOf(particles));
             p.setProperty("toasts", String.valueOf(toasts));
             p.setProperty("customLoading", String.valueOf(customLoading));
-            p.setProperty("discordRpc", String.valueOf(discordRpc));
             p.setProperty("fade", String.valueOf(fade));
             FileOutputStream out = new FileOutputStream(file());
             try { p.store(out, "KB Client settings"); } finally { out.close(); }

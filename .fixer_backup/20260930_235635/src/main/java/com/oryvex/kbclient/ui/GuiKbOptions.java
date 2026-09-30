@@ -50,7 +50,6 @@ public class GuiKbOptions extends FadeScreen {
         bPart.on = Settings.particles;
         bToast.on = Settings.toasts;
         bLoad.on = Settings.customLoading;
-        if (bRpc != null) bRpc.on = Settings.discordRpc;
         bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
     }
 

@@ -82,8 +82,6 @@ public class KBClientMod {
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
-        if (Settings.discordRpc) DiscordRPC.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(DiscordRPC::stop, "KBClient-RPC-Shutdown"));
     }
 
     /** swap Minecraft's loading renderer (world load/save) for the custom one */
