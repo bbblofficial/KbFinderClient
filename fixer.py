@@ -1,14 +1,50 @@
 import os
-import re
 
-def patch_terrain_loading():
-    # 1. Create GuiFakeWorldLoad.java
-    fake_world_load_code = """package com.oryvex.kbclient.ui;
+def apply_fixes():
+    # 1. Update GuiFakeLoading to use FadeScreen for smooth transitions
+    fake_main_loading = """package com.oryvex.kbclient.ui;
 
-import net.minecraft.client.gui.GuiScreen;
+import com.oryvex.kbclient.KBTracker;
 import java.io.IOException;
 
-public class GuiFakeWorldLoad extends GuiScreen {
+public class GuiFakeLoading extends FadeScreen {
+    private final KBTracker tracker;
+    private final long start;
+
+    public GuiFakeLoading(KBTracker tracker) {
+        this.tracker = tracker;
+        this.start = System.currentTimeMillis();
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        long elapsed = System.currentTimeMillis() - start;
+        int pct = (int) Math.min(100, (elapsed * 100) / 3000);
+        
+        // Start the fade-out animation 300ms before finishing
+        if (elapsed >= 2700 && !this.isClosing()) {
+            this.closeTo(new GuiModernMenu(tracker));
+        }
+        
+        LoadingArt.draw(this.width, this.height, "Loading KB Client", "Initializing modules...", pct);
+        
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        this.drawFade();
+    }
+    
+    @Override
+    protected void onKey(char c, int key) throws IOException {
+        // Block ESC
+    }
+}
+"""
+    
+    # 2. Update GuiFakeWorldLoad to use FadeScreen for smooth transitions
+    fake_world_loading = """package com.oryvex.kbclient.ui;
+
+import java.io.IOException;
+
+public class GuiFakeWorldLoad extends FadeScreen {
     private final long start;
 
     public GuiFakeWorldLoad() {
@@ -20,61 +56,65 @@ public class GuiFakeWorldLoad extends GuiScreen {
         long elapsed = System.currentTimeMillis() - start;
         int pct = (int) Math.min(100, (elapsed * 100) / 3000);
         
+        // Start the fade-out animation 300ms before finishing
+        if (elapsed >= 2700 && !this.isClosing()) {
+            this.closeTo(null);
+        }
+        
         LoadingArt.draw(this.width, this.height, "Joining world", "Initializing client modules...", pct);
         
-        if (elapsed >= 3000) {
-            this.mc.displayGuiScreen(null);
-        }
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        this.drawFade();
     }
     
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        // Block ESC so they can't skip the fake loading sequence
+    protected void onKey(char c, int key) throws IOException {
+        // Block ESC
     }
     
     @Override
     public boolean doesGuiPauseGame() {
-        // Must be false so the server doesn't time out and chunks load in the background
         return false;
     }
 }
 """
+    
     os.makedirs("src/main/java/com/oryvex/kbclient/ui", exist_ok=True)
+    with open("src/main/java/com/oryvex/kbclient/ui/GuiFakeLoading.java", "w", encoding="utf-8") as f:
+        f.write(fake_main_loading)
     with open("src/main/java/com/oryvex/kbclient/ui/GuiFakeWorldLoad.java", "w", encoding="utf-8") as f:
-        f.write(fake_world_load_code)
-    print("Created GuiFakeWorldLoad.java")
+        f.write(fake_world_loading)
 
-    # 2. Patch KBClientMod.java to intercept the world entry
+    print("✅ Upgraded Fake Loading Screens with FadeScreen animations.")
+
+    # 3. Patch KBClientMod.java to redirect the pause menu options to GuiKbOptions
     kbclient_path = "src/main/java/com/oryvex/kbclient/KBClientMod.java"
     if os.path.exists(kbclient_path):
         with open(kbclient_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        if "GuiFakeWorldLoad" not in content:
-            # Hook the moment the world loads in onTick to show the fake screen
-            content = re.sub(
-                r'if\s*\(\s*mc\.theWorld\s*!=\s*lastWorld\s*\)\s*\{\s*lastWorld\s*=\s*mc\.theWorld;\s*if\s*\(\s*mc\.theWorld\s*!=\s*null\s*&&\s*Fade\.ms\(\)\s*>\s*0\s*\)\s*Fade\.world\.trigger\(1f,\s*Fade\.ms\(\)\s*\*\s*3L\);\s*\}',
-                r'if (mc.theWorld != lastWorld) {\n            lastWorld = mc.theWorld;\n            if (mc.theWorld != null) {\n                if (Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);\n                mc.displayGuiScreen(new com.oryvex.kbclient.ui.GuiFakeWorldLoad());\n            }\n        }',
-                content
-            )
+        if "public void onActionPerformed" not in content:
+            interceptor = """
+    @SubscribeEvent
+    public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
+        // When clicking the 'Options' button (ID 0) in the pause menu, open KB Client Options instead
+        if (e.gui instanceof net.minecraft.client.gui.GuiIngameMenu && e.button.id == 0) {
+            e.setCanceled(true);
+            net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+        }
+    }
+
+    @SubscribeEvent
+    public void onOverlay"""
             
-            # Prevent the Fade overlay from stacking darkly over this specific GUI
-            content = content.replace(
-                "!(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading)) {",
-                "!(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {"
-            )
-            content = content.replace(
-                "!(e.gui instanceof GuiChat)) {",
-                "!(e.gui instanceof GuiChat) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {"
-            )
+            # Injecting right before onOverlay to ensure we don't break regex bounds
+            content = content.replace("@SubscribeEvent\n    public void onOverlay", interceptor)
 
             with open(kbclient_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            print("Successfully patched KBClientMod.java")
+            print("✅ Patched KBClientMod.java to open Discord RPC / KB Options from the Pause Menu.")
         else:
-            print("KBClientMod.java is already patched.")
-    else:
-        print(f"Error: Could not find {kbclient_path}")
+            print("ℹ️ KBClientMod.java already contains the pause menu interceptor.")
 
 if __name__ == "__main__":
-    patch_terrain_loading()
+    apply_fixes()

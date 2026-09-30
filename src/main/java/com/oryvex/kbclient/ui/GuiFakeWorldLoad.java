@@ -1,9 +1,8 @@
 package com.oryvex.kbclient.ui;
 
-import net.minecraft.client.gui.GuiScreen;
 import java.io.IOException;
 
-public class GuiFakeWorldLoad extends GuiScreen {
+public class GuiFakeWorldLoad extends FadeScreen {
     private final long start;
 
     public GuiFakeWorldLoad() {
@@ -15,21 +14,24 @@ public class GuiFakeWorldLoad extends GuiScreen {
         long elapsed = System.currentTimeMillis() - start;
         int pct = (int) Math.min(100, (elapsed * 100) / 3000);
         
+        // Start the fade-out animation 300ms before finishing
+        if (elapsed >= 2700 && !this.isClosing()) {
+            this.closeTo(null);
+        }
+        
         LoadingArt.draw(this.width, this.height, "Joining world", "Initializing client modules...", pct);
         
-        if (elapsed >= 3000) {
-            this.mc.displayGuiScreen(null);
-        }
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        this.drawFade();
     }
     
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        // Block ESC so they can't skip the fake loading sequence
+    protected void onKey(char c, int key) throws IOException {
+        // Block ESC
     }
     
     @Override
     public boolean doesGuiPauseGame() {
-        // Must be false so the server doesn't time out and chunks load in the background
         return false;
     }
 }

@@ -1,10 +1,9 @@
 package com.oryvex.kbclient.ui;
 
 import com.oryvex.kbclient.KBTracker;
-import net.minecraft.client.gui.GuiScreen;
 import java.io.IOException;
 
-public class GuiFakeLoading extends GuiScreen {
+public class GuiFakeLoading extends FadeScreen {
     private final KBTracker tracker;
     private final long start;
 
@@ -18,15 +17,19 @@ public class GuiFakeLoading extends GuiScreen {
         long elapsed = System.currentTimeMillis() - start;
         int pct = (int) Math.min(100, (elapsed * 100) / 3000);
         
+        // Start the fade-out animation 300ms before finishing
+        if (elapsed >= 2700 && !this.isClosing()) {
+            this.closeTo(new GuiModernMenu(tracker));
+        }
+        
         LoadingArt.draw(this.width, this.height, "Loading KB Client", "Initializing modules...", pct);
         
-        if (elapsed >= 3000) {
-            this.mc.displayGuiScreen(new GuiModernMenu(tracker));
-        }
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        this.drawFade();
     }
     
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        // Block ESC so they can't skip the fake loading sequence
+    protected void onKey(char c, int key) throws IOException {
+        // Block ESC
     }
 }

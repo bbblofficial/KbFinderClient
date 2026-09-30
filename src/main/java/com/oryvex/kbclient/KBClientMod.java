@@ -166,6 +166,16 @@ public class KBClientMod {
         }
     }
 
+    
+    @SubscribeEvent
+    public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
+        // When clicking the 'Options' button (ID 0) in the pause menu, open KB Client Options instead
+        if (e.gui instanceof net.minecraft.client.gui.GuiIngameMenu && e.button.id == 0) {
+            e.setCanceled(true);
+            net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+        }
+    }
+
     @SubscribeEvent
     public void onOverlay(RenderGameOverlayEvent.Post e) {
         if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
