@@ -97,13 +97,13 @@ PATCHES = [
         "import net.minecraft.network.NetworkManager;",
         "import net.minecraft.client.gui.GuiButton;\n"
         "import net.minecraft.client.gui.GuiChat;\n"
-        "import net.minecraft.client.gui.GuiConnecting;\n"
         "import net.minecraft.client.gui.GuiDisconnected;\n"
         "import net.minecraft.client.gui.GuiDownloadTerrain;\n"
         "import net.minecraft.client.gui.GuiIngameMenu;\n"
         "import net.minecraft.client.gui.GuiMainMenu;\n"
         "import net.minecraft.client.gui.GuiScreen;\n"
         "import net.minecraft.client.gui.inventory.GuiContainer;\n"
+        "import net.minecraft.client.multiplayer.GuiConnecting;\n"
         "import net.minecraft.client.multiplayer.ServerData;\n"
         "import net.minecraft.client.settings.KeyBinding;\n"
         "import net.minecraft.network.NetworkManager;",
