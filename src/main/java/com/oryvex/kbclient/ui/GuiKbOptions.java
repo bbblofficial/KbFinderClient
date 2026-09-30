@@ -6,11 +6,10 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiOptions;
 import net.minecraft.client.gui.GuiScreen;
 
-/** Custom options screen for KB Client. */
 public class GuiKbOptions extends FadeScreen {
     private final KBTracker tracker;
     private final GuiScreen parent;
-    private UiButton bHud, bPart, bToast, bLoad, bFade, bRpc;
+    private UiButton bHud, bPart, bToast, bLoad, bFade;
     private int cardX, cardY, cardW, cardH;
 
     public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
@@ -26,22 +25,21 @@ public class GuiKbOptions extends FadeScreen {
         cardW = bw + 28;
         cardX = cx - cardW / 2;
         cardY = y - 42;
-        cardH = 8 * (bh + gap) + 62;
+        cardH = 7 * (bh + gap) + 62;
 
         bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
         bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
         bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
         bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
         bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
-        bRpc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(290);
+        
         this.buttonList.add(bHud);
         this.buttonList.add(bPart);
         this.buttonList.add(bToast);
         this.buttonList.add(bLoad);
         this.buttonList.add(bFade);
-        this.buttonList.add(bRpc);
-        this.buttonList.add(new UiButton(6, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
-        this.buttonList.add(new UiButton(7, cx - bw / 2, y + 7 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+        this.buttonList.add(new UiButton(6, cx - bw / 2, y + 5 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
+        this.buttonList.add(new UiButton(7, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
         sync();
     }
 
@@ -50,7 +48,6 @@ public class GuiKbOptions extends FadeScreen {
         bPart.on = Settings.particles;
         bToast.on = Settings.toasts;
         bLoad.on = Settings.customLoading;
-        if (bRpc != null) bRpc.on = Settings.discordRpc;
         bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
     }
 

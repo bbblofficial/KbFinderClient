@@ -6,7 +6,6 @@ import java.io.FileOutputStream;
 import java.util.Properties;
 import net.minecraft.client.Minecraft;
 
-/** Persistent client preferences (.minecraft/kbclient/settings.properties). */
 public final class Settings {
     private Settings() {}
 
@@ -16,7 +15,6 @@ public final class Settings {
     public static boolean particles = true;
     public static boolean toasts = true;
     public static boolean customLoading = true;
-    public static boolean discordRpc = true;
     public static int fade = 2;
 
     private static File file() {
@@ -36,7 +34,6 @@ public final class Settings {
             particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
             toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
             customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
-            discordRpc = Boolean.parseBoolean(p.getProperty("discordRpc", "true"));
             fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
         } catch (Throwable ignored) { }
     }
@@ -48,7 +45,6 @@ public final class Settings {
             p.setProperty("particles", String.valueOf(particles));
             p.setProperty("toasts", String.valueOf(toasts));
             p.setProperty("customLoading", String.valueOf(customLoading));
-            p.setProperty("discordRpc", String.valueOf(discordRpc));
             p.setProperty("fade", String.valueOf(fade));
             FileOutputStream out = new FileOutputStream(file());
             try { p.store(out, "KB Client settings"); } finally { out.close(); }

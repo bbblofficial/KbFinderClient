@@ -62,7 +62,6 @@ public class KBClientMod {
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
 
-    /** Opened on the next tick, because chat closes itself right after running a command. */
     public void requestOpenAnalyzer() { pendingOpen = true; }
 
     @EventHandler
@@ -82,11 +81,8 @@ public class KBClientMod {
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
-        if (Settings.discordRpc) DiscordRPC.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(DiscordRPC::stop, "KBClient-RPC-Shutdown"));
     }
 
-    /** swap Minecraft's loading renderer (world load/save) for the custom one */
     private void installLoading() {
         if (loadingInstalled) return;
         Minecraft mc = Minecraft.getMinecraft();
@@ -99,14 +95,12 @@ public class KBClientMod {
         }
     }
 
-    // ---- screens + fades -----------------------------------------------------
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
         if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
 
         if (e.gui == null) {
-            // back to the game: soft world fade (not after chat)
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
             }
@@ -115,7 +109,6 @@ public class KBClientMod {
         }
     }
 
-    /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
     @SubscribeEvent
     public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
         GuiScreen g = e.gui;
@@ -126,7 +119,6 @@ public class KBClientMod {
         Fade.screen.draw(g.width, g.height);
     }
 
-    /** restyle the pause menu's Options button */
     @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
         if (!(e.gui instanceof GuiIngameMenu)) return;
@@ -191,7 +183,6 @@ public class KBClientMod {
         }
     }
 
-    /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
     private static class VelocityHook extends ChannelDuplexHandler {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
