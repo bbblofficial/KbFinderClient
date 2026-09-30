@@ -4,8 +4,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
+import org.lwjgl.opengl.GL11;
 
-/** Small immediate-mode drawing toolkit (rounded panels, bars, text, gear, particles). */
 public final class Draw {
     private Draw() {}
 
@@ -15,22 +15,15 @@ public final class Draw {
         t = clamp(t);
         int aa = (a >>> 24) & 255, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
         int ba = (b >>> 24) & 255, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-        int ra = (int) (aa + (ba - aa) * t);
-        int rr = (int) (ar + (br - ar) * t);
-        int rg = (int) (ag + (bg - ag) * t);
-        int rb = (int) (ab + (bb - ab) * t);
-        return (ra << 24) | (rr << 16) | (rg << 8) | rb;
+        return (((int) (aa + (ba - aa) * t)) << 24) | (((int) (ar + (br - ar) * t)) << 16) | (((int) (ag + (bg - ag) * t)) << 8) | ((int) (ab + (bb - ab) * t));
     }
 
     public static int alpha(int color, float a) {
-        int al = (int) (clamp(a) * 255f);
-        return (al << 24) | (color & 0xFFFFFF);
+        return ((int) (clamp(a) * 255f) << 24) | (color & 0xFFFFFF);
     }
 
-    /** scale the existing alpha of a colour */
     public static int fade(int color, float a) {
-        int al = (int) (((color >>> 24) & 255) * clamp(a));
-        return (al << 24) | (color & 0xFFFFFF);
+        return ((int) (((color >>> 24) & 255) * clamp(a)) << 24) | (color & 0xFFFFFF);
     }
 
     public static int confColor(double c) {
@@ -44,8 +37,8 @@ public final class Draw {
         GlStateManager.color(1f, 1f, 1f, 1f);
     }
 
-    public static void rect(int x, int y, int w, int h, int color) {
-        Gui.drawRect(x, y, x + w, y + h, color);
+    public static void rect(float x, float y, float w, float h, int color) {
+        Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), color);
     }
 
     public static void vgradient(int w, int h, int top, int bottom) {
@@ -54,65 +47,111 @@ public final class Draw {
         }
     }
 
-    public static void roundRect(int x, int y, int w, int h, int r, int color) {
-        if (w <= 0 || h <= 0) return;
-        r = Math.min(r, Math.min(w, h) / 2);
-        if (r <= 0) { Gui.drawRect(x, y, x + w, y + h, color); return; }
-        Gui.drawRect(x, y + r, x + w, y + h - r, color);
-        for (int i = 0; i < r; i++) {
-            double dy = r - i - 0.5;
-            int inset = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
-            Gui.drawRect(x + inset, y + i, x + w - inset, y + i + 1, color);
-            Gui.drawRect(x + inset, y + h - i - 1, x + w - inset, y + h - i, color);
+    /** Pure OpenGL Anti-Aliased Rounded Rectangle */
+    public static void roundRect(float x, float y, float w, float h, float r, int color) {
+        float alpha = (color >> 24 & 0xFF) / 255.0F;
+        if (alpha <= 0.01f) return;
+        float red = (color >> 16 & 0xFF) / 255.0F;
+        float green = (color >> 8 & 0xFF) / 255.0F;
+        float blue = (color & 0xFF) / 255.0F;
+
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
+        GlStateManager.color(red, green, blue, alpha);
+
+        GL11.glBegin(GL11.GL_POLYGON);
+        for (int i = 180; i <= 270; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 270; i <= 360; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 0; i <= 90; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 90; i <= 180; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
+        GL11.glEnd();
+
+        GL11.glBegin(GL11.GL_LINE_LOOP);
+        for (int i = 180; i <= 270; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 270; i <= 360; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 0; i <= 90; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
+        for (int i = 90; i <= 180; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
+        GL11.glEnd();
+
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.enableTexture2D();
+    }
+
+    /** Rise-style Drop Shadow Effect */
+    public static void shadow(float x, float y, float w, float h, float r, int color, float spread) {
+        float alpha = (color >> 24 & 0xFF) / 255.0F;
+        if (alpha <= 0.01f) return;
+        float red = (color >> 16 & 0xFF) / 255.0F;
+        float green = (color >> 8 & 0xFF) / 255.0F;
+        float blue = (color & 0xFF) / 255.0F;
+
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glLineWidth(1.5f);
+
+        for (float i = 0.5f; i < spread; i += 0.5f) {
+            float a = alpha * (1f - (i / spread)) * 0.05f; 
+            GlStateManager.color(red, green, blue, a);
+            float nx = x - i, ny = y - i, nw = w + i * 2, nh = h + i * 2, nr = r + i;
+            
+            GL11.glBegin(GL11.GL_LINE_LOOP);
+            for (int j = 180; j <= 270; j += 10) GL11.glVertex2d(nx + nr + Math.cos(Math.toRadians(j)) * nr, ny + nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 270; j <= 360; j += 10) GL11.glVertex2d(nx + nw - nr + Math.cos(Math.toRadians(j)) * nr, ny + nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 0; j <= 90; j += 10) GL11.glVertex2d(nx + nw - nr + Math.cos(Math.toRadians(j)) * nr, ny + nh - nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 90; j <= 180; j += 10) GL11.glVertex2d(nx + nr + Math.cos(Math.toRadians(j)) * nr, ny + nh - nr + Math.sin(Math.toRadians(j)) * nr);
+            GL11.glEnd();
+        }
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.enableTexture2D();
+    }
+
+    public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
+        shadow(x, y, w, h, r, 0xFF000000, 6f); // Global shadow
+        roundRect(x, y, w, h, r, fill);
+        if (border != 0) {
+            roundRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, r + 0.5f, border);
+            roundRect(x, y, w, h, r, fill);
         }
     }
 
-    public static void panel(int x, int y, int w, int h, int r, int fill, int border) {
-        roundRect(x, y, w, h, r, border);
-        roundRect(x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill);
+    public static void bar(float x, float y, float w, float h, double frac, int bg, int fg) {
+        roundRect(x, y, w, h, h / 2f, bg);
+        float fw = (float) (w * Math.max(0, Math.min(1, frac)));
+        if (fw > 0) {
+            shadow(x, y, fw, h, h / 2f, fg, 4f); // Glow
+            roundRect(x, y, fw, h, h / 2f, fg);
+        }
     }
 
-    public static void bar(int x, int y, int w, int h, double frac, int bg, int fg) {
-        roundRect(x, y, w, h, h / 2, bg);
-        int fw = (int) (w * Math.max(0, Math.min(1, frac)));
-        if (fw > 0) roundRect(x, y, fw, h, h / 2, fg);
+    public static void dashedH(float x, float y, float w, int color) {
+        for (int i = 0; i < w; i += 6) rect(x + i, y, Math.min(w - i, 3), 1, color);
     }
 
-    public static void dashedH(int x, int y, int w, int color) {
-        for (int i = 0; i < w; i += 6) Gui.drawRect(x + i, y, x + Math.min(w, i + 3), y + 1, color);
-    }
-
-    /** pixel-art gear: 4 rotated bars + octagon body + hole */
     public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
-        int R = Math.max(3, Math.round(r));
-        int t = Math.max(2, Math.round(r * 0.4f));
-        int b = Math.max(2, Math.round(r * 0.68f));
-        int hr = Math.max(1, Math.round(r * 0.3f));
         GlStateManager.pushMatrix();
         GlStateManager.translate(cx, cy, 0f);
         GlStateManager.rotate(angle, 0f, 0f, 1f);
-        for (int i = 0; i < 4; i++) {
-            GlStateManager.pushMatrix();
-            GlStateManager.rotate(i * 45f, 0f, 0f, 1f);
-            Gui.drawRect(-R, -t / 2, R, t - t / 2, color);
-            GlStateManager.popMatrix();
-        }
-        Gui.drawRect(-b, -b, b, b, color);
-        GlStateManager.pushMatrix();
+        roundRect(-r, -r/3f, r*2f, r/1.5f, 1f, color);
+        GlStateManager.rotate(90f, 0f, 0f, 1f);
+        roundRect(-r, -r/3f, r*2f, r/1.5f, 1f, color);
         GlStateManager.rotate(45f, 0f, 0f, 1f);
-        Gui.drawRect(-b, -b, b, b, color);
-        GlStateManager.popMatrix();
-        Gui.drawRect(-hr, -hr, hr, hr, hole);
+        roundRect(-r, -r/3f, r*2f, r/1.5f, 1f, color);
+        GlStateManager.rotate(90f, 0f, 0f, 1f);
+        roundRect(-r, -r/3f, r*2f, r/1.5f, 1f, color);
+        roundRect(-r*0.75f, -r*0.75f, r*1.5f, r*1.5f, r*0.75f, color);
+        roundRect(-r*0.35f, -r*0.35f, r*0.7f, r*0.7f, r*0.35f, hole);
         GlStateManager.popMatrix();
     }
 
-    // ---- text -------------------------------------------------------------
     public static FontRenderer font() { return Minecraft.getMinecraft().fontRendererObj; }
-
     public static int width(String s, float scale) { return (int) (font().getStringWidth(s) * scale); }
 
     public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
-        // the vanilla font renderer draws near-zero alpha as fully opaque, so skip it
         if (((color >>> 24) & 255) <= 4) return;
         GlStateManager.pushMatrix();
         GlStateManager.scale(scale, scale, 1f);
@@ -128,28 +167,16 @@ public final class Draw {
         text(s, rx - font().getStringWidth(s) * scale, y, color, scale, shadow);
     }
 
-    // ---- ambient particles -------------------------------------------------
-    private static float hash(int n) {
-        double v = Math.sin(n * 12.9898) * 43758.5453;
-        return (float) (v - Math.floor(v));
-    }
-
-    private static float mod(float a, float m) {
-        float r = a % m;
-        return r < 0 ? r + m : r;
-    }
-
     public static void particles(int w, int h, int count, int rgb, float maxAlpha) {
         float t = (System.currentTimeMillis() % 1000000L) / 1000f;
         for (int i = 0; i < count; i++) {
-            float r1 = hash(i * 3 + 1), r2 = hash(i * 3 + 2), r3 = hash(i * 3 + 3);
-            float sp = 4f + r3 * 14f;
-            float x = mod(r1 * w + t * sp * 0.6f, w);
-            float y = mod(r2 * h - t * sp, h);
-            float tw = 0.5f + 0.5f * (float) Math.sin(t * (0.6f + r3 * 1.5f) + i);
-            int a = (int) (maxAlpha * 255f * tw * (0.4f + 0.6f * r3));
-            int sz = r3 > 0.8f ? 2 : 1;
-            Gui.drawRect((int) x, (int) y, (int) x + sz, (int) y + sz, (a << 24) | (rgb & 0xFFFFFF));
+            float sp = 4f + (i%5) * 2f;
+            float x = (i * 37 + t * sp * 0.6f) % w;
+            float y = (i * 19 - t * sp) % h;
+            if(y < 0) y += h;
+            float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.5f + i);
+            int a = (int) (maxAlpha * 255f * tw);
+            roundRect(x, y, 2f, 2f, 1f, (a << 24) | (rgb & 0xFFFFFF));
         }
     }
 }
