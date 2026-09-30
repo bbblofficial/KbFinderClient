@@ -4,31 +4,19 @@ import net.minecraft.client.Minecraft;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Minimal Discord Rich Presence client.
- *
- * Talks the Discord IPC protocol directly over the local socket:
- *   - Linux/macOS: /tmp/discord-ipc-{0..9}   (unix domain socket)
- *   - Windows:     \\?\pipe\discord-ipc-{0..9}
- *
- * No external dependency, so no shading / classloader headaches with
- * ForgeGradle 2.1. If Discord is not running the call is a silent no-op.
- *
- * Setup:
- *   1. Create an application at https://discord.com/developers/applications
- *   2. Copy its Application ID into APP_ID below.
- *   3. In "Rich Presence -> Art Assets" upload images named:
- *        - "oryvex"    (large image)
- *        - "minecraft" (small image)
+ * Discord Rich Presence - diagnostic build.
+ * Logs every step so you can see exactly where it fails.
  */
 public final class DiscordRPC {
 
     /** TODO: replace with your own Discord Application ID. */
-    private static final String APP_ID = "12345671554952903758716989890123456789";
+    private static final String APP_ID = "1554952903758716989";
 
     private static final int OP_HANDSHAKE = 0;
     private static final int OP_FRAME     = 1;
@@ -46,19 +34,28 @@ public final class DiscordRPC {
     public static synchronized void start() {
         if (running) return;
         if (APP_ID.startsWith("1234")) {
-            KBClientMod.logger.warn("[KBClient] Discord RPC disabled: set your APP_ID in DiscordRPC.java");
+            KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
             return;
         }
+        KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+
         if (!connect()) {
-            KBClientMod.logger.info("[KBClient] Discord is not running - RPC stays off");
+            KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord desktop app running?");
             return;
         }
         try {
             sendHandshake();
+            String reply = readFrame(1000);
+            KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+            if (reply == null || !reply.contains("\"READY\"")) {
+                KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                close();
+                return;
+            }
             startTime = System.currentTimeMillis() / 1000L;
             updatePresence(true);
         } catch (IOException e) {
-            KBClientMod.logger.warn("[KBClient] Discord handshake failed: " + e);
+            KBClientMod.logger.warn("[KB-RPC] handshake exception: " + e);
             close();
             return;
         }
@@ -67,7 +64,7 @@ public final class DiscordRPC {
         worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
         worker.setDaemon(true);
         worker.start();
-        KBClientMod.logger.info("[KBClient] Discord RPC started");
+        KBClientMod.logger.info("[KB-RPC] running");
     }
 
     public static synchronized void stop() {
@@ -76,7 +73,7 @@ public final class DiscordRPC {
         try { sendFrame(OP_CLOSE, "{}"); } catch (IOException ignored) { }
         if (worker != null) worker.interrupt();
         close();
-        KBClientMod.logger.info("[KBClient] Discord RPC stopped");
+        KBClientMod.logger.info("[KB-RPC] stopped");
     }
 
     public static boolean isRunning() { return running; }
@@ -87,17 +84,38 @@ public final class DiscordRPC {
     private static boolean connect() {
         String os = System.getProperty("os.name", "").toLowerCase();
         boolean win = os.contains("win");
-        for (int i = 0; i < 10; i++) {
-            String path = win
-                    ? "\\\\?\\pipe\\discord-ipc-" + i
-                    : "/tmp/discord-ipc-" + i;
-            try {
-                pipe = new RandomAccessFile(path, "rw");
-                KBClientMod.logger.info("[KBClient] connected to " + path);
-                return true;
-            } catch (IOException ignored) {
-                // try next index
+        KBClientMod.logger.info("[KB-RPC] OS=" + os + " (windows=" + win + ")");
+
+        if (win) {
+            String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
+            for (String pfx : prefixes) {
+                for (int i = 0; i < 10; i++) {
+                    String path = pfx + i;
+                    try {
+                        pipe = new RandomAccessFile(path, "rw");
+                        KBClientMod.logger.info("[KB-RPC] connected: " + path);
+                        return true;
+                    } catch (IOException e) {
+                        // keep quiet, try next
+                    }
+                }
             }
+        } else {
+            // Unix domain socket - Java 8 RandomAccessFile cannot open these
+            // on Linux/macOS. This branch is here only so the log makes sense.
+            for (int i = 0; i < 10; i++) {
+                String path = "/tmp/discord-ipc-" + i;
+                try {
+                    pipe = new RandomAccessFile(path, "rw");
+                    KBClientMod.logger.info("[KB-RPC] connected: " + path);
+                    return true;
+                } catch (IOException e) {
+                    // try next
+                }
+            }
+            KBClientMod.logger.warn("[KB-RPC] unix socket open failed. Java 8 on Linux/macOS");
+            KBClientMod.logger.warn("[KB-RPC] cannot connect to Discord IPC. Windows is required");
+            KBClientMod.logger.warn("[KB-RPC] for the dependency-free version. Add JNA later if needed.");
         }
         return false;
     }
@@ -111,6 +129,7 @@ public final class DiscordRPC {
 
     private static void sendHandshake() throws IOException {
         String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+        KBClientMod.logger.info("[KB-RPC] -> handshake " + json);
         sendFrame(OP_HANDSHAKE, json);
     }
 
@@ -124,6 +143,32 @@ public final class DiscordRPC {
         pipe.write(buf.array());
     }
 
+    /** Read one frame with a soft timeout. Returns null on timeout. */
+    private static String readFrame(int timeoutMs) {
+        try {
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            // RandomAccessFile doesn't support timeouts; do a quick availability check.
+            while (pipe.length() < 8) {
+                if (System.currentTimeMillis() > deadline) return null;
+                Thread.sleep(20);
+            }
+            byte[] header = new byte[8];
+            pipe.readFully(header);
+            ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
+            int op = hb.getInt();
+            int len = hb.getInt();
+            if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
+            byte[] body = new byte[len];
+            pipe.readFully(body);
+            String json = new String(body, StandardCharsets.UTF_8);
+            KBClientMod.logger.info("[KB-RPC] <- op=" + op + " " + json);
+            return json;
+        } catch (Throwable t) {
+            KBClientMod.logger.warn("[KB-RPC] readFrame error: " + t);
+            return null;
+        }
+    }
+
     // ------------------------------------------------------------------
     // presence loop
     // ------------------------------------------------------------------
@@ -135,7 +180,7 @@ public final class DiscordRPC {
             } catch (InterruptedException e) {
                 break;
             } catch (Throwable t) {
-                KBClientMod.logger.warn("[KBClient] Discord RPC loop error: " + t);
+                KBClientMod.logger.warn("[KB-RPC] loop error: " + t);
                 break;
             }
         }
@@ -143,8 +188,7 @@ public final class DiscordRPC {
 
     private static void updatePresence(boolean force) {
         Minecraft mc = Minecraft.getMinecraft();
-        String details;
-        String state;
+        String details, state;
 
         if (mc.theWorld == null) {
             details = "In the menus";
@@ -161,18 +205,18 @@ public final class DiscordRPC {
                     ? mc.getCurrentServerData().serverIP
                     : "Unknown server";
             details = "Playing on " + ip;
-            int players = mc.theWorld.playerEntities.size();
-            state = players + " players online";
+            state = mc.theWorld.playerEntities.size() + " players online";
         }
 
         if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
         lastDetails = details;
         lastState = state;
 
+        long pid = currentPid();
         String json = "{"
                 + "\"cmd\":\"SET_ACTIVITY\","
                 + "\"args\":{"
-                +   "\"pid\":" + currentPid() + ","
+                +   "\"pid\":" + pid + ","
                 +   "\"activity\":{"
                 +     "\"details\":" + quote(details) + ","
                 +     "\"state\":" + quote(state) + ","
@@ -189,17 +233,18 @@ public final class DiscordRPC {
                 + "}";
 
         try {
+            KBClientMod.logger.info("[KB-RPC] -> activity (pid=" + pid + ")");
             sendFrame(OP_FRAME, json);
+            readFrame(800);
         } catch (IOException e) {
-            KBClientMod.logger.warn("[KBClient] Discord send failed, stopping: " + e);
+            KBClientMod.logger.warn("[KB-RPC] send failed: " + e);
             running = false;
         }
     }
 
-    /** Best-effort PID lookup (Java 8 safe). Falls back to 0 which Discord accepts. */
     private static long currentPid() {
         try {
-            String name = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            String name = ManagementFactory.getRuntimeMXBean().getName();
             int at = name.indexOf('@');
             if (at > 0) return Long.parseLong(name.substring(0, at));
         } catch (Throwable ignored) { }
