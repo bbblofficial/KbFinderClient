@@ -2958,14 +2958,14 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } catch (Throwable ignored) { }
       }
   }
-│   └── 20261001_000121
-│       └── src
-│           └── main
-│               └── java
-│                   └── com
-│                       └── oryvex
-│                           └── kbclient
-│                               └── DiscordRPC.java
+│   ├── 20261001_000121
+│   │   └── src
+│   │       └── main
+│   │           └── java
+│   │               └── com
+│   │                   └── oryvex
+│   │                       └── kbclient
+│   │                           └── DiscordRPC.java
   package com.oryvex.kbclient;
   
   import club.minnced.discord.rpc.DiscordEventHandlers;
@@ -3097,6 +3097,490 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       public static boolean isRunning() {
           return running;
+      }
+  }
+│   └── 20261001_002140
+│       └── src
+│           └── main
+│               └── java
+│                   └── com
+│                       └── oryvex
+│                           └── kbclient
+│                               ├── DiscordRPC.java
+  package com.oryvex.kbclient;
+  
+  import net.minecraft.client.Minecraft;
+  
+  import java.io.IOException;
+  import java.io.RandomAccessFile;
+  import java.lang.management.ManagementFactory;
+  import java.nio.ByteBuffer;
+  import java.nio.ByteOrder;
+  import java.nio.charset.StandardCharsets;
+  
+  public final class DiscordRPC {
+  
+      private static final String APP_ID = "1554952903758716989";
+  
+      private static final int OP_HANDSHAKE = 0;
+      private static final int OP_FRAME     = 1;
+      private static final int OP_CLOSE     = 2;
+  
+      private static RandomAccessFile pipe;
+      private static Thread worker;
+      private static Thread reader;
+      private static volatile boolean running;
+      private static long startTime;
+      private static String lastDetails = "";
+      private static String lastState = "";
+  
+      private DiscordRPC() {}
+  
+      public static synchronized void start() {
+          if (running) return;
+          running = true;
+          
+          // Push initialization into a background thread to prevent Minecraft from hanging
+          worker = new Thread(() -> {
+              if (APP_ID.startsWith("1234")) {
+                  KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+                  running = false;
+                  return;
+              }
+              KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+  
+              if (!connect()) {
+                  KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
+                  running = false;
+                  return;
+              }
+              
+              try {
+                  sendHandshake();
+                  String reply = readFrame(); // Wait for the initial READY frame
+                  KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+                  
+                  if (reply == null || !reply.contains("\"READY\"")) {
+                      KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                      close();
+                      running = false;
+                      return;
+                  }
+                  
+                  // Fixed: Discord IPC explicitly requires epoch in MILLISECONDS
+                  startTime = System.currentTimeMillis();
+                  updatePresence(true);
+                  
+                  // Start a dedicated reader thread to prevent buffer overflows
+                  reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
+                  reader.setDaemon(true);
+                  reader.start();
+                  
+                  loop(); // Start the status update loop
+              } catch (Exception e) {
+                  KBClientMod.logger.warn("[KB-RPC] exception: " + e);
+                  close();
+                  running = false;
+              }
+          }, "KBClient-DiscordRPC-Worker");
+          
+          worker.setDaemon(true);
+          worker.start();
+      }
+  
+      public static synchronized void stop() {
+          if (!running) return;
+          running = false;
+          try { sendFrame(OP_CLOSE, "{}"); } catch (Exception ignored) { }
+          if (worker != null) worker.interrupt();
+          if (reader != null) reader.interrupt();
+          close();
+          KBClientMod.logger.info("[KB-RPC] stopped");
+      }
+  
+      public static boolean isRunning() { return running; }
+  
+      private static boolean connect() {
+          String os = System.getProperty("os.name", "").toLowerCase();
+          boolean win = os.contains("win");
+  
+          if (win) {
+              String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
+              for (String pfx : prefixes) {
+                  for (int i = 0; i < 10; i++) {
+                      String path = pfx + i;
+                      try {
+                          pipe = new RandomAccessFile(path, "rw");
+                          return true;
+                      } catch (IOException ignored) {}
+                  }
+              }
+          } else {
+              for (int i = 0; i < 10; i++) {
+                  String path = "/tmp/discord-ipc-" + i;
+                  try {
+                      pipe = new RandomAccessFile(path, "rw");
+                      return true;
+                  } catch (IOException ignored) {}
+              }
+          }
+          return false;
+      }
+  
+      private static void close() {
+          if (pipe != null) {
+              try { pipe.close(); } catch (IOException ignored) { }
+              pipe = null;
+          }
+      }
+  
+      private static void sendHandshake() throws IOException {
+          String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+          sendFrame(OP_HANDSHAKE, json);
+      }
+  
+      private static synchronized void sendFrame(int op, String json) throws IOException {
+          if (pipe == null) throw new IOException("not connected");
+          byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+          ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
+          buf.putInt(op);
+          buf.putInt(payload.length);
+          buf.put(payload);
+          pipe.write(buf.array());
+      }
+  
+      // Completely replaced timeout-checking with a blocking read.
+      // Calling length() on a named pipe breaks IPC logic under Windows.
+      private static String readFrame() {
+          try {
+              if (pipe == null) return null;
+              byte[] header = new byte[8];
+              pipe.readFully(header);
+              ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
+              int op = hb.getInt();
+              int len = hb.getInt();
+              if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
+              byte[] body = new byte[len];
+              pipe.readFully(body);
+              return new String(body, StandardCharsets.UTF_8);
+          } catch (Throwable t) {
+              return null;
+          }
+      }
+  
+      private static void readerLoop() {
+          while (running) {
+              String frame = readFrame();
+              if (frame == null) {
+                  if (running) stop();
+                  break;
+              }
+          }
+      }
+  
+      private static void loop() {
+          while (running) {
+              try {
+                  updatePresence(false);
+                  Thread.sleep(2000L);
+              } catch (InterruptedException e) {
+                  break;
+              } catch (Throwable t) {
+                  break;
+              }
+          }
+      }
+  
+      private static void updatePresence(boolean force) {
+          Minecraft mc = Minecraft.getMinecraft();
+          String details, state;
+  
+          if (mc.theWorld == null) {
+              details = "In the menus";
+              state = "KB Client 3.0";
+          } else if (mc.isSingleplayer()) {
+              details = "Singleplayer";
+              String worldName = "world";
+              try {
+                  if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+              } catch (Throwable ignored) { }
+              state = "World: " + worldName;
+          } else {
+              String ip = (mc.getCurrentServerData() != null)
+                      ? mc.getCurrentServerData().serverIP
+                      : "Unknown server";
+              details = "Playing on " + ip;
+              state = mc.theWorld.playerEntities.size() + " players online";
+          }
+  
+          if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
+          lastDetails = details;
+          lastState = state;
+  
+          long pid = currentPid();
+          String json = "{"
+                  + "\"cmd\":\"SET_ACTIVITY\","
+                  + "\"args\":{"
+                  +   "\"pid\":" + pid + ","
+                  +   "\"activity\":{"
+                  +     "\"details\":" + quote(details) + ","
+                  +     "\"state\":" + quote(state) + ","
+                  +     "\"timestamps\":{\"start\":" + startTime + "},"
+                  +     "\"assets\":{"
+                  +       "\"large_image\":\"oryvex\","
+                  +       "\"large_text\":\"KB Client 3.0\","
+                  +       "\"small_image\":\"minecraft\","
+                  +       "\"small_text\":\"Minecraft 1.8.9\""
+                  +     "}"
+                  +   "}"
+                  + "},"
+                  + "\"nonce\":\"" + System.nanoTime() + "\""
+                  + "}";
+  
+          try {
+              sendFrame(OP_FRAME, json);
+          } catch (IOException e) {
+              running = false;
+          }
+      }
+  
+      private static long currentPid() {
+          try {
+              String name = ManagementFactory.getRuntimeMXBean().getName();
+              int at = name.indexOf('@');
+              if (at > 0) return Long.parseLong(name.substring(0, at));
+          } catch (Throwable ignored) { }
+          return 0L;
+      }
+  
+      private static String quote(String s) {
+          StringBuilder sb = new StringBuilder(s.length() + 2);
+          sb.append('"');
+          for (int i = 0; i < s.length(); i++) {
+              char c = s.charAt(i);
+              if (c == '"' || c == '\\') sb.append('\\').append(c);
+              else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+              else sb.append(c);
+          }
+          sb.append('"');
+          return sb.toString();
+      }
+  }
+│                               └── KBClientMod.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.ui.Fade;
+  import com.oryvex.kbclient.ui.FadeScreen;
+  import com.oryvex.kbclient.ui.GuiAnalyzer;
+  import com.oryvex.kbclient.ui.GuiModernMenu;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.KBLoading;
+  import com.oryvex.kbclient.ui.LoadingArt;
+  import com.oryvex.kbclient.ui.Settings;
+  import com.oryvex.kbclient.ui.UiButton;
+  import io.netty.channel.Channel;
+  import io.netty.channel.ChannelDuplexHandler;
+  import io.netty.channel.ChannelHandlerContext;
+  import io.netty.channel.ChannelPipeline;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiChat;
+  import net.minecraft.client.gui.GuiDownloadTerrain;
+  import net.minecraft.client.gui.GuiIngameMenu;
+  import net.minecraft.client.gui.GuiMainMenu;
+  import net.minecraft.client.gui.GuiScreen;
+  import net.minecraft.client.gui.inventory.GuiContainer;
+  import net.minecraft.client.settings.KeyBinding;
+  import net.minecraft.network.NetworkManager;
+  import net.minecraft.network.play.server.S12PacketEntityVelocity;
+  import net.minecraftforge.client.ClientCommandHandler;
+  import net.minecraftforge.client.event.GuiOpenEvent;
+  import net.minecraftforge.client.event.GuiScreenEvent;
+  import net.minecraftforge.client.event.RenderGameOverlayEvent;
+  import net.minecraftforge.common.MinecraftForge;
+  import net.minecraftforge.fml.client.registry.ClientRegistry;
+  import net.minecraftforge.fml.common.Mod;
+  import net.minecraftforge.fml.common.Mod.EventHandler;
+  import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+  import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+  import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+  import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+  import net.minecraftforge.fml.common.gameevent.TickEvent;
+  import org.apache.logging.log4j.Logger;
+  import org.lwjgl.input.Keyboard;
+  
+  @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+       acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+  public class KBClientMod {
+      public static final String MODID = "kbclient";
+      public static final String NAME = "KB Client";
+      public static final String VERSION = "3.0.0";
+      private static final String HOOK = "kb_client_handler";
+  
+      private static KBClientMod instance;
+      public static Logger logger;
+  
+      private final KBTracker tracker = new KBTracker();
+      private KeyBinding openKey;
+      private Channel hookedChannel;
+      private boolean pendingOpen;
+      private Object lastWorld;
+      private boolean loadingInstalled;
+  
+      public static KBClientMod getInstance() { return instance; }
+      public KBTracker getTracker() { return tracker; }
+  
+      /** Opened on the next tick, because chat closes itself right after running a command. */
+      public void requestOpenAnalyzer() { pendingOpen = true; }
+  
+      @EventHandler
+      public void preInit(FMLPreInitializationEvent e) {
+          logger = e.getModLog();
+          instance = this;
+          Settings.load();
+      }
+  
+      @EventHandler
+      public void init(FMLInitializationEvent e) {
+          com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+          net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+          net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+          MinecraftForge.EVENT_BUS.register(this);
+          ClientCommandHandler.instance.registerCommand(new KBCommand());
+          openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+          ClientRegistry.registerKeyBinding(openKey);
+          installLoading();
+          if (Settings.discordRpc) DiscordRPC.start();
+          Runtime.getRuntime().addShutdownHook(new Thread(DiscordRPC::stop, "KBClient-RPC-Shutdown"));
+      }
+  
+      /** swap Minecraft's loading renderer (world load/save) for the custom one */
+      private void installLoading() {
+          if (loadingInstalled) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          try {
+              ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+              loadingInstalled = true;
+              logger.info("[KBClient] custom loading screen installed");
+          } catch (Throwable t) {
+              logger.error("[KBClient] could not install loading screen: " + t);
+          }
+      }
+  
+      // ---- screens + fades -----------------------------------------------------
+      @SubscribeEvent
+      public void onGuiOpen(GuiOpenEvent e) {
+          Minecraft mc = Minecraft.getMinecraft();
+          if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+  
+          if (e.gui == null) {
+              // back to the game: soft world fade (not after chat)
+              if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                  Fade.world.trigger(0.45f);
+              }
+          } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+              Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+          }
+      }
+  
+      /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+      @SubscribeEvent
+      public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+          GuiScreen g = e.gui;
+          if (g == null || g instanceof FadeScreen) return;
+          if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+              LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+          }
+          Fade.screen.draw(g.width, g.height);
+      }
+  
+      /** restyle the pause menu's Options button */
+      @SubscribeEvent
+      public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+          if (!(e.gui instanceof GuiIngameMenu)) return;
+          for (int i = 0; i < e.buttonList.size(); i++) {
+              GuiButton b = e.buttonList.get(i);
+              if (b.id == 0) {
+                  UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                  u.icon = UiButton.ICON_GEAR;
+                  e.buttonList.set(i, u);
+              }
+          }
+      }
+  
+      @SubscribeEvent
+      public void onOverlay(RenderGameOverlayEvent.Post e) {
+          if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.thePlayer == null) return;
+          if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+          Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+      }
+  
+      @SubscribeEvent
+      public void onTick(TickEvent.ClientTickEvent e) {
+          if (e.phase != TickEvent.Phase.END) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          tracker.tick();
+  
+          if (mc.theWorld != lastWorld) {
+              lastWorld = mc.theWorld;
+              if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+          }
+  
+          while (openKey.isPressed()) {
+              if (mc.currentScreen == null) pendingOpen = true;
+          }
+          if (pendingOpen && mc.currentScreen == null) {
+              pendingOpen = false;
+              mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+          }
+  
+          if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+              NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+              if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+          }
+      }
+  
+      private void inject(Minecraft mc, Channel ch) {
+          hookedChannel = ch;
+          try {
+              ChannelPipeline pl = ch.pipeline();
+              if (pl.get(HOOK) != null) pl.remove(HOOK);
+              if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+              else pl.addLast(HOOK, new VelocityHook());
+  
+              String name = mc.isSingleplayer() ? "Singleplayer"
+                      : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+              tracker.onConnect(name);
+              logger.info("[KBClient] velocity hook installed on " + name);
+          } catch (Throwable t) {
+              logger.error("[KBClient] hook failed: " + t);
+          }
+      }
+  
+      /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
+      private static class VelocityHook extends ChannelDuplexHandler {
+          @Override
+          public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+              if (msg instanceof S12PacketEntityVelocity) {
+                  S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                  final int id = v.getEntityID();
+                  final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                  final Minecraft mc = Minecraft.getMinecraft();
+                  mc.addScheduledTask(new Runnable() {
+                      @Override
+                      public void run() {
+                          EntityPlayerSP p = mc.thePlayer;
+                          if (p != null && p.getEntityId() == id) {
+                              KBClientMod.getInstance().getTracker().capture(x, y, z);
+                          }
+                      }
+                  });
+              }
+              super.channelRead(ctx, msg);
+          }
       }
   }
 ├── .git
@@ -4024,6 +4508,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │   └── refs
 │   │       ├── heads
 │   │       │   └── main
@@ -4036,6 +4523,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │       └── remotes
 │   │           └── origin
 │   │               └── main
@@ -4048,6 +4538,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800108 +0330	update by push
   2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800308 +0330	update by push
   58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800548 +0330	update by push
+  6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801256 +0330	update by push
+  77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801546 +0330	update by push
+  1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802023 +0330	update by push
 │   ├── objects
 │   │   ├── 00
 │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
@@ -4067,12 +4560,22 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── a514169ebb3b7868cf60bfbf19c714b9bf3563
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   ├── 06
+│   │   │   └── 69aa04711a292495ac71068d4eb6983aafee51
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 08
 │   │   │   └── c04b94e4a28238631ba3ef59cd1c4c84ade5d9
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   ├── 0d
-│   │   │   └── 15b1f5ce72821612867315fcc8d548006e57f7
+│   │   ├── 0c
+│   │   │   └── 115f1ff7cd6d6dfde1e359853ffc80fee7544d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 0d
+│   │   │   ├── 15b1f5ce72821612867315fcc8d548006e57f7
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 76040aaa1081daf41104291df2ff4987d03a45
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 77a0814b3a19d5ef3558ae74e11cf4873af2b8
+  [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
 │   │   ├── 0e
 │   │   │   ├── c1701d8f234d8895938da50286aeb9685c8190
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -4099,8 +4602,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
 │   │   ├── 17
-│   │   │   └── 5829991ca9afb213cc310f859334c892d704f6
+│   │   │   ├── 5829991ca9afb213cc310f859334c892d704f6
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   └── 85d5129163e0e9a17c21d1d44e40bf24728e76
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 1a
 │   │   │   └── 1902e01d3e0b68250820d92d8392fdb713aa16
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -4108,6 +4613,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── b2344069b7a615498586444f4364418c0bdf86
   [Error: 'utf-8' codec can't decode byte 0x83 in position 22: invalid start byte]
 │   │   ├── 1d
+│   │   │   ├── 3aa31908e590852060437b4db980292258c964
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── 5b29fbd59593cbadef9e8c2f5129d1d4391584
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
 │   │   │   └── 7521bc5d22e37bd852c240683dff3b95f6506e
@@ -4130,6 +4637,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 29
 │   │   │   └── d8f77d1e30d7494fc1874929016dd40c06f2e8
   [Error: 'utf-8' codec can't decode byte 0xd7 in position 22: invalid continuation byte]
+│   │   ├── 2a
+│   │   │   └── 26a8f7b9deda7e8536610467cd4aac881c8cb4
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 2b
 │   │   │   ├── 1902fa0fe2abe57ff92a4d71c51d07f8758fa6
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
@@ -4150,14 +4660,21 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 2f
 │   │   │   └── 5adaec8881eac504f37ddf29dd46e5846bc611
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── 33
+│   │   │   └── 4dcb8bb098dae5bd6fac5f1ad5ce8fc808815c
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 35
 │   │   │   ├── 74a9612c93215a680aae80dbd16c2da17d12df
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── b65973bdca7ecaf2b2a49b64387c4cfe0cac54
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 36
-│   │   │   └── 75066755f7e0651eacaffc4d64514c634eeca9
+│   │   │   ├── 75066755f7e0651eacaffc4d64514c634eeca9
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   ├── 91dacd0642fc62f581b160ef10721512bdcf8c
+  [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
+│   │   │   └── e351581019d17a80fa6f1aaa9a1a621e6a4619
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 37
 │   │   │   └── dea52672eb8fc6f161424872a53bd3224cb308
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -4177,6 +4694,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 3e
 │   │   │   ├── 42c216f2f7649d7634a6684a54306fbe9d6668
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+│   │   │   ├── 90521d1fea88a2a081687229ba5c874050abc3
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── d7a5563219e59359db4d94beddfc64fc61eeba
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 3f
@@ -4184,6 +4703,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ed2676785e0b32cefb29781189e81ef82e6e44
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 40
+│   │   │   └── a3fce8d66455ade074a5752e28f29c3a1a2927
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 42
+│   │   │   └── 6bd3f48afb5fe7063e0b45713e84dcf929a95c
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 43
 │   │   │   ├── 33d7f88aa2f3b427b4be37b57bb5c03e55d9d6
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -4198,8 +4723,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 4a
 │   │   │   ├── 5685d01b8c843af1e9abb5616f90270e1b72c2
   [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
-│   │   │   └── d35c3c24716aeb387ae95b350eb8db58b2e265
+│   │   │   ├── c6cbe84f87ec0d9ec9e3fa20903d1de071d1ac
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   │   ├── d35c3c24716aeb387ae95b350eb8db58b2e265
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── ef0efe30d502475d3950362d5c999522bd045a
+  [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
 │   │   ├── 4b
 │   │   │   ├── 4907400e0f793d2cc25fd8a369954559bee21e
   [Error: 'utf-8' codec can't decode byte 0x8f in position 5: invalid start byte]
@@ -4230,8 +4759,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 56
 │   │   │   ├── 304504dea0cf3ffe9390842841c02feb53c426
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-│   │   │   └── 4a84d43f5898c8ec05cc39d3f975a8af7baa82
+│   │   │   ├── 4a84d43f5898c8ec05cc39d3f975a8af7baa82
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── cb23b1d93a547d0984251edf29171c6ff6de21
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 58
 │   │   │   └── c71e3d743689a26639ed12ea4c3e95d581b51e
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -4258,6 +4789,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 97ed89f9c5b256a30504050f2dde3688ae9b1b
   [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
 │   │   ├── 62
+│   │   │   ├── 8578174bd6fc1f3fc3e2b128e2a4aa04edd60d
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── f7678f53c17b0aa322ab143c93c2abce8480d8
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 63
@@ -4270,9 +4803,13 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 7b44f9e62bdcbcd4155ab8ff51079fac7568aa
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 69
-│   │   │   └── 240332a81ce7bf1f5a5c38d3861a8d757c0716
+│   │   │   ├── 240332a81ce7bf1f5a5c38d3861a8d757c0716
   [Error: 'utf-8' codec can't decode byte 0xda in position 6: invalid continuation byte]
+│   │   │   └── 3f12e86cb3e96e5f94877fa18dd999f6042b4a
+  [Error: 'utf-8' codec can't decode byte 0xa4 in position 2: invalid start byte]
 │   │   ├── 6b
+│   │   │   ├── adf8f5fe3c398eed603096d2ebaf6d1448cf4c
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ae772c43a7663d4ecee7285d2a36dd95aa5215
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 6c
@@ -4289,7 +4826,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 70
 │   │   │   └── c0cad6ea281205c468201a91f7c55cba8dbaba
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 71
+│   │   │   └── 23389ad121863980e7db1d7962974a4f0c1a4f
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 72
+│   │   │   ├── 8aee2b8ee52ed6be5fd31635b409aa515f7066
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 73
@@ -4304,8 +4846,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 5731b3985ea3aaca75fa730c8513a4faeb4572
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── 77
-│   │   │   └── 57549f6bca5a24744f82dd9b172655c2ab4b2a
+│   │   │   ├── 57549f6bca5a24744f82dd9b172655c2ab4b2a
   [Error: 'utf-8' codec can't decode byte 0xc5 in position 2: invalid continuation byte]
+│   │   │   └── b1cafb5c39a6ccac015bd232ff871a939569fc
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 78
 │   │   │   └── 4a4f37d6ee710a1d39b0ac3adcf323c5b2d86d
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -4326,14 +4870,18 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 1c40eb319b8aea614bbaabba5da54032906903
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
 │   │   ├── 82
-│   │   │   └── 27f9288444d07585642641180d78c3812f8a72
+│   │   │   ├── 27f9288444d07585642641180d78c3812f8a72
   [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+│   │   │   └── cdb16ba29dfd98252a116a3fac1ed82ee524f4
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 83
 │   │   │   └── 9a51035db80e8ee4cd0c4ceeb8a5a0aa8173d9
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 85
-│   │   │   └── 0fe4546ce4a71ce3796baec76141fe404e3044
+│   │   │   ├── 0fe4546ce4a71ce3796baec76141fe404e3044
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   └── 23280de12fff9adba401038ab37f7c0582adf6
+  [Error: 'utf-8' codec can't decode byte 0xa4 in position 2: invalid start byte]
 │   │   ├── 87
 │   │   │   └── 48608cc89c53a26f76e26fca4347586f7c7d7a
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -4357,6 +4905,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 91
 │   │   │   └── 83b0db84f3b1854802f9f0cf62e4c657cdc0a3
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── 92
+│   │   │   └── 4b179cf9c9cf871ecbae1e73ec2d7f1242750e
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 96
+│   │   │   └── daca2af81da6e2999bbb207480f51f2bcf1309
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── 98
 │   │   │   └── 8694cb6bd1b8a828d038f411935747bef98e14
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
@@ -4392,12 +4946,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   │   └── a7771d21e93a7117fd51c151e1ebcbc4e391a6
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── a8
+│   │   │   └── e329a4754bdbb3be72f135ce9c174424b49601
+  [Error: 'utf-8' codec can't decode byte 0xb3 in position 9: invalid start byte]
 │   │   ├── aa
 │   │   │   ├── ce7cdc67cba30d97b99a0b6c52922cff4c01ce
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── d3ff3f54d5d7163dc4ec90fbeaa2d2da5f76ab
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── ac
+│   │   │   ├── ab8bfb6d83a25ae622c455fa96bab3bd466ce9
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── f2a3b54aa05fbf24b6f692f5054f88d2bde8d2
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── b0
@@ -4406,6 +4965,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 47ca6a1568d38e6b79a82f91fe839d636f9a25
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b1
+│   │   │   ├── 2bd5555ee82fc5ffbdc0e0c5f4a3269cb59b29
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── a722529c1c7329dfdbd77fee55ee874b04dfee
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   │   └── bd233ec885d2e54532a5be75865a3632ab7c38
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b2
@@ -4414,18 +4977,38 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── b3
 │   │   │   ├── 7840b5c69bc2f00584c9df64a9de9da017112d
   [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
+│   │   │   ├── 868d0f1e0fe0ca650dc2a017d70a32b043efb0
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   │   └── e8e7ffaf1a1a2da17bbbd9b74b06656c12897c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── b5
+│   │   │   ├── 3771f65a949095a10a889c827f07e38f495ac0
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   │   └── d3744ff48981496bdb6752d741d8c5dff68b32
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   ├── bd
+│   │   │   └── 73cfbb94f042cd0f0756766841f97941d8cd84
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── c0
 │   │   │   ├── 16d0828f5e055b06862e71d6b55ae9d82f5cac
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
-│   │   │   └── 3e3c6df878d742fefcfa2e50c2e5365bc055dd
+│   │   │   ├── 3e3c6df878d742fefcfa2e50c2e5365bc055dd
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   └── 5aa7805834f911c83a5c49079226ad97819bf4
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── c1
+│   │   │   ├── 9aeb2d37c07d44f32662241ed59861384ff4b8
+  [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+│   │   │   └── cccb00925e26fb524ebd2162b676720d3b6d74
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── c2
 │   │   │   ├── 4cbcdf373d640739145365e47653d731834387
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   └── b21227481c65a74624d97ac9424303b764ba23
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── c4
+│   │   │   └── e561d8dddb063c29e44428c49d7e2851701704
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── c8
 │   │   │   ├── eaeb6de870faa79acea43ae9dd77475ec150c1
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
@@ -4444,6 +5027,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── cd
+│   │   │   └── c7e9d56d49b061013af88e5ebc6fb59e491193
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── ce
 │   │   │   ├── 10b2d3c805f5dd61e8d0d5bf57b1e12db43351
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
@@ -4494,6 +5080,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── e4
 │   │   │   ├── 0eb29518aa6ad4f6438edd5f2f3cc44a8d00d4
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   ├── 8c1401449dbdbf50249d516aeed80944ea2a35
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 9bbe05ca61fe156aa345db0e856291a0227985
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── bac8b8f8454bd50a10f8ad2c3cd82c39a11ce1
@@ -4517,6 +5105,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── c3a52411bb92076d32947b83c1c0aa42f114d1
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── ec
+│   │   │   └── 20ab878509f4e7d6e1aba533ae24a84ebefc72
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── ed
 │   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
@@ -4542,8 +5133,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── a27d01ff139eb66b25ca0a7e1cab0cfa8c9c98
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── fb
-│   │   │   └── 06f54071c71eb018ddce81991a7db1f298ecf2
+│   │   │   ├── 06f54071c71eb018ddce81991a7db1f298ecf2
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   └── 3dc11248e7d7f1d84235019a05bcc0cd1aa343
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── fd
 │   │   │   ├── 4446c93f6091387e0d5b253fab13bb410f2e2b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -4559,11 +5152,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   └── refs
 │       ├── heads
 │       │   └── main
-  6f3da9f65e7fd71cd411480982a87814032d46a5
+  ec20ab878509f4e7d6e1aba533ae24a84ebefc72
 │       ├── remotes
 │       │   └── origin
 │       │       └── main
-  6f3da9f65e7fd71cd411480982a87814032d46a5
+  ec20ab878509f4e7d6e1aba533ae24a84ebefc72
 │       └── tags
 ├── .github
 │   └── workflows
@@ -4770,6 +5363,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           ])
       }
   }
+├── discord_assets
+│   ├── minecraft.png
+  [Error: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+│   └── oryvex.png
+  [Error: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
 ├── ee.py
   import os
   
@@ -4808,6 +5406,280 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
   if __name__ == "__main__":
       save_tree_to_file()
+├── fixer.py
+  import os
+  
+  def create_fixer():
+      target_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "DiscordRPC.java")
+      
+      java_code = r"""package com.oryvex.kbclient;
+  
+  import net.minecraft.client.Minecraft;
+  
+  import java.io.IOException;
+  import java.io.RandomAccessFile;
+  import java.lang.management.ManagementFactory;
+  import java.nio.ByteBuffer;
+  import java.nio.ByteOrder;
+  import java.nio.charset.StandardCharsets;
+  
+  public final class DiscordRPC {
+  
+      private static final String APP_ID = "1554952903758716989";
+  
+      private static final int OP_HANDSHAKE = 0;
+      private static final int OP_FRAME     = 1;
+      private static final int OP_CLOSE     = 2;
+  
+      private static RandomAccessFile pipe;
+      private static Thread worker;
+      private static Thread reader;
+      private static volatile boolean running;
+      private static long startTime;
+      private static String lastDetails = "";
+      private static String lastState = "";
+  
+      private DiscordRPC() {}
+  
+      public static synchronized void start() {
+          if (running) return;
+          running = true;
+          
+          worker = new Thread(() -> {
+              if (APP_ID.startsWith("1234")) {
+                  KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+                  running = false;
+                  return;
+              }
+              KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+  
+              if (!connect()) {
+                  KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
+                  running = false;
+                  return;
+              }
+              
+              try {
+                  sendHandshake();
+                  String reply = readFrame();
+                  KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+                  
+                  if (reply == null || !reply.contains("\"READY\"")) {
+                      KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                      close();
+                      running = false;
+                      return;
+                  }
+                  
+                  // FIXED: Raw Discord IPC strictly expects timestamps in MILLISECONDS.
+                  startTime = System.currentTimeMillis();
+                  updatePresence(true);
+                  
+                  reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
+                  reader.setDaemon(true);
+                  reader.start();
+                  
+                  loop();
+              } catch (Exception e) {
+                  KBClientMod.logger.warn("[KB-RPC] exception: " + e);
+                  close();
+                  running = false;
+              }
+          }, "KBClient-DiscordRPC-Worker");
+          
+          worker.setDaemon(true);
+          worker.start();
+      }
+  
+      public static synchronized void stop() {
+          if (!running) return;
+          running = false;
+          try { sendFrame(OP_CLOSE, "{}"); } catch (Exception ignored) { }
+          if (worker != null) worker.interrupt();
+          if (reader != null) reader.interrupt();
+          close();
+          KBClientMod.logger.info("[KB-RPC] stopped");
+      }
+  
+      public static boolean isRunning() { return running; }
+  
+      private static boolean connect() {
+          String os = System.getProperty("os.name", "").toLowerCase();
+          boolean win = os.contains("win");
+  
+          if (win) {
+              String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
+              for (String pfx : prefixes) {
+                  for (int i = 0; i < 10; i++) {
+                      String path = pfx + i;
+                      try {
+                          pipe = new RandomAccessFile(path, "rw");
+                          return true;
+                      } catch (IOException ignored) {}
+                  }
+              }
+          } else {
+              for (int i = 0; i < 10; i++) {
+                  String path = "/tmp/discord-ipc-" + i;
+                  try {
+                      pipe = new RandomAccessFile(path, "rw");
+                      return true;
+                  } catch (IOException ignored) {}
+              }
+          }
+          return false;
+      }
+  
+      private static void close() {
+          if (pipe != null) {
+              try { pipe.close(); } catch (IOException ignored) { }
+              pipe = null;
+          }
+      }
+  
+      private static void sendHandshake() throws IOException {
+          String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+          sendFrame(OP_HANDSHAKE, json);
+      }
+  
+      private static synchronized void sendFrame(int op, String json) throws IOException {
+          if (pipe == null) throw new IOException("not connected");
+          byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+          ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
+          buf.putInt(op);
+          buf.putInt(payload.length);
+          buf.put(payload);
+          pipe.write(buf.array());
+      }
+  
+      private static String readFrame() {
+          try {
+              if (pipe == null) return null;
+              byte[] header = new byte[8];
+              pipe.readFully(header);
+              ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
+              int op = hb.getInt();
+              int len = hb.getInt();
+              if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
+              byte[] body = new byte[len];
+              pipe.readFully(body);
+              return new String(body, StandardCharsets.UTF_8);
+          } catch (Throwable t) {
+              return null;
+          }
+      }
+  
+      private static void readerLoop() {
+          while (running) {
+              String frame = readFrame();
+              if (frame == null) {
+                  if (running) stop();
+                  break;
+              }
+              // Enabled log frames to catch any silent Discord rejection errors 
+              KBClientMod.logger.info("[KB-RPC] <- " + frame);
+          }
+      }
+  
+      private static void loop() {
+          while (running) {
+              try {
+                  updatePresence(false);
+                  Thread.sleep(2000L);
+              } catch (InterruptedException e) {
+                  break;
+              } catch (Throwable t) {
+                  break;
+              }
+          }
+      }
+  
+      private static void updatePresence(boolean force) {
+          Minecraft mc = Minecraft.getMinecraft();
+          String details, state;
+  
+          if (mc.theWorld == null) {
+              details = "In the menus";
+              state = "KB Client 3.0";
+          } else if (mc.isSingleplayer()) {
+              details = "Singleplayer";
+              String worldName = "world";
+              try {
+                  if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+              } catch (Throwable ignored) { }
+              state = "World: " + worldName;
+          } else {
+              String ip = (mc.getCurrentServerData() != null)
+                      ? mc.getCurrentServerData().serverIP
+                      : "Unknown server";
+              details = "Playing on " + ip;
+              state = mc.theWorld.playerEntities.size() + " players online";
+          }
+  
+          if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
+          lastDetails = details;
+          lastState = state;
+  
+          long pid = currentPid();
+          String json = "{"
+                  + "\"cmd\":\"SET_ACTIVITY\","
+                  + "\"args\":{"
+                  +   "\"pid\":" + pid + ","
+                  +   "\"activity\":{"
+                  +     "\"details\":" + quote(details) + ","
+                  +     "\"state\":" + quote(state) + ","
+                  +     "\"timestamps\":{\"start\":" + startTime + "},"
+                  +     "\"assets\":{"
+                  +       "\"large_image\":\"oryvex\","
+                  +       "\"large_text\":\"KB Client 3.0\","
+                  +       "\"small_image\":\"minecraft\","
+                  +       "\"small_text\":\"Minecraft 1.8.9\""
+                  +     "}"
+                  +   "}"
+                  + "},"
+                  + "\"nonce\":\"" + System.nanoTime() + "\""
+                  + "}";
+  
+          try {
+              KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY");
+              sendFrame(OP_FRAME, json);
+          } catch (IOException e) {
+              running = false;
+          }
+      }
+  
+      private static long currentPid() {
+          try {
+              String name = ManagementFactory.getRuntimeMXBean().getName();
+              int at = name.indexOf('@');
+              if (at > 0) return Long.parseLong(name.substring(0, at));
+          } catch (Throwable ignored) { }
+          return 0L;
+      }
+  
+      private static String quote(String s) {
+          StringBuilder sb = new StringBuilder(s.length() + 2);
+          sb.append('"');
+          for (int i = 0; i < s.length(); i++) {
+              char c = s.charAt(i);
+              if (c == '"' || c == '\\') sb.append('\\').append(c);
+              else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+              else sb.append(c);
+          }
+          sb.append('"');
+          return sb.toString();
+      }
+  }
+  """
+  
+      os.makedirs(os.path.dirname(target_file), exist_ok=True)
+      with open(target_file, "w", encoding="utf-8") as f:
+          f.write(java_code)
+      print(f"Fixed File Created: {target_file}")
+      print("DiscordRPC has been fixed. Re-run your Gradle build!")
+  
+  if __name__ == "__main__":
+      create_fixer()
 ├── folder_structure.txt
   C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
@@ -7522,6 +8394,2758 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
                 }
             } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
                 Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+            }
+        }
+    
+        /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+        @SubscribeEvent
+        public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+            GuiScreen g = e.gui;
+            if (g == null || g instanceof FadeScreen) return;
+            if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+            }
+            Fade.screen.draw(g.width, g.height);
+        }
+    
+        /** restyle the pause menu's Options button */
+        @SubscribeEvent
+        public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+            if (!(e.gui instanceof GuiIngameMenu)) return;
+            for (int i = 0; i < e.buttonList.size(); i++) {
+                GuiButton b = e.buttonList.get(i);
+                if (b.id == 0) {
+                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                    u.icon = UiButton.ICON_GEAR;
+                    e.buttonList.set(i, u);
+                }
+            }
+        }
+    
+        @SubscribeEvent
+        public void onOverlay(RenderGameOverlayEvent.Post e) {
+            if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer == null) return;
+            if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+            Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+        }
+    
+        @SubscribeEvent
+        public void onTick(TickEvent.ClientTickEvent e) {
+            if (e.phase != TickEvent.Phase.END) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            tracker.tick();
+    
+            if (mc.theWorld != lastWorld) {
+                lastWorld = mc.theWorld;
+                if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+            }
+    
+            while (openKey.isPressed()) {
+                if (mc.currentScreen == null) pendingOpen = true;
+            }
+            if (pendingOpen && mc.currentScreen == null) {
+                pendingOpen = false;
+                mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+            }
+    
+            if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+                NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+                if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+            }
+        }
+    
+        private void inject(Minecraft mc, Channel ch) {
+            hookedChannel = ch;
+            try {
+                ChannelPipeline pl = ch.pipeline();
+                if (pl.get(HOOK) != null) pl.remove(HOOK);
+                if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+                else pl.addLast(HOOK, new VelocityHook());
+    
+                String name = mc.isSingleplayer() ? "Singleplayer"
+                        : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+                tracker.onConnect(name);
+                logger.info("[KBClient] velocity hook installed on " + name);
+            } catch (Throwable t) {
+                logger.error("[KBClient] hook failed: " + t);
+            }
+        }
+    
+        /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
+        private static class VelocityHook extends ChannelDuplexHandler {
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                if (msg instanceof S12PacketEntityVelocity) {
+                    S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                    final int id = v.getEntityID();
+                    final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                    final Minecraft mc = Minecraft.getMinecraft();
+                    mc.addScheduledTask(new Runnable() {
+                        @Override
+                        public void run() {
+                            EntityPlayerSP p = mc.thePlayer;
+                            if (p != null && p.getEntityId() == id) {
+                                KBClientMod.getInstance().getTracker().capture(x, y, z);
+                            }
+                        }
+                    });
+                }
+                super.channelRead(ctx, msg);
+            }
+        }
+    }
+  │   │                           └── ui
+  │   │                               ├── GuiKbOptions.java
+    package com.oryvex.kbclient.ui;
+    
+    import com.oryvex.kbclient.KBTracker;
+    import java.io.IOException;
+    import net.minecraft.client.gui.GuiButton;
+    import net.minecraft.client.gui.GuiOptions;
+    import net.minecraft.client.gui.GuiScreen;
+    
+    /** Custom options screen for KB Client. */
+    public class GuiKbOptions extends FadeScreen {
+        private final KBTracker tracker;
+        private final GuiScreen parent;
+        private UiButton bHud, bPart, bToast, bLoad, bFade, bRpc;
+        private int cardX, cardY, cardW, cardH;
+    
+        public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
+            this.tracker = tracker;
+            this.parent = parent;
+        }
+    
+        @Override
+        public void initGui() {
+            this.buttonList.clear();
+            int bw = 216, bh = 20, gap = 6, cx = this.width / 2;
+            int y = Math.max(58, this.height / 2 - 78);
+            cardW = bw + 28;
+            cardX = cx - cardW / 2;
+            cardY = y - 42;
+            cardH = 8 * (bh + gap) + 62;
+    
+            bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+            bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
+            bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
+            bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
+            bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
+            bRpc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(290);
+            this.buttonList.add(bHud);
+            this.buttonList.add(bPart);
+            this.buttonList.add(bToast);
+            this.buttonList.add(bLoad);
+            this.buttonList.add(bFade);
+            this.buttonList.add(bRpc);
+            this.buttonList.add(new UiButton(6, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
+            this.buttonList.add(new UiButton(7, cx - bw / 2, y + 7 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+            sync();
+        }
+    
+        private void sync() {
+            bHud.on = Settings.hud;
+            bPart.on = Settings.particles;
+            bToast.on = Settings.toasts;
+            bLoad.on = Settings.customLoading;
+            bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
+        }
+    
+        @Override
+        protected void actionPerformed(GuiButton b) throws IOException {
+            switch (b.id) {
+                case 1: Settings.hud = !Settings.hud; break;
+                case 2: Settings.particles = !Settings.particles; break;
+                case 3: Settings.toasts = !Settings.toasts; break;
+                case 4: Settings.customLoading = !Settings.customLoading; break;
+                case 5: Settings.fade = (Settings.fade + 1) % 4; break;
+                case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
+                case 7: Settings.save(); closeTo(parent); return;
+                default: break;
+            }
+            Settings.save();
+            sync();
+        }
+    
+        @Override
+        protected void onKey(char c, int key) throws IOException {
+            if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) { Settings.save(); closeTo(parent); }
+        }
+    
+        @Override
+        public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+            drawBackdrop(30);
+            Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
+            Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);
+            Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
+            super.drawScreen(mouseX, mouseY, partialTicks);
+            drawFade();
+        }
+    }
+  │   │                               └── Settings.java
+    package com.oryvex.kbclient.ui;
+    
+    import java.io.File;
+    import java.io.FileInputStream;
+    import java.io.FileOutputStream;
+    import java.util.Properties;
+    import net.minecraft.client.Minecraft;
+    
+    /** Persistent client preferences (.minecraft/kbclient/settings.properties). */
+    public final class Settings {
+        private Settings() {}
+    
+        public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
+    
+        public static boolean hud = true;
+        public static boolean particles = true;
+        public static boolean toasts = true;
+        public static boolean customLoading = true;
+        public static boolean discordRpc = true;
+        public static int fade = 2;
+    
+        private static File file() {
+            File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+            if (!dir.exists()) dir.mkdirs();
+            return new File(dir, "settings.properties");
+        }
+    
+        public static void load() {
+            try {
+                File f = file();
+                if (!f.exists()) return;
+                Properties p = new Properties();
+                FileInputStream in = new FileInputStream(f);
+                try { p.load(in); } finally { in.close(); }
+                hud = Boolean.parseBoolean(p.getProperty("hud", "true"));
+                particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
+                toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
+                customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
+                discordRpc = Boolean.parseBoolean(p.getProperty("discordRpc", "true"));
+                fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
+            } catch (Throwable ignored) { }
+        }
+    
+        public static void save() {
+            try {
+                Properties p = new Properties();
+                p.setProperty("hud", String.valueOf(hud));
+                p.setProperty("particles", String.valueOf(particles));
+                p.setProperty("toasts", String.valueOf(toasts));
+                p.setProperty("customLoading", String.valueOf(customLoading));
+                p.setProperty("fade", String.valueOf(fade));
+                FileOutputStream out = new FileOutputStream(file());
+                try { p.store(out, "KB Client settings"); } finally { out.close(); }
+            } catch (Throwable ignored) { }
+        }
+    }
+  │   ├── 20261001_000121
+  │   │   └── src
+  │   │       └── main
+  │   │           └── java
+  │   │               └── com
+  │   │                   └── oryvex
+  │   │                       └── kbclient
+  │   │                           └── DiscordRPC.java
+    package com.oryvex.kbclient;
+    
+    import club.minnced.discord.rpc.DiscordEventHandlers;
+    import club.minnced.discord.rpc.DiscordRPC;
+    import club.minnced.discord.rpc.DiscordRichPresence;
+    import net.minecraft.client.Minecraft;
+    
+    /**
+     * Discord Rich Presence for KB Client.
+     *
+     * Create a Discord Application at https://discord.com/developers/applications
+     * and put its Application ID into APP_ID below. Upload image assets named
+     * "oryvex" and "minecraft" in the Rich Presence -> Art Assets tab.
+     */
+    public final class DiscordRPC {
+        /** TODO: replace with your own Discord Application ID. */
+        private static final String APP_ID = "1554952903758716989";
+    
+        private static club.minnced.discord.rpc.DiscordRPC rpc;
+        private static DiscordRichPresence presence;
+        private static Thread worker;
+        private static volatile boolean running;
+        private static long startTime;
+        private static String lastDetails = "";
+        private static String lastState = "";
+    
+        private DiscordRPC() {}
+    
+        public static synchronized void start() {
+            if (running) return;
+            if (APP_ID.startsWith("1234")) {
+                KBClientMod.logger.warn("[KBClient] Discord RPC disabled: set your APP_ID in DiscordRPC.java");
+                return;
+            }
+            try {
+                rpc = club.minnced.discord.rpc.DiscordRPC.INSTANCE;
+    
+                DiscordEventHandlers handlers = new DiscordEventHandlers();
+                handlers.ready = user -> KBClientMod.logger.info("[KBClient] Discord RPC ready for " + user.username);
+                handlers.disconnected = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC disconnected: " + code + " " + msg);
+                handlers.errored = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC error: " + code + " " + msg);
+    
+                rpc.Discord_Initialize(APP_ID, handlers, true, null);
+    
+                startTime = System.currentTimeMillis() / 1000L;
+                presence = new DiscordRichPresence();
+                presence.startTimestamp = startTime;
+                presence.largeImageKey = "oryvex";
+                presence.largeImageText = "KB Client 3.0";
+                presence.smallImageKey = "minecraft";
+                presence.smallImageText = "Minecraft 1.8.9";
+                presence.details = "In the menus";
+                presence.state = "Idle";
+                rpc.Discord_UpdatePresence(presence);
+    
+                running = true;
+                worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
+                worker.setDaemon(true);
+                worker.start();
+    
+                KBClientMod.logger.info("[KBClient] Discord RPC started");
+            } catch (Throwable t) {
+                KBClientMod.logger.error("[KBClient] Discord RPC init failed: " + t);
+            }
+        }
+    
+        private static void loop() {
+            while (running) {
+                try {
+                    rpc.Discord_RunCallbacks();
+                    updatePresence();
+                    Thread.sleep(2000L);
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Throwable t) {
+                    KBClientMod.logger.warn("[KBClient] Discord RPC loop error: " + t);
+                }
+            }
+        }
+    
+        private static void updatePresence() {
+            Minecraft mc = Minecraft.getMinecraft();
+            String details;
+            String state;
+    
+            if (mc.theWorld == null) {
+                details = "In the menus";
+                state = "KB Client 3.0";
+            } else if (mc.isSingleplayer()) {
+                details = "Singleplayer";
+                String worldName = "world";
+                try {
+                    if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+                } catch (Throwable ignored) { }
+                state = "World: " + worldName;
+            } else {
+                String ip = (mc.getCurrentServerData() != null)
+                        ? mc.getCurrentServerData().serverIP
+                        : "Unknown server";
+                details = "Playing on " + ip;
+                int players = (mc.theWorld != null) ? mc.theWorld.playerEntities.size() : 0;
+                state = players + " players online";
+            }
+    
+            if (details.equals(lastDetails) && state.equals(lastState)) return;
+            lastDetails = details;
+            lastState = state;
+    
+            presence.details = details;
+            presence.state = state;
+            presence.startTimestamp = startTime;
+            rpc.Discord_UpdatePresence(presence);
+        }
+    
+        public static synchronized void stop() {
+            if (!running) return;
+            running = false;
+            try {
+                if (worker != null) worker.interrupt();
+                if (rpc != null) {
+                    rpc.Discord_ClearPresence();
+                    rpc.Discord_Shutdown();
+                }
+            } catch (Throwable ignored) { }
+            rpc = null;
+            presence = null;
+            KBClientMod.logger.info("[KBClient] Discord RPC stopped");
+        }
+    
+        public static boolean isRunning() {
+            return running;
+        }
+    }
+  │   └── 20261001_002140
+  │       └── src
+  │           └── main
+  │               └── java
+  │                   └── com
+  │                       └── oryvex
+  │                           └── kbclient
+  │                               ├── DiscordRPC.java
+    package com.oryvex.kbclient;
+    
+    import net.minecraft.client.Minecraft;
+    
+    import java.io.IOException;
+    import java.io.RandomAccessFile;
+    import java.lang.management.ManagementFactory;
+    import java.nio.ByteBuffer;
+    import java.nio.ByteOrder;
+    import java.nio.charset.StandardCharsets;
+    
+    public final class DiscordRPC {
+    
+        private static final String APP_ID = "1554952903758716989";
+    
+        private static final int OP_HANDSHAKE = 0;
+        private static final int OP_FRAME     = 1;
+        private static final int OP_CLOSE     = 2;
+    
+        private static RandomAccessFile pipe;
+        private static Thread worker;
+        private static Thread reader;
+        private static volatile boolean running;
+        private static long startTime;
+        private static String lastDetails = "";
+        private static String lastState = "";
+    
+        private DiscordRPC() {}
+    
+        public static synchronized void start() {
+            if (running) return;
+            running = true;
+            
+            // Push initialization into a background thread to prevent Minecraft from hanging
+            worker = new Thread(() -> {
+                if (APP_ID.startsWith("1234")) {
+                    KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+                    running = false;
+                    return;
+                }
+                KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+    
+                if (!connect()) {
+                    KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
+                    running = false;
+                    return;
+                }
+                
+                try {
+                    sendHandshake();
+                    String reply = readFrame(); // Wait for the initial READY frame
+                    KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+                    
+                    if (reply == null || !reply.contains("\"READY\"")) {
+                        KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                        close();
+                        running = false;
+                        return;
+                    }
+                    
+                    // Fixed: Discord IPC explicitly requires epoch in MILLISECONDS
+                    startTime = System.currentTimeMillis();
+                    updatePresence(true);
+                    
+                    // Start a dedicated reader thread to prevent buffer overflows
+                    reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
+                    reader.setDaemon(true);
+                    reader.start();
+                    
+                    loop(); // Start the status update loop
+                } catch (Exception e) {
+                    KBClientMod.logger.warn("[KB-RPC] exception: " + e);
+                    close();
+                    running = false;
+                }
+            }, "KBClient-DiscordRPC-Worker");
+            
+            worker.setDaemon(true);
+            worker.start();
+        }
+    
+        public static synchronized void stop() {
+            if (!running) return;
+            running = false;
+            try { sendFrame(OP_CLOSE, "{}"); } catch (Exception ignored) { }
+            if (worker != null) worker.interrupt();
+            if (reader != null) reader.interrupt();
+            close();
+            KBClientMod.logger.info("[KB-RPC] stopped");
+        }
+    
+        public static boolean isRunning() { return running; }
+    
+        private static boolean connect() {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            boolean win = os.contains("win");
+    
+            if (win) {
+                String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
+                for (String pfx : prefixes) {
+                    for (int i = 0; i < 10; i++) {
+                        String path = pfx + i;
+                        try {
+                            pipe = new RandomAccessFile(path, "rw");
+                            return true;
+                        } catch (IOException ignored) {}
+                    }
+                }
+            } else {
+                for (int i = 0; i < 10; i++) {
+                    String path = "/tmp/discord-ipc-" + i;
+                    try {
+                        pipe = new RandomAccessFile(path, "rw");
+                        return true;
+                    } catch (IOException ignored) {}
+                }
+            }
+            return false;
+        }
+    
+        private static void close() {
+            if (pipe != null) {
+                try { pipe.close(); } catch (IOException ignored) { }
+                pipe = null;
+            }
+        }
+    
+        private static void sendHandshake() throws IOException {
+            String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+            sendFrame(OP_HANDSHAKE, json);
+        }
+    
+        private static synchronized void sendFrame(int op, String json) throws IOException {
+            if (pipe == null) throw new IOException("not connected");
+            byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+            ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
+            buf.putInt(op);
+            buf.putInt(payload.length);
+            buf.put(payload);
+            pipe.write(buf.array());
+        }
+    
+        // Completely replaced timeout-checking with a blocking read.
+        // Calling length() on a named pipe breaks IPC logic under Windows.
+        private static String readFrame() {
+            try {
+                if (pipe == null) return null;
+                byte[] header = new byte[8];
+                pipe.readFully(header);
+                ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
+                int op = hb.getInt();
+                int len = hb.getInt();
+                if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
+                byte[] body = new byte[len];
+                pipe.readFully(body);
+                return new String(body, StandardCharsets.UTF_8);
+            } catch (Throwable t) {
+                return null;
+            }
+        }
+    
+        private static void readerLoop() {
+            while (running) {
+                String frame = readFrame();
+                if (frame == null) {
+                    if (running) stop();
+                    break;
+                }
+            }
+        }
+    
+        private static void loop() {
+            while (running) {
+                try {
+                    updatePresence(false);
+                    Thread.sleep(2000L);
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Throwable t) {
+                    break;
+                }
+            }
+        }
+    
+        private static void updatePresence(boolean force) {
+            Minecraft mc = Minecraft.getMinecraft();
+            String details, state;
+    
+            if (mc.theWorld == null) {
+                details = "In the menus";
+                state = "KB Client 3.0";
+            } else if (mc.isSingleplayer()) {
+                details = "Singleplayer";
+                String worldName = "world";
+                try {
+                    if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+                } catch (Throwable ignored) { }
+                state = "World: " + worldName;
+            } else {
+                String ip = (mc.getCurrentServerData() != null)
+                        ? mc.getCurrentServerData().serverIP
+                        : "Unknown server";
+                details = "Playing on " + ip;
+                state = mc.theWorld.playerEntities.size() + " players online";
+            }
+    
+            if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
+            lastDetails = details;
+            lastState = state;
+    
+            long pid = currentPid();
+            String json = "{"
+                    + "\"cmd\":\"SET_ACTIVITY\","
+                    + "\"args\":{"
+                    +   "\"pid\":" + pid + ","
+                    +   "\"activity\":{"
+                    +     "\"details\":" + quote(details) + ","
+                    +     "\"state\":" + quote(state) + ","
+                    +     "\"timestamps\":{\"start\":" + startTime + "},"
+                    +     "\"assets\":{"
+                    +       "\"large_image\":\"oryvex\","
+                    +       "\"large_text\":\"KB Client 3.0\","
+                    +       "\"small_image\":\"minecraft\","
+                    +       "\"small_text\":\"Minecraft 1.8.9\""
+                    +     "}"
+                    +   "}"
+                    + "},"
+                    + "\"nonce\":\"" + System.nanoTime() + "\""
+                    + "}";
+    
+            try {
+                sendFrame(OP_FRAME, json);
+            } catch (IOException e) {
+                running = false;
+            }
+        }
+    
+        private static long currentPid() {
+            try {
+                String name = ManagementFactory.getRuntimeMXBean().getName();
+                int at = name.indexOf('@');
+                if (at > 0) return Long.parseLong(name.substring(0, at));
+            } catch (Throwable ignored) { }
+            return 0L;
+        }
+    
+        private static String quote(String s) {
+            StringBuilder sb = new StringBuilder(s.length() + 2);
+            sb.append('"');
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                if (c == '"' || c == '\\') sb.append('\\').append(c);
+                else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+                else sb.append(c);
+            }
+            sb.append('"');
+            return sb.toString();
+        }
+    }
+  │                               └── KBClientMod.java
+    package com.oryvex.kbclient;
+    
+    import com.oryvex.kbclient.ui.Fade;
+    import com.oryvex.kbclient.ui.FadeScreen;
+    import com.oryvex.kbclient.ui.GuiAnalyzer;
+    import com.oryvex.kbclient.ui.GuiModernMenu;
+    import com.oryvex.kbclient.ui.Hud;
+    import com.oryvex.kbclient.ui.KBLoading;
+    import com.oryvex.kbclient.ui.LoadingArt;
+    import com.oryvex.kbclient.ui.Settings;
+    import com.oryvex.kbclient.ui.UiButton;
+    import io.netty.channel.Channel;
+    import io.netty.channel.ChannelDuplexHandler;
+    import io.netty.channel.ChannelHandlerContext;
+    import io.netty.channel.ChannelPipeline;
+    import net.minecraft.client.Minecraft;
+    import net.minecraft.client.entity.EntityPlayerSP;
+    import net.minecraft.client.gui.GuiButton;
+    import net.minecraft.client.gui.GuiChat;
+    import net.minecraft.client.gui.GuiDownloadTerrain;
+    import net.minecraft.client.gui.GuiIngameMenu;
+    import net.minecraft.client.gui.GuiMainMenu;
+    import net.minecraft.client.gui.GuiScreen;
+    import net.minecraft.client.gui.inventory.GuiContainer;
+    import net.minecraft.client.settings.KeyBinding;
+    import net.minecraft.network.NetworkManager;
+    import net.minecraft.network.play.server.S12PacketEntityVelocity;
+    import net.minecraftforge.client.ClientCommandHandler;
+    import net.minecraftforge.client.event.GuiOpenEvent;
+    import net.minecraftforge.client.event.GuiScreenEvent;
+    import net.minecraftforge.client.event.RenderGameOverlayEvent;
+    import net.minecraftforge.common.MinecraftForge;
+    import net.minecraftforge.fml.client.registry.ClientRegistry;
+    import net.minecraftforge.fml.common.Mod;
+    import net.minecraftforge.fml.common.Mod.EventHandler;
+    import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+    import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+    import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+    import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+    import net.minecraftforge.fml.common.gameevent.TickEvent;
+    import org.apache.logging.log4j.Logger;
+    import org.lwjgl.input.Keyboard;
+    
+    @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+         acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+    public class KBClientMod {
+        public static final String MODID = "kbclient";
+        public static final String NAME = "KB Client";
+        public static final String VERSION = "3.0.0";
+        private static final String HOOK = "kb_client_handler";
+    
+        private static KBClientMod instance;
+        public static Logger logger;
+    
+        private final KBTracker tracker = new KBTracker();
+        private KeyBinding openKey;
+        private Channel hookedChannel;
+        private boolean pendingOpen;
+        private Object lastWorld;
+        private boolean loadingInstalled;
+    
+        public static KBClientMod getInstance() { return instance; }
+        public KBTracker getTracker() { return tracker; }
+    
+        /** Opened on the next tick, because chat closes itself right after running a command. */
+        public void requestOpenAnalyzer() { pendingOpen = true; }
+    
+        @EventHandler
+        public void preInit(FMLPreInitializationEvent e) {
+            logger = e.getModLog();
+            instance = this;
+            Settings.load();
+        }
+    
+        @EventHandler
+        public void init(FMLInitializationEvent e) {
+            com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+            net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+            MinecraftForge.EVENT_BUS.register(this);
+            ClientCommandHandler.instance.registerCommand(new KBCommand());
+            openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+            ClientRegistry.registerKeyBinding(openKey);
+            installLoading();
+            if (Settings.discordRpc) DiscordRPC.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(DiscordRPC::stop, "KBClient-RPC-Shutdown"));
+        }
+    
+        /** swap Minecraft's loading renderer (world load/save) for the custom one */
+        private void installLoading() {
+            if (loadingInstalled) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            try {
+                ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+                loadingInstalled = true;
+                logger.info("[KBClient] custom loading screen installed");
+            } catch (Throwable t) {
+                logger.error("[KBClient] could not install loading screen: " + t);
+            }
+        }
+    
+        // ---- screens + fades -----------------------------------------------------
+        @SubscribeEvent
+        public void onGuiOpen(GuiOpenEvent e) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+    
+            if (e.gui == null) {
+                // back to the game: soft world fade (not after chat)
+                if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                    Fade.world.trigger(0.45f);
+                }
+            } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+                Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+            }
+        }
+    
+        /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+        @SubscribeEvent
+        public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+            GuiScreen g = e.gui;
+            if (g == null || g instanceof FadeScreen) return;
+            if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+            }
+            Fade.screen.draw(g.width, g.height);
+        }
+    
+        /** restyle the pause menu's Options button */
+        @SubscribeEvent
+        public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+            if (!(e.gui instanceof GuiIngameMenu)) return;
+            for (int i = 0; i < e.buttonList.size(); i++) {
+                GuiButton b = e.buttonList.get(i);
+                if (b.id == 0) {
+                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                    u.icon = UiButton.ICON_GEAR;
+                    e.buttonList.set(i, u);
+                }
+            }
+        }
+    
+        @SubscribeEvent
+        public void onOverlay(RenderGameOverlayEvent.Post e) {
+            if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer == null) return;
+            if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+            Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+        }
+    
+        @SubscribeEvent
+        public void onTick(TickEvent.ClientTickEvent e) {
+            if (e.phase != TickEvent.Phase.END) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            tracker.tick();
+    
+            if (mc.theWorld != lastWorld) {
+                lastWorld = mc.theWorld;
+                if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+            }
+    
+            while (openKey.isPressed()) {
+                if (mc.currentScreen == null) pendingOpen = true;
+            }
+            if (pendingOpen && mc.currentScreen == null) {
+                pendingOpen = false;
+                mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+            }
+    
+            if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+                NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+                if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+            }
+        }
+    
+        private void inject(Minecraft mc, Channel ch) {
+            hookedChannel = ch;
+            try {
+                ChannelPipeline pl = ch.pipeline();
+                if (pl.get(HOOK) != null) pl.remove(HOOK);
+                if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+                else pl.addLast(HOOK, new VelocityHook());
+    
+                String name = mc.isSingleplayer() ? "Singleplayer"
+                        : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+                tracker.onConnect(name);
+                logger.info("[KBClient] velocity hook installed on " + name);
+            } catch (Throwable t) {
+                logger.error("[KBClient] hook failed: " + t);
+            }
+        }
+    
+        /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
+        private static class VelocityHook extends ChannelDuplexHandler {
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                if (msg instanceof S12PacketEntityVelocity) {
+                    S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                    final int id = v.getEntityID();
+                    final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                    final Minecraft mc = Minecraft.getMinecraft();
+                    mc.addScheduledTask(new Runnable() {
+                        @Override
+                        public void run() {
+                            EntityPlayerSP p = mc.thePlayer;
+                            if (p != null && p.getEntityId() == id) {
+                                KBClientMod.getInstance().getTracker().capture(x, y, z);
+                            }
+                        }
+                    });
+                }
+                super.channelRead(ctx, msg);
+            }
+        }
+    }
+  ├── .git
+  │   ├── COMMIT_EDITMSG
+    Initial commit: Knockback Client Mod 1.8.9
+  │   ├── HEAD
+    ref: refs/heads/main
+  │   ├── config
+    [core]
+    	repositoryformatversion = 0
+    	filemode = false
+    	bare = false
+    	logallrefupdates = true
+    	symlinks = false
+    	ignorecase = true
+    [remote "origin"]
+    	url = https://github.com/bbblofficial/KbFinderClient.git
+    	fetch = +refs/heads/*:refs/remotes/origin/*
+    [branch "main"]
+    	remote = origin
+    	merge = refs/heads/main
+  │   ├── description
+    Unnamed repository; edit this file 'description' to name the repository.
+  │   ├── hooks
+  │   │   ├── applypatch-msg.sample
+    #!/bin/sh
+    #
+    # An example hook script to check the commit log message taken by
+    # applypatch from an e-mail message.
+    #
+    # The hook should exit with non-zero status after issuing an
+    # appropriate message if it wants to stop the commit.  The hook is
+    # allowed to edit the commit message file.
+    #
+    # To enable this hook, rename this file to "applypatch-msg".
+    
+    . git-sh-setup
+    commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
+    test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
+    :
+  │   │   ├── commit-msg.sample
+    #!/bin/sh
+    #
+    # An example hook script to check the commit log message.
+    # Called by "git commit" with one argument, the name of the file
+    # that has the commit message.  The hook should exit with non-zero
+    # status after issuing an appropriate message if it wants to stop the
+    # commit.  The hook is allowed to edit the commit message file.
+    #
+    # To enable this hook, rename this file to "commit-msg".
+    
+    # Uncomment the below to add a Signed-off-by line to the message.
+    # Doing this in a hook is a bad idea in general, but the prepare-commit-msg
+    # hook is more suited to it.
+    #
+    # SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+    # grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+    
+    # This example catches duplicate Signed-off-by lines.
+    
+    test "" = "$(grep '^Signed-off-by: ' "$1" |
+    	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
+    	echo >&2 Duplicate Signed-off-by lines.
+    	exit 1
+    }
+  │   │   ├── fsmonitor-watchman.sample
+    #!/usr/bin/perl
+    
+    use strict;
+    use warnings;
+    use IPC::Open2;
+    
+    # An example hook script to integrate Watchman
+    # (https://facebook.github.io/watchman/) with git to speed up detecting
+    # new and modified files.
+    #
+    # The hook is passed a version (currently 2) and last update token
+    # formatted as a string and outputs to stdout a new update token and
+    # all files that have been modified since the update token. Paths must
+    # be relative to the root of the working tree and separated by a single NUL.
+    #
+    # To enable this hook, rename this file to "query-watchman" and set
+    # 'git config core.fsmonitor .git/hooks/query-watchman'
+    #
+    my ($version, $last_update_token) = @ARGV;
+    
+    # Uncomment for debugging
+    # print STDERR "$0 $version $last_update_token\n";
+    
+    # Check the hook interface version
+    if ($version ne 2) {
+    	die "Unsupported query-fsmonitor hook version '$version'.\n" .
+    	    "Falling back to scanning...\n";
+    }
+    
+    my $git_work_tree = get_working_dir();
+    
+    my $retry = 1;
+    
+    my $json_pkg;
+    eval {
+    	require JSON::XS;
+    	$json_pkg = "JSON::XS";
+    	1;
+    } or do {
+    	require JSON::PP;
+    	$json_pkg = "JSON::PP";
+    };
+    
+    launch_watchman();
+    
+    sub launch_watchman {
+    	my $o = watchman_query();
+    	if (is_work_tree_watched($o)) {
+    		output_result($o->{clock}, @{$o->{files}});
+    	}
+    }
+    
+    sub output_result {
+    	my ($clockid, @files) = @_;
+    
+    	# Uncomment for debugging watchman output
+    	# open (my $fh, ">", ".git/watchman-output.out");
+    	# binmode $fh, ":utf8";
+    	# print $fh "$clockid\n@files\n";
+    	# close $fh;
+    
+    	binmode STDOUT, ":utf8";
+    	print $clockid;
+    	print "\0";
+    	local $, = "\0";
+    	print @files;
+    }
+    
+    sub watchman_clock {
+    	my $response = qx/watchman clock "$git_work_tree"/;
+    	die "Failed to get clock id on '$git_work_tree'.\n" .
+    		"Falling back to scanning...\n" if $? != 0;
+    
+    	return $json_pkg->new->utf8->decode($response);
+    }
+    
+    sub watchman_query {
+    	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
+    	or die "open2() failed: $!\n" .
+    	"Falling back to scanning...\n";
+    
+    	# In the query expression below we're asking for names of files that
+    	# changed since $last_update_token but not from the .git folder.
+    	#
+    	# To accomplish this, we're using the "since" generator to use the
+    	# recency index to select candidate nodes and "fields" to limit the
+    	# output to file names only. Then we're using the "expression" term to
+    	# further constrain the results.
+    	my $last_update_line = "";
+    	if (substr($last_update_token, 0, 1) eq "c") {
+    		$last_update_token = "\"$last_update_token\"";
+    		$last_update_line = qq[\n"since": $last_update_token,];
+    	}
+    	my $query = <<"	END";
+    		["query", "$git_work_tree", {$last_update_line
+    			"fields": ["name"],
+    			"expression": ["not", ["dirname", ".git"]]
+    		}]
+    	END
+    
+    	# Uncomment for debugging the watchman query
+    	# open (my $fh, ">", ".git/watchman-query.json");
+    	# print $fh $query;
+    	# close $fh;
+    
+    	print CHLD_IN $query;
+    	close CHLD_IN;
+    	my $response = do {local $/; <CHLD_OUT>};
+    
+    	# Uncomment for debugging the watch response
+    	# open ($fh, ">", ".git/watchman-response.json");
+    	# print $fh $response;
+    	# close $fh;
+    
+    	die "Watchman: command returned no output.\n" .
+    	"Falling back to scanning...\n" if $response eq "";
+    	die "Watchman: command returned invalid output: $response\n" .
+    	"Falling back to scanning...\n" unless $response =~ /^\{/;
+    
+    	return $json_pkg->new->utf8->decode($response);
+    }
+    
+    sub is_work_tree_watched {
+    	my ($output) = @_;
+    	my $error = $output->{error};
+    	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
+    		$retry--;
+    		my $response = qx/watchman watch "$git_work_tree"/;
+    		die "Failed to make watchman watch '$git_work_tree'.\n" .
+    		    "Falling back to scanning...\n" if $? != 0;
+    		$output = $json_pkg->new->utf8->decode($response);
+    		$error = $output->{error};
+    		die "Watchman: $error.\n" .
+    		"Falling back to scanning...\n" if $error;
+    
+    		# Uncomment for debugging watchman output
+    		# open (my $fh, ">", ".git/watchman-output.out");
+    		# close $fh;
+    
+    		# Watchman will always return all files on the first query so
+    		# return the fast "everything is dirty" flag to git and do the
+    		# Watchman query just to get it over with now so we won't pay
+    		# the cost in git to look up each individual file.
+    		my $o = watchman_clock();
+    		$error = $output->{error};
+    
+    		die "Watchman: $error.\n" .
+    		"Falling back to scanning...\n" if $error;
+    
+    		output_result($o->{clock}, ("/"));
+    		$last_update_token = $o->{clock};
+    
+    		eval { launch_watchman() };
+    		return 0;
+    	}
+    
+    	die "Watchman: $error.\n" .
+    	"Falling back to scanning...\n" if $error;
+    
+    	return 1;
+    }
+    
+    sub get_working_dir {
+    	my $working_dir;
+    	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
+    		$working_dir = Win32::GetCwd();
+    		$working_dir =~ tr/\\/\//;
+    	} else {
+    		require Cwd;
+    		$working_dir = Cwd::cwd();
+    	}
+    
+    	return $working_dir;
+    }
+  │   │   ├── post-update.sample
+    #!/bin/sh
+    #
+    # An example hook script to prepare a packed repository for use over
+    # dumb transports.
+    #
+    # To enable this hook, rename this file to "post-update".
+    
+    exec git update-server-info
+  │   │   ├── pre-applypatch.sample
+    #!/bin/sh
+    #
+    # An example hook script to verify what is about to be committed
+    # by applypatch from an e-mail message.
+    #
+    # The hook should exit with non-zero status after issuing an
+    # appropriate message if it wants to stop the commit.
+    #
+    # To enable this hook, rename this file to "pre-applypatch".
+    
+    . git-sh-setup
+    precommit="$(git rev-parse --git-path hooks/pre-commit)"
+    test -x "$precommit" && exec "$precommit" ${1+"$@"}
+    :
+  │   │   ├── pre-commit.sample
+    #!/bin/sh
+    #
+    # An example hook script to verify what is about to be committed.
+    # Called by "git commit" with no arguments.  The hook should
+    # exit with non-zero status after issuing an appropriate message if
+    # it wants to stop the commit.
+    #
+    # To enable this hook, rename this file to "pre-commit".
+    
+    if git rev-parse --verify HEAD >/dev/null 2>&1
+    then
+    	against=HEAD
+    else
+    	# Initial commit: diff against an empty tree object
+    	against=$(git hash-object -t tree /dev/null)
+    fi
+    
+    # If you want to allow non-ASCII filenames set this variable to true.
+    allownonascii=$(git config --type=bool hooks.allownonascii)
+    
+    # Redirect output to stderr.
+    exec 1>&2
+    
+    # Cross platform projects tend to avoid non-ASCII filenames; prevent
+    # them from being added to the repository. We exploit the fact that the
+    # printable range starts at the space character and ends with tilde.
+    if [ "$allownonascii" != "true" ] &&
+    	# Note that the use of brackets around a tr range is ok here, (it's
+    	# even required, for portability to Solaris 10's /usr/bin/tr), since
+    	# the square bracket bytes happen to fall in the designated range.
+    	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
+    	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+    then
+    	cat <<\EOF
+    Error: Attempt to add a non-ASCII file name.
+    
+    This can cause problems if you want to work with people on other platforms.
+    
+    To be portable it is advisable to rename the file.
+    
+    If you know what you are doing you can disable this check using:
+    
+      git config hooks.allownonascii true
+    EOF
+    	exit 1
+    fi
+    
+    # If there are whitespace errors, print the offending file names and fail.
+    exec git diff-index --check --cached $against --
+  │   │   ├── pre-merge-commit.sample
+    #!/bin/sh
+    #
+    # An example hook script to verify what is about to be committed.
+    # Called by "git merge" with no arguments.  The hook should
+    # exit with non-zero status after issuing an appropriate message to
+    # stderr if it wants to stop the merge commit.
+    #
+    # To enable this hook, rename this file to "pre-merge-commit".
+    
+    . git-sh-setup
+    test -x "$GIT_DIR/hooks/pre-commit" &&
+            exec "$GIT_DIR/hooks/pre-commit"
+    :
+  │   │   ├── pre-push.sample
+    #!/bin/sh
+    
+    # An example hook script to verify what is about to be pushed.  Called by "git
+    # push" after it has checked the remote status, but before anything has been
+    # pushed.  If this script exits with a non-zero status nothing will be pushed.
+    #
+    # This hook is called with the following parameters:
+    #
+    # $1 -- Name of the remote to which the push is being done
+    # $2 -- URL to which the push is being done
+    #
+    # If pushing without using a named remote those arguments will be equal.
+    #
+    # Information about the commits which are being pushed is supplied as lines to
+    # the standard input in the form:
+    #
+    #   <local ref> <local oid> <remote ref> <remote oid>
+    #
+    # This sample shows how to prevent push of commits where the log message starts
+    # with "WIP" (work in progress).
+    
+    remote="$1"
+    url="$2"
+    
+    zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+    
+    while read local_ref local_oid remote_ref remote_oid
+    do
+    	if test "$local_oid" = "$zero"
+    	then
+    		# Handle delete
+    		:
+    	else
+    		if test "$remote_oid" = "$zero"
+    		then
+    			# New branch, examine all commits
+    			range="$local_oid"
+    		else
+    			# Update to existing branch, examine new commits
+    			range="$remote_oid..$local_oid"
+    		fi
+    
+    		# Check for WIP commit
+    		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
+    		if test -n "$commit"
+    		then
+    			echo >&2 "Found WIP commit in $local_ref, not pushing"
+    			exit 1
+    		fi
+    	fi
+    done
+    
+    exit 0
+  │   │   ├── pre-rebase.sample
+    #!/bin/sh
+    #
+    # Copyright (c) 2006, 2008 Junio C Hamano
+    #
+    # The "pre-rebase" hook is run just before "git rebase" starts doing
+    # its job, and can prevent the command from running by exiting with
+    # non-zero status.
+    #
+    # The hook is called with the following parameters:
+    #
+    # $1 -- the upstream the series was forked from.
+    # $2 -- the branch being rebased (or empty when rebasing the current branch).
+    #
+    # This sample shows how to prevent topic branches that are already
+    # merged to 'next' branch from getting rebased, because allowing it
+    # would result in rebasing already published history.
+    
+    publish=next
+    basebranch="$1"
+    if test "$#" = 2
+    then
+    	topic="refs/heads/$2"
+    else
+    	topic=`git symbolic-ref HEAD` ||
+    	exit 0 ;# we do not interrupt rebasing detached HEAD
+    fi
+    
+    case "$topic" in
+    refs/heads/??/*)
+    	;;
+    *)
+    	exit 0 ;# we do not interrupt others.
+    	;;
+    esac
+    
+    # Now we are dealing with a topic branch being rebased
+    # on top of master.  Is it OK to rebase it?
+    
+    # Does the topic really exist?
+    git show-ref -q "$topic" || {
+    	echo >&2 "No such branch $topic"
+    	exit 1
+    }
+    
+    # Is topic fully merged to master?
+    not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
+    if test -z "$not_in_master"
+    then
+    	echo >&2 "$topic is fully merged to master; better remove it."
+    	exit 1 ;# we could allow it, but there is no point.
+    fi
+    
+    # Is topic ever merged to next?  If so you should not be rebasing it.
+    only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
+    only_next_2=`git rev-list ^master           ${publish} | sort`
+    if test "$only_next_1" = "$only_next_2"
+    then
+    	not_in_topic=`git rev-list "^$topic" master`
+    	if test -z "$not_in_topic"
+    	then
+    		echo >&2 "$topic is already up to date with master"
+    		exit 1 ;# we could allow it, but there is no point.
+    	else
+    		exit 0
+    	fi
+    else
+    	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
+    	/usr/bin/perl -e '
+    		my $topic = $ARGV[0];
+    		my $msg = "* $topic has commits already merged to public branch:\n";
+    		my (%not_in_next) = map {
+    			/^([0-9a-f]+) /;
+    			($1 => 1);
+    		} split(/\n/, $ARGV[1]);
+    		for my $elem (map {
+    				/^([0-9a-f]+) (.*)$/;
+    				[$1 => $2];
+    			} split(/\n/, $ARGV[2])) {
+    			if (!exists $not_in_next{$elem->[0]}) {
+    				if ($msg) {
+    					print STDERR $msg;
+    					undef $msg;
+    				}
+    				print STDERR " $elem->[1]\n";
+    			}
+    		}
+    	' "$topic" "$not_in_next" "$not_in_master"
+    	exit 1
+    fi
+    
+    <<\DOC_END
+    
+    This sample hook safeguards topic branches that have been
+    published from being rewound.
+    
+    The workflow assumed here is:
+    
+     * Once a topic branch forks from "master", "master" is never
+       merged into it again (either directly or indirectly).
+    
+     * Once a topic branch is fully cooked and merged into "master",
+       it is deleted.  If you need to build on top of it to correct
+       earlier mistakes, a new topic branch is created by forking at
+       the tip of the "master".  This is not strictly necessary, but
+       it makes it easier to keep your history simple.
+    
+     * Whenever you need to test or publish your changes to topic
+       branches, merge them into "next" branch.
+    
+    The script, being an example, hardcodes the publish branch name
+    to be "next", but it is trivial to make it configurable via
+    $GIT_DIR/config mechanism.
+    
+    With this workflow, you would want to know:
+    
+    (1) ... if a topic branch has ever been merged to "next".  Young
+        topic branches can have stupid mistakes you would rather
+        clean up before publishing, and things that have not been
+        merged into other branches can be easily rebased without
+        affecting other people.  But once it is published, you would
+        not want to rewind it.
+    
+    (2) ... if a topic branch has been fully merged to "master".
+        Then you can delete it.  More importantly, you should not
+        build on top of it -- other people may already want to
+        change things related to the topic as patches against your
+        "master", so if you need further changes, it is better to
+        fork the topic (perhaps with the same name) afresh from the
+        tip of "master".
+    
+    Let's look at this example:
+    
+    		   o---o---o---o---o---o---o---o---o---o "next"
+    		  /       /           /           /
+    		 /   a---a---b A     /           /
+    		/   /               /           /
+    	       /   /   c---c---c---c B         /
+    	      /   /   /             \         /
+    	     /   /   /   b---b C     \       /
+    	    /   /   /   /             \     /
+        ---o---o---o---o---o---o---o---o---o---o---o "master"
+    
+    
+    A, B and C are topic branches.
+    
+     * A has one fix since it was merged up to "next".
+    
+     * B has finished.  It has been fully merged up to "master" and "next",
+       and is ready to be deleted.
+    
+     * C has not merged to "next" at all.
+    
+    We would want to allow C to be rebased, refuse A, and encourage
+    B to be deleted.
+    
+    To compute (1):
+    
+    	git rev-list ^master ^topic next
+    	git rev-list ^master        next
+    
+    	if these match, topic has not merged in next at all.
+    
+    To compute (2):
+    
+    	git rev-list master..topic
+    
+    	if this is empty, it is fully merged to "master".
+    
+    DOC_END
+  │   │   ├── pre-receive.sample
+    #!/bin/sh
+    #
+    # An example hook script to make use of push options.
+    # The example simply echoes all push options that start with 'echoback='
+    # and rejects all pushes when the "reject" push option is used.
+    #
+    # To enable this hook, rename this file to "pre-receive".
+    
+    if test -n "$GIT_PUSH_OPTION_COUNT"
+    then
+    	i=0
+    	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
+    	do
+    		eval "value=\$GIT_PUSH_OPTION_$i"
+    		case "$value" in
+    		echoback=*)
+    			echo "echo from the pre-receive-hook: ${value#*=}" >&2
+    			;;
+    		reject)
+    			exit 1
+    		esac
+    		i=$((i + 1))
+    	done
+    fi
+  │   │   ├── prepare-commit-msg.sample
+    #!/bin/sh
+    #
+    # An example hook script to prepare the commit log message.
+    # Called by "git commit" with the name of the file that has the
+    # commit message, followed by the description of the commit
+    # message's source.  The hook's purpose is to edit the commit
+    # message file.  If the hook fails with a non-zero status,
+    # the commit is aborted.
+    #
+    # To enable this hook, rename this file to "prepare-commit-msg".
+    
+    # This hook includes three examples. The first one removes the
+    # "# Please enter the commit message..." help message.
+    #
+    # The second includes the output of "git diff --name-status -r"
+    # into the message, just before the "git status" output.  It is
+    # commented because it doesn't cope with --amend or with squashed
+    # commits.
+    #
+    # The third example adds a Signed-off-by line to the message, that can
+    # still be edited.  This is rarely a good idea.
+    
+    COMMIT_MSG_FILE=$1
+    COMMIT_SOURCE=$2
+    SHA1=$3
+    
+    /usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
+    
+    # case "$COMMIT_SOURCE,$SHA1" in
+    #  ,|template,)
+    #    /usr/bin/perl -i.bak -pe '
+    #       print "\n" . `git diff --cached --name-status -r`
+    # 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
+    #  *) ;;
+    # esac
+    
+    # SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+    # git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
+    # if test -z "$COMMIT_SOURCE"
+    # then
+    #   /usr/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
+    # fi
+  │   │   ├── push-to-checkout.sample
+    #!/bin/sh
+    
+    # An example hook script to update a checked-out tree on a git push.
+    #
+    # This hook is invoked by git-receive-pack(1) when it reacts to git
+    # push and updates reference(s) in its repository, and when the push
+    # tries to update the branch that is currently checked out and the
+    # receive.denyCurrentBranch configuration variable is set to
+    # updateInstead.
+    #
+    # By default, such a push is refused if the working tree and the index
+    # of the remote repository has any difference from the currently
+    # checked out commit; when both the working tree and the index match
+    # the current commit, they are updated to match the newly pushed tip
+    # of the branch. This hook is to be used to override the default
+    # behaviour; however the code below reimplements the default behaviour
+    # as a starting point for convenient modification.
+    #
+    # The hook receives the commit with which the tip of the current
+    # branch is going to be updated:
+    commit=$1
+    
+    # It can exit with a non-zero status to refuse the push (when it does
+    # so, it must not modify the index or the working tree).
+    die () {
+    	echo >&2 "$*"
+    	exit 1
+    }
+    
+    # Or it can make any necessary changes to the working tree and to the
+    # index to bring them to the desired state when the tip of the current
+    # branch is updated to the new commit, and exit with a zero status.
+    #
+    # For example, the hook can simply run git read-tree -u -m HEAD "$1"
+    # in order to emulate git fetch that is run in the reverse direction
+    # with git push, as the two-tree form of git read-tree -u -m is
+    # essentially the same as git switch or git checkout that switches
+    # branches while keeping the local changes in the working tree that do
+    # not interfere with the difference between the branches.
+    
+    # The below is a more-or-less exact translation to shell of the C code
+    # for the default behaviour for git's push-to-checkout hook defined in
+    # the push_to_deploy() function in builtin/receive-pack.c.
+    #
+    # Note that the hook will be executed from the repository directory,
+    # not from the working tree, so if you want to perform operations on
+    # the working tree, you will have to adapt your code accordingly, e.g.
+    # by adding "cd .." or using relative paths.
+    
+    if ! git update-index -q --ignore-submodules --refresh
+    then
+    	die "Up-to-date check failed"
+    fi
+    
+    if ! git diff-files --quiet --ignore-submodules --
+    then
+    	die "Working directory has unstaged changes"
+    fi
+    
+    # This is a rough translation of:
+    #
+    #   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
+    if git cat-file -e HEAD 2>/dev/null
+    then
+    	head=HEAD
+    else
+    	head=$(git hash-object -t tree --stdin </dev/null)
+    fi
+    
+    if ! git diff-index --quiet --cached --ignore-submodules $head --
+    then
+    	die "Working directory has staged changes"
+    fi
+    
+    if ! git read-tree -u -m "$commit"
+    then
+    	die "Could not update working tree to new HEAD"
+    fi
+  │   │   ├── sendemail-validate.sample
+    #!/bin/sh
+    
+    # An example hook script to validate a patch (and/or patch series) before
+    # sending it via email.
+    #
+    # The hook should exit with non-zero status after issuing an appropriate
+    # message if it wants to prevent the email(s) from being sent.
+    #
+    # To enable this hook, rename this file to "sendemail-validate".
+    #
+    # By default, it will only check that the patch(es) can be applied on top of
+    # the default upstream branch without conflicts in a secondary worktree. After
+    # validation (successful or not) of the last patch of a series, the worktree
+    # will be deleted.
+    #
+    # The following config variables can be set to change the default remote and
+    # remote ref that are used to apply the patches against:
+    #
+    #   sendemail.validateRemote (default: origin)
+    #   sendemail.validateRemoteRef (default: HEAD)
+    #
+    # Replace the TODO placeholders with appropriate checks according to your
+    # needs.
+    
+    validate_cover_letter () {
+    	file="$1"
+    	# TODO: Replace with appropriate checks (e.g. spell checking).
+    	true
+    }
+    
+    validate_patch () {
+    	file="$1"
+    	# Ensure that the patch applies without conflicts.
+    	git am -3 "$file" || return
+    	# TODO: Replace with appropriate checks for this patch
+    	# (e.g. checkpatch.pl).
+    	true
+    }
+    
+    validate_series () {
+    	# TODO: Replace with appropriate checks for the whole series
+    	# (e.g. quick build, coding style checks, etc.).
+    	true
+    }
+    
+    # main -------------------------------------------------------------------------
+    
+    if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
+    then
+    	remote=$(git config --default origin --get sendemail.validateRemote) &&
+    	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
+    	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
+    	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
+    	git config --replace-all sendemail.validateWorktree "$worktree"
+    else
+    	worktree=$(git config --get sendemail.validateWorktree)
+    fi || {
+    	echo "sendemail-validate: error: failed to prepare worktree" >&2
+    	exit 1
+    }
+    
+    unset GIT_DIR GIT_WORK_TREE
+    cd "$worktree" &&
+    
+    if grep -q "^diff --git " "$1"
+    then
+    	validate_patch "$1"
+    else
+    	validate_cover_letter "$1"
+    fi &&
+    
+    if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
+    then
+    	git config --unset-all sendemail.validateWorktree &&
+    	trap 'git worktree remove -ff "$worktree"' EXIT &&
+    	validate_series
+    fi
+  │   │   └── update.sample
+    #!/bin/sh
+    #
+    # An example hook script to block unannotated tags from entering.
+    # Called by "git receive-pack" with arguments: refname sha1-old sha1-new
+    #
+    # To enable this hook, rename this file to "update".
+    #
+    # Config
+    # ------
+    # hooks.allowunannotated
+    #   This boolean sets whether unannotated tags will be allowed into the
+    #   repository.  By default they won't be.
+    # hooks.allowdeletetag
+    #   This boolean sets whether deleting tags will be allowed in the
+    #   repository.  By default they won't be.
+    # hooks.allowmodifytag
+    #   This boolean sets whether a tag may be modified after creation. By default
+    #   it won't be.
+    # hooks.allowdeletebranch
+    #   This boolean sets whether deleting branches will be allowed in the
+    #   repository.  By default they won't be.
+    # hooks.denycreatebranch
+    #   This boolean sets whether remotely creating branches will be denied
+    #   in the repository.  By default this is allowed.
+    #
+    
+    # --- Command line
+    refname="$1"
+    oldrev="$2"
+    newrev="$3"
+    
+    # --- Safety check
+    if [ -z "$GIT_DIR" ]; then
+    	echo "Don't run this script from the command line." >&2
+    	echo " (if you want, you could supply GIT_DIR then run" >&2
+    	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+    	exit 1
+    fi
+    
+    if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+    	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+    	exit 1
+    fi
+    
+    # --- Config
+    allowunannotated=$(git config --type=bool hooks.allowunannotated)
+    allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
+    denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
+    allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
+    allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
+    
+    # check for no description
+    projectdesc=$(sed -e '1q' "$GIT_DIR/description")
+    case "$projectdesc" in
+    "Unnamed repository"* | "")
+    	echo "*** Project description file hasn't been set" >&2
+    	exit 1
+    	;;
+    esac
+    
+    # --- Check types
+    # if $newrev is 0000...0000, it's a commit to delete a ref.
+    zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+    if [ "$newrev" = "$zero" ]; then
+    	newrev_type=delete
+    else
+    	newrev_type=$(git cat-file -t $newrev)
+    fi
+    
+    case "$refname","$newrev_type" in
+    	refs/tags/*,commit)
+    		# un-annotated tag
+    		short_refname=${refname##refs/tags/}
+    		if [ "$allowunannotated" != "true" ]; then
+    			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
+    			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
+    			exit 1
+    		fi
+    		;;
+    	refs/tags/*,delete)
+    		# delete tag
+    		if [ "$allowdeletetag" != "true" ]; then
+    			echo "*** Deleting a tag is not allowed in this repository" >&2
+    			exit 1
+    		fi
+    		;;
+    	refs/tags/*,tag)
+    		# annotated tag
+    		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
+    		then
+    			echo "*** Tag '$refname' already exists." >&2
+    			echo "*** Modifying a tag is not allowed in this repository." >&2
+    			exit 1
+    		fi
+    		;;
+    	refs/heads/*,commit)
+    		# branch
+    		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
+    			echo "*** Creating a branch is not allowed in this repository" >&2
+    			exit 1
+    		fi
+    		;;
+    	refs/heads/*,delete)
+    		# delete branch
+    		if [ "$allowdeletebranch" != "true" ]; then
+    			echo "*** Deleting a branch is not allowed in this repository" >&2
+    			exit 1
+    		fi
+    		;;
+    	refs/remotes/*,commit)
+    		# tracking branch
+    		;;
+    	refs/remotes/*,delete)
+    		# delete tracking branch
+    		if [ "$allowdeletebranch" != "true" ]; then
+    			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
+    			exit 1
+    		fi
+    		;;
+    	*)
+    		# Anything else (is there anything else?)
+    		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
+    		exit 1
+    		;;
+    esac
+    
+    # --- Finished
+    exit 0
+  │   ├── index
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 13: invalid start byte]
+  │   ├── info
+  │   │   └── exclude
+    # git ls-files --others --exclude-from=.git/info/exclude
+    # Lines that start with '#' are comments.
+    # For a project mostly in C, the following would be a good set of
+    # exclude patterns (uncomment them if you want to use them):
+    # *.[oa]
+    # *~
+  │   ├── logs
+  │   │   ├── HEAD
+    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
+    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  │   │   └── refs
+  │   │       ├── heads
+  │   │       │   └── main
+    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
+    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  │   │       └── remotes
+  │   │           └── origin
+  │   │               └── main
+    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790456 +0330	update by push
+    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792639 +0330	update by push
+    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793106 +0330	update by push
+    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793441 +0330	update by push
+    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794340 +0330	update by push
+    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794874 +0330	update by push
+    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800108 +0330	update by push
+    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800308 +0330	update by push
+    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800548 +0330	update by push
+    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801256 +0330	update by push
+    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801546 +0330	update by push
+    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802023 +0330	update by push
+  │   ├── objects
+  │   │   ├── 00
+  │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   ├── 01
+  │   │   │   ├── 21e97b47c62e266da1f1d76a48e19eb529fb28
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   ├── 2d431944035dd0806f4ecf2e5864895180cd20
+    [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+  │   │   │   └── 6781c055916334e20260270f97752a7ae911aa
+    [Error: 'utf-8' codec can't decode byte 0x8b in position 3: invalid start byte]
+  │   │   ├── 02
+  │   │   │   └── 713ffe8ba7f89ac0a9b62cb8dae2847aa8bb20
+    [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+  │   │   ├── 03
+  │   │   │   ├── 7f00f76c704f0a15678598ab9146026a5b6a9c
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   └── a514169ebb3b7868cf60bfbf19c714b9bf3563
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+  │   │   ├── 06
+  │   │   │   └── 69aa04711a292495ac71068d4eb6983aafee51
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 08
+  │   │   │   └── c04b94e4a28238631ba3ef59cd1c4c84ade5d9
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 0c
+  │   │   │   └── 115f1ff7cd6d6dfde1e359853ffc80fee7544d
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 0d
+  │   │   │   ├── 15b1f5ce72821612867315fcc8d548006e57f7
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 76040aaa1081daf41104291df2ff4987d03a45
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 77a0814b3a19d5ef3558ae74e11cf4873af2b8
+    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+  │   │   ├── 0e
+  │   │   │   ├── c1701d8f234d8895938da50286aeb9685c8190
+    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+  │   │   │   └── e8d5c1b34bb6f29ad0727f43c377f52b62f175
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── 0f
+  │   │   │   └── 27f7bea47f54d6f8a8bd169c8a7648c56338ab
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 10
+  │   │   │   └── 7052a7daa36d7e8e83b0e035dac14c15670003
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 12
+  │   │   │   ├── 5780a736bb886f89e3d0215a9c353151266777
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 95d164920ecac7c0bb665c77d5c8aadc94aa2c
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── 13
+  │   │   │   └── 5a3411652d2488203136be6a869af72cc71491
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 14
+  │   │   │   └── bb303245e7a1a72f7c4c4eea3116732c964c06
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 18: invalid continuation byte]
+  │   │   ├── 16
+  │   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
+    [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
+  │   │   ├── 17
+  │   │   │   ├── 5829991ca9afb213cc310f859334c892d704f6
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   └── 85d5129163e0e9a17c21d1d44e40bf24728e76
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 1a
+  │   │   │   └── 1902e01d3e0b68250820d92d8392fdb713aa16
+    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+  │   │   ├── 1c
+  │   │   │   └── b2344069b7a615498586444f4364418c0bdf86
+    [Error: 'utf-8' codec can't decode byte 0x83 in position 22: invalid start byte]
+  │   │   ├── 1d
+  │   │   │   ├── 3aa31908e590852060437b4db980292258c964
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   ├── 5b29fbd59593cbadef9e8c2f5129d1d4391584
+    [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+  │   │   │   └── 7521bc5d22e37bd852c240683dff3b95f6506e
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 1e
+  │   │   │   └── 06cca4abf0e085bb93de0d5fbe54102bbeb4a3
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 1f
+  │   │   │   └── 6246cc6c33477750d13ebf39edf93b252db2f1
+    [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
+  │   │   ├── 20
+  │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
+    [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+  │   │   ├── 25
+  │   │   │   └── fa3787adcb2bdc5f21342daf2e0ff2ac599ef4
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 27
+  │   │   │   └── 68efb67801d47b638572f33b62517fbf3b37b9
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── 29
+  │   │   │   └── d8f77d1e30d7494fc1874929016dd40c06f2e8
+    [Error: 'utf-8' codec can't decode byte 0xd7 in position 22: invalid continuation byte]
+  │   │   ├── 2a
+  │   │   │   └── 26a8f7b9deda7e8536610467cd4aac881c8cb4
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 2b
+  │   │   │   ├── 1902fa0fe2abe57ff92a4d71c51d07f8758fa6
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   │   └── 2f80fbdec35e23e7575d038937fceb1fe0cc77
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 2c
+  │   │   │   ├── 513a25e4a3aa540b6a9d5a25db3207c92e2f0a
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 7efc58d85cbe88ba9bce61394dbd7e3239530e
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   │   ├── d5454c07c3e605b7adcb091da290d536df2007
+    [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
+  │   │   │   └── fefebcad489956f3f90411e6f71a5997470e52
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 2d
+  │   │   │   └── 4d4748801848dcc75a9848873006e9ddbe410c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   ├── 2f
+  │   │   │   └── 5adaec8881eac504f37ddf29dd46e5846bc611
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── 33
+  │   │   │   └── 4dcb8bb098dae5bd6fac5f1ad5ce8fc808815c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 35
+  │   │   │   ├── 74a9612c93215a680aae80dbd16c2da17d12df
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── b65973bdca7ecaf2b2a49b64387c4cfe0cac54
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 36
+  │   │   │   ├── 75066755f7e0651eacaffc4d64514c634eeca9
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   ├── 91dacd0642fc62f581b160ef10721512bdcf8c
+    [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
+  │   │   │   └── e351581019d17a80fa6f1aaa9a1a621e6a4619
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 37
+  │   │   │   └── dea52672eb8fc6f161424872a53bd3224cb308
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 38
+  │   │   │   └── 06c0d2ae5e2636870edadc995a0095ead6f33e
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+  │   │   ├── 3a
+  │   │   │   ├── 4b805b167e90a68c637e35dd67ef60b3d53acf
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   ├── 76d497e8b4b0824cf23a16e6ab8cf04b4e8a8b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 7def659ddd6591e5c6e45b2f66737a36d5bc33
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 3d
+  │   │   │   └── ba2b12eb67f97ed7fcee5acea62eec91b955db
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── 3e
+  │   │   │   ├── 42c216f2f7649d7634a6684a54306fbe9d6668
+    [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+  │   │   │   ├── 90521d1fea88a2a081687229ba5c874050abc3
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── d7a5563219e59359db4d94beddfc64fc61eeba
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── 3f
+  │   │   │   ├── a134474b2a495e03abc49dc02bbe8407c9cbc0
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── ed2676785e0b32cefb29781189e81ef82e6e44
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 40
+  │   │   │   └── a3fce8d66455ade074a5752e28f29c3a1a2927
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 42
+  │   │   │   └── 6bd3f48afb5fe7063e0b45713e84dcf929a95c
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 43
+  │   │   │   ├── 33d7f88aa2f3b427b4be37b57bb5c03e55d9d6
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   └── 653004011bc43b8ed8274674da3278e8cc9c53
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 44
+  │   │   │   └── aa8444b3433b02ac64bbff6d7ea88a49051de2
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 47
+  │   │   │   └── 84aac6f30ed1d94d2cf3bc9067bcf22c7b0898
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 4a
+  │   │   │   ├── 5685d01b8c843af1e9abb5616f90270e1b72c2
+    [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
+  │   │   │   ├── c6cbe84f87ec0d9ec9e3fa20903d1de071d1ac
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   ├── d35c3c24716aeb387ae95b350eb8db58b2e265
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── ef0efe30d502475d3950362d5c999522bd045a
+    [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
+  │   │   ├── 4b
+  │   │   │   ├── 4907400e0f793d2cc25fd8a369954559bee21e
+    [Error: 'utf-8' codec can't decode byte 0x8f in position 5: invalid start byte]
+  │   │   │   └── 825dc642cb6eb9a060e54bf8d69288fbee4904
+    x+)JMU0`  
+    ,
+  │   │   ├── 4d
+  │   │   │   └── 9197298ad4114bf217785781a1ba66b2f3c243
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 51
+  │   │   │   ├── 20dfbf51c39c18aabbb8762320e58ab24d4802
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   │   └── 9e024b340872527da4e94e0a270bc15d8c3606
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── 53
+  │   │   │   └── c075b5960294e32a885fe57eaebd2e38bd421c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 54
+  │   │   │   ├── 1b1f7114dfa9e2badba8a443a125b4d1575935
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 95a74e9e21f9d856a86f70b6a44e859a45793b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 55
+  │   │   │   ├── 50d922a7e2610813999bac19d5a0bbe08020b4
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── c4d2bc75cc5826f545b06f1cae874f4034e964
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 56
+  │   │   │   ├── 304504dea0cf3ffe9390842841c02feb53c426
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   │   ├── 4a84d43f5898c8ec05cc39d3f975a8af7baa82
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── cb23b1d93a547d0984251edf29171c6ff6de21
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   ├── 58
+  │   │   │   └── c71e3d743689a26639ed12ea4c3e95d581b51e
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 59
+  │   │   │   └── f92f3b5c421d91f3554fad31c9f6ff95755229
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 5a
+  │   │   │   └── 3a52fca0e1f3614197cdcceecac6a2173a75ce
+    [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
+  │   │   ├── 5b
+  │   │   │   └── b7720f69ccb269ba273cef7fbdbb37d51f4c3f
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 5c
+  │   │   │   ├── 5ab7faf8e28049f3b53d9c9d91bb529d19e8a0
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── c8c39e4284ecae09861c8a243e888562dfdacc
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 5f
+  │   │   │   └── 0817d3863cbfe29afd8211a25c8a1dda1fc4b1
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 61
+  │   │   │   ├── 481a2ce558bf26681f9aee14bedfa09bc3d79a
+    [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+  │   │   │   └── 97ed89f9c5b256a30504050f2dde3688ae9b1b
+    [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+  │   │   ├── 62
+  │   │   │   ├── 8578174bd6fc1f3fc3e2b128e2a4aa04edd60d
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── f7678f53c17b0aa322ab143c93c2abce8480d8
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 63
+  │   │   │   └── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── 66
+  │   │   │   └── a410d77909287ab7fb5d655d7369e296f9fcc0
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 68
+  │   │   │   └── 7b44f9e62bdcbcd4155ab8ff51079fac7568aa
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 69
+  │   │   │   ├── 240332a81ce7bf1f5a5c38d3861a8d757c0716
+    [Error: 'utf-8' codec can't decode byte 0xda in position 6: invalid continuation byte]
+  │   │   │   └── 3f12e86cb3e96e5f94877fa18dd999f6042b4a
+    [Error: 'utf-8' codec can't decode byte 0xa4 in position 2: invalid start byte]
+  │   │   ├── 6b
+  │   │   │   ├── adf8f5fe3c398eed603096d2ebaf6d1448cf4c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── ae772c43a7663d4ecee7285d2a36dd95aa5215
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 6c
+  │   │   │   └── 761a287091540f3031413138713b297f6fdf56
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 6d
+  │   │   │   ├── 85b0a084027f1e308475f0af9cbd70f02e9580
+    [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
+  │   │   │   └── 949951d7f09a39cd9c075428c0301357d8d47c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 6f
+  │   │   │   └── 3da9f65e7fd71cd411480982a87814032d46a5
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 70
+  │   │   │   └── c0cad6ea281205c468201a91f7c55cba8dbaba
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 71
+  │   │   │   └── 23389ad121863980e7db1d7962974a4f0c1a4f
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 72
+  │   │   │   ├── 8aee2b8ee52ed6be5fd31635b409aa515f7066
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── 73
+  │   │   │   ├── b2a93bb3a0c48e4b296c63bd0c20242a9d945d
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── e2ff10f642d648e9bf1cd7d08da32bbddae8aa
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 74
+  │   │   │   └── 3779efc677a34bcf4281b30df29bd7e36f30b5
+    [Error: 'utf-8' codec can't decode byte 0xb6 in position 8: invalid start byte]
+  │   │   ├── 76
+  │   │   │   └── 5731b3985ea3aaca75fa730c8513a4faeb4572
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── 77
+  │   │   │   ├── 57549f6bca5a24744f82dd9b172655c2ab4b2a
+    [Error: 'utf-8' codec can't decode byte 0xc5 in position 2: invalid continuation byte]
+  │   │   │   └── b1cafb5c39a6ccac015bd232ff871a939569fc
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 78
+  │   │   │   └── 4a4f37d6ee710a1d39b0ac3adcf323c5b2d86d
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 79
+  │   │   │   ├── 7b13277848449d44eaacc8544f524607d72048
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── f86dc6b5fc60274ffc7a10813cfc0bcd5fd57e
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── 7a
+  │   │   │   ├── 85d9ba6fb90a20aa290fd0c77c1d246144e691
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── c7d4089f1cc7c6c823c2bbe7ffed1582a5caf6
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── 7c
+  │   │   │   └── 6061e997fe88e98055a108e1059f16eca4d44f
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── 7d
+  │   │   │   └── 1c40eb319b8aea614bbaabba5da54032906903
+    [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
+  │   │   ├── 82
+  │   │   │   ├── 27f9288444d07585642641180d78c3812f8a72
+    [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+  │   │   │   └── cdb16ba29dfd98252a116a3fac1ed82ee524f4
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 83
+  │   │   │   └── 9a51035db80e8ee4cd0c4ceeb8a5a0aa8173d9
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   ├── 85
+  │   │   │   ├── 0fe4546ce4a71ce3796baec76141fe404e3044
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   └── 23280de12fff9adba401038ab37f7c0582adf6
+    [Error: 'utf-8' codec can't decode byte 0xa4 in position 2: invalid start byte]
+  │   │   ├── 87
+  │   │   │   └── 48608cc89c53a26f76e26fca4347586f7c7d7a
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 8b
+  │   │   │   ├── b477084caa620cc37f9e89fa77a5da66182b39
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   └── b9cdbc82320cf09167a5ab67216388c8e1a6ff
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 8d
+  │   │   │   ├── 7478ad3105a85c44536de9b92072f45467a0fe
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+  │   │   │   ├── 88ac2dadb68c2f10eb57f676e1087a120e878e
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   │   └── cfda1f5af38b6fa2ae605b4738d3a039459fc8
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 90
+  │   │   │   ├── 69f7482e8d6555efa38fbe7400fe3f74be1f94
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── e0f40edd53d06c5ecf55948f863cdf0b9788de
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 91
+  │   │   │   └── 83b0db84f3b1854802f9f0cf62e4c657cdc0a3
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── 92
+  │   │   │   └── 4b179cf9c9cf871ecbae1e73ec2d7f1242750e
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 96
+  │   │   │   └── daca2af81da6e2999bbb207480f51f2bcf1309
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── 98
+  │   │   │   └── 8694cb6bd1b8a828d038f411935747bef98e14
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── 9a
+  │   │   │   └── f51862dfefb0787b9fe01c863ad7b348cecd9c
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 9c
+  │   │   │   └── 003211911f5906150920acb446e5ed3b58cfc0
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+  │   │   ├── 9d
+  │   │   │   ├── 300fde1535c481a9c98ce4423dfb7e67d3ed85
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 9c60344706cd0005ce38dd8b2478c84aee06f6
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── ac73e50f02fbba40a68e2cd58b2262306c01ba
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   │   └── ce5aabbd0e08d082950bab3fff17f250135ee3
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── 9e
+  │   │   │   └── 76454055871144e8157d85c3327fe901f664a1
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── a0
+  │   │   │   └── 3fa07dbb4670a0ce9995f196a7bea841e87dd2
+    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+  │   │   ├── a1
+  │   │   │   └── a99253e502137a30aac1d27d86174e09f17f44
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
+  │   │   ├── a5
+  │   │   │   └── 7006d8e68103a058715081299dc2d3519469bd
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── a7
+  │   │   │   ├── 7e139bf99c6b2bdd176da4eb331ff5bfe81d4e
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   └── a7771d21e93a7117fd51c151e1ebcbc4e391a6
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── a8
+  │   │   │   └── e329a4754bdbb3be72f135ce9c174424b49601
+    [Error: 'utf-8' codec can't decode byte 0xb3 in position 9: invalid start byte]
+  │   │   ├── aa
+  │   │   │   ├── ce7cdc67cba30d97b99a0b6c52922cff4c01ce
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── d3ff3f54d5d7163dc4ec90fbeaa2d2da5f76ab
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── ac
+  │   │   │   ├── ab8bfb6d83a25ae622c455fa96bab3bd466ce9
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── f2a3b54aa05fbf24b6f692f5054f88d2bde8d2
+    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   ├── b0
+  │   │   │   ├── 43416bacf66acaf168c93e57fec3f5813147cf
+    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+  │   │   │   └── 47ca6a1568d38e6b79a82f91fe839d636f9a25
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── b1
+  │   │   │   ├── 2bd5555ee82fc5ffbdc0e0c5f4a3269cb59b29
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── a722529c1c7329dfdbd77fee55ee874b04dfee
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   │   └── bd233ec885d2e54532a5be75865a3632ab7c38
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── b2
+  │   │   │   └── 767594d80dca795b856665081702eb2f2193fd
+    [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
+  │   │   ├── b3
+  │   │   │   ├── 7840b5c69bc2f00584c9df64a9de9da017112d
+    [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
+  │   │   │   ├── 868d0f1e0fe0ca650dc2a017d70a32b043efb0
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   └── e8e7ffaf1a1a2da17bbbd9b74b06656c12897c
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── b5
+  │   │   │   ├── 3771f65a949095a10a889c827f07e38f495ac0
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   │   └── d3744ff48981496bdb6752d741d8c5dff68b32
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   ├── bd
+  │   │   │   └── 73cfbb94f042cd0f0756766841f97941d8cd84
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── c0
+  │   │   │   ├── 16d0828f5e055b06862e71d6b55ae9d82f5cac
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   │   ├── 3e3c6df878d742fefcfa2e50c2e5365bc055dd
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   └── 5aa7805834f911c83a5c49079226ad97819bf4
+    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+  │   │   ├── c1
+  │   │   │   ├── 9aeb2d37c07d44f32662241ed59861384ff4b8
+    [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+  │   │   │   └── cccb00925e26fb524ebd2162b676720d3b6d74
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── c2
+  │   │   │   ├── 4cbcdf373d640739145365e47653d731834387
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   │   └── b21227481c65a74624d97ac9424303b764ba23
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── c4
+  │   │   │   └── e561d8dddb063c29e44428c49d7e2851701704
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── c8
+  │   │   │   ├── eaeb6de870faa79acea43ae9dd77475ec150c1
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   └── f1fdb85d61e0c5263eedb6bca5f66a68095f70
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── ca
+  │   │   │   ├── 8dabfbd618b87d2022539d2e07a25109740226
+    [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
+  │   │   │   └── e08fdd851c1ad353befc08768955b870cab7ff
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── cb
+  │   │   │   └── 94e95242de355f6b7774c7d3b9343b241ca572
+    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+  │   │   ├── cc
+  │   │   │   ├── 475133dd479e92cc3beb1f149fdcb43c1b2322
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── cd
+  │   │   │   └── c7e9d56d49b061013af88e5ebc6fb59e491193
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── ce
+  │   │   │   ├── 10b2d3c805f5dd61e8d0d5bf57b1e12db43351
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+  │   │   │   └── ab6866d733f3b03e99aa0cbb7d23e8420211f1
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── d4
+  │   │   │   ├── 0d2d64eacf5198fa811e4862762d5f6af5941e
+    [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
+  │   │   │   └── f5bbf99f45e7cc2cdded9978834375b9fd14b3
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 21: invalid continuation byte]
+  │   │   ├── d5
+  │   │   │   └── a21d5a626ad123993a9959d3723c1cfc9f65b9
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── d6
+  │   │   │   └── fac41076412294ea7736bf369299aa352b09f6
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── d7
+  │   │   │   ├── 651a59cf9e7e89b461536218df0bef5e5decf3
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   ├── 75f0b5fa8cbb323167ebacff15795adc5b56d4
+    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+  │   │   │   └── c8b8408b64154e7f94dc5db8708d1e6156b2b8
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── d9
+  │   │   │   ├── b9b6160d63bf359ce75f0b80a6a3724aee92e8
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── e419f5781a77f79865cdfc93519c9184793de7
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── da
+  │   │   │   ├── 53e4081f5a541b7d985cd2ad1494ac7a57aa9a
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 975cf81b4ea65839254d75d879efee66acfbb9
+    [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
+  │   │   ├── db
+  │   │   │   ├── 4c7a81857e3cbabc80cd18dc65eb866e483ad7
+    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+  │   │   │   └── 6187653794f639173cce5edd013d32da5828c7
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   ├── de
+  │   │   │   └── 0be1ea11c32dbc6af33212d0b995aa9f88f67b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── df
+  │   │   │   └── 7549939f16ee31fdd1817be00cc952cd3eec6e
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── e2
+  │   │   │   └── 79d8ed42432719de69026d373496ae65837fe9
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── e4
+  │   │   │   ├── 0eb29518aa6ad4f6438edd5f2f3cc44a8d00d4
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   ├── 8c1401449dbdbf50249d516aeed80944ea2a35
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 9bbe05ca61fe156aa345db0e856291a0227985
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── bac8b8f8454bd50a10f8ad2c3cd82c39a11ce1
+    [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+  │   │   ├── e5
+  │   │   │   └── cccda6b780031dd28971eb77595436f86871df
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── e6
+  │   │   │   └── d9c23a3dfb093af9952dda56425efde19aab10
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── e7
+  │   │   │   └── 74c483e362c9be05dc1c06fa676503245dcbcb
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── e9
+  │   │   │   ├── 063f4a29787210f25d1e9a2db17393e81e2897
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 2fa333ab2df1c4489b718799882c9c30d41a4b
+    [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+  │   │   ├── eb
+  │   │   │   ├── 5f0f0b92494459cfd3703c794f2844617fa903
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── c3a52411bb92076d32947b83c1c0aa42f114d1
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── ec
+  │   │   │   └── 20ab878509f4e7d6e1aba533ae24a84ebefc72
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── ed
+  │   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── ee
+  │   │   │   ├── 8b466f092f2842f0bf8abd2c2cbe5c0d382620
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+  │   │   │   └── f3a15198e4f5242d85e58aa6e9daf101ea017f
+    [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
+  │   │   ├── f2
+  │   │   │   └── b81286cd1530494bde3e9bcf9595ee68cd1478
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── f4
+  │   │   │   └── ff6cd2ed5c71bcb9daed061a3b3fa2f6cf75b8
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── f6
+  │   │   │   ├── 0bf0357a5ce3acbeee0e2efebedb79415c6a12
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 6a251c8d8b047a7c623476764633be7e89f923
+    [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+  │   │   │   └── dc697a8bc5e7c82cf6e30a8dac59fb775d7f8f
+    [Error: 'utf-8' codec can't decode bytes in position 2-3: invalid continuation byte]
+  │   │   ├── f8
+  │   │   │   └── a27d01ff139eb66b25ca0a7e1cab0cfa8c9c98
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   ├── fb
+  │   │   │   ├── 06f54071c71eb018ddce81991a7db1f298ecf2
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   │   └── 3dc11248e7d7f1d84235019a05bcc0cd1aa343
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   ├── fd
+  │   │   │   ├── 4446c93f6091387e0d5b253fab13bb410f2e2b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 6b486f30cbef8999a6cbdd534799f870a27612
+    [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+  │   │   ├── ff
+  │   │   │   ├── 46d504cda8dc00da4be1d727ccc7b33986eedd
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── b8becd24102b51aa87c8f7a02604cb588df056
+    [Error: 'utf-8' codec can't decode byte 0xeb in position 4: invalid continuation byte]
+  │   │   ├── info
+  │   │   └── pack
+  │   └── refs
+  │       ├── heads
+  │       │   └── main
+    ec20ab878509f4e7d6e1aba533ae24a84ebefc72
+  │       ├── remotes
+  │       │   └── origin
+  │       │       └── main
+    ec20ab878509f4e7d6e1aba533ae24a84ebefc72
+  │       └── tags
+  ├── .github
+  │   └── workflows
+  │       ├── build.yml
+    name: Build KB Client 1.8.9
+    
+    on:
+      push:
+        branches: [ "**" ]
+      pull_request:
+        branches: [ "**" ]
+      workflow_dispatch:
+    
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+    
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v5
+    
+          - name: Setup Java 8
+            uses: actions/setup-java@v5
+            with:
+              distribution: 'temurin'
+              java-version: '8'
+    
+          - name: Install & Configure Gradle 4.10.3
+            run: |
+              wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+              unzip -q gradle-4.10.3-bin.zip
+              export PATH=$PWD/gradle-4.10.3/bin:$PATH
+              gradle wrapper --gradle-version 4.10.3
+              chmod +x gradlew
+    
+          - name: Build Mod with Gradle
+            run: |
+              ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+    
+          - name: Upload Mod Artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: KBClient-1.8.9
+              path: build/libs/*.jar
+  │       └── build.yml.bak
+    name: Build KB Client 1.8.9
+    
+    on:
+      push:
+        branches: [ "**" ]
+      pull_request:
+        branches: [ "**" ]
+      workflow_dispatch:
+    
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+    
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v4
+    
+          - name: Setup Java 8
+            uses: actions/setup-java@v4
+            with:
+              distribution: 'temurin'
+              java-version: '8'
+    
+          - name: Install & Configure Gradle 4.10.3
+            run: |
+              wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+              unzip -q gradle-4.10.3-bin.zip
+              export PATH=$PWD/gradle-4.10.3/bin:$PATH
+              gradle wrapper --gradle-version 4.10.3
+              chmod +x gradlew
+    
+          - name: Build Mod with Gradle
+            run: |
+              ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+    
+          - name: Upload Mod Artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: KBClient-1.8.9
+              path: build/libs/*.jar
+  ├── .gitignore
+    .gradle/
+    build/
+    run/
+    out/
+    *.iml
+    .idea/
+    gradle-4.10.3/
+    gradle-4.10.3-bin.zip
+  ├── README.md
+    # KB Client 3.0 (Minecraft 1.8.9 Forge)
+    
+    Modern-UI client + knockback profile detector for Carbon / Spigot servers.
+    
+    ## What's new in 3.0
+    * Every screen fades in; every KB Client screen also fades out.
+      Vanilla screens (pause menu, inventory, world select...) fade in, and closing
+      back to the game plays a soft world fade.
+    * Fully custom loading screen: world loading, world saving and terrain download.
+    * Custom Options button (animated gear) on the main menu and the pause menu,
+      plus a custom Options screen (HUD, particles, toasts, loading screen, fade speed).
+    * New detector + exact YAML parser (see below).
+    
+    ## The 12 parameters
+    ONE-POINT-SEVEN, HORIZONTAL, VERTICAL, EXTRA-HORIZONTAL, EXTRA-VERTICAL, FRICTION,
+    Y-LIMIT, DAMAGE-TICKS.OVERRIDE, DAMAGE-TICKS.VALUE, DYNAMIC-LIMIT, LIMIT-HORIZONTAL, H-LIMIT
+    
+    ### Exact extraction (YAML parser)
+    `/kb import` (clipboard) or `/kb import file.yml` (from .minecraft/kbclient/) or the
+    Import button parses a Carbon config exactly as written: comments ignored (full-line
+    and inline), nested sections (DAMAGE-TICKS -> OVERRIDE / VALUE), booleans, decimals
+    and integers. All 12 keys are read, none defaulted. Missing / unparsable keys are
+    listed explicitly. `/kb sample` loads a built-in example.
+    The Compare tab shows Detected vs Reference with deltas.
+    
+    ### Packet detector
+    Every velocity packet (S12) is snapshotted and fitted with the Carbon model
+        new = old / FRICTION + dir * (HORIZONTAL [+ EXTRA-HORIZONTAL if attacker sprints])
+        newY = oldY / FRICTION + VERTICAL [+ EXTRA-VERTICAL], clamped to Y-LIMIT
+    Each value shows a source tag: MEAS (measured), EST (estimated / lower bound),
+    DEF (not observable yet), FILE (imported).
+    
+    Some keys are NOT physically observable from packets alone:
+      * DAMAGE-TICKS.VALUE while OVERRIDE is false (vanilla 20 is in effect)
+      * H-LIMIT while LIMIT-HORIZONTAL is false (never clamps)
+    Use the YAML import for the exact values of those.
+    
+    To raise confidence: get hit by a walking AND a sprinting player, while standing
+    and while moving, on the ground AND while falling, and let someone click fast.
+    
+    ## Controls
+      * Right Shift - open analyzer      * /kb - open analyzer
+      * /kb start 15 | stop | resume | reset | export | hud | status | yaml
+      * /kb import [file] | sample | clear
+      * Exports go to .minecraft/kbclient/*.yml and *-samples.csv
+  ├── build.gradle
+    buildscript {
+        repositories {
+            mavenCentral()
+            maven {
+                name = "forge"
+                url = "https://maven.minecraftforge.net/"
+            }
+        }
+        dependencies {
+            classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+        }
+    }
+    
+    apply plugin: "net.minecraftforge.gradle.forge"
+    
+    version = "3.0.0"
+    group = "com.oryvex.kbclient"
+    archivesBaseName = "KBClient"
+    
+    sourceCompatibility = targetCompatibility = "1.8"
+    compileJava.options.encoding = "UTF-8"
+    
+    minecraft {
+        version = "1.8.9-11.15.1.2318-1.8.9"
+        runDir = "run"
+        mappings = "stable_22"
+        makeObfSourceJar = false
+    }
+    
+    repositories {
+        mavenCentral()
+        maven {
+            name = "mojang"
+            url = "https://libraries.minecraft.net/"
+        }
+        maven {
+            name = "forge"
+            url = "https://maven.minecraftforge.net/"
+        }
+    }
+    
+    dependencies {}
+    
+    processResources {
+        inputs.property "version", project.version
+        inputs.property "mcversion", project.minecraft.version
+    
+        from(sourceSets.main.resources.srcDirs) {
+            include "mcmod.info"
+            expand "version": project.version, "mcversion": project.minecraft.version
+        }
+    
+        from(sourceSets.main.resources.srcDirs) {
+            exclude "mcmod.info"
+        }
+    }
+    
+    jar {
+        manifest {
+            attributes([
+                "FMLCorePluginContainsFMLMod": "true",
+                "ForceLoadAsMod": "true"
+            ])
+        }
+    }
+  ├── discord_assets
+  │   ├── minecraft.png
+    [Error: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+  │   └── oryvex.png
+    [Error: 'utf-8' codec can't decode byte 0x89 in position 0: invalid start byte]
+  ├── ee.py
+    import os
+    
+    def print_tree(folder_path, file_handle, prefix="", show_content=False):
+        entries = sorted(os.listdir(folder_path))
+        for i, entry in enumerate(entries):
+            path = os.path.join(folder_path, entry)
+            is_last = i == len(entries) - 1
+            connector = "└── " if is_last else "├── "
+            file_handle.write(f"{prefix}{connector}{entry}\n")
+    
+            if os.path.isdir(path):
+                extension_prefix = "    " if is_last else "│   "
+                print_tree(path, file_handle, prefix + extension_prefix, show_content)
+            else:
+                if show_content:
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            content = f.read().strip()
+                            if content:
+                                content_lines = content.splitlines()
+                                # Content appears directly under the file name
+                                for line in content_lines:
+                                    file_handle.write(f"  {line}\n")  # Just 2 spaces
+                    except Exception as e:
+                        file_handle.write(f"  [Error: {e}]\n")
+    
+    def save_tree_to_file(output_filename="folder_structure.txt"):
+        current_folder = os.path.dirname(os.path.abspath(__file__))
+        
+        with open(output_filename, "w", encoding="utf-8") as f:
+            f.write(f"{current_folder}/\n\n")
+            print_tree(current_folder, f, show_content=True)
+        
+        print(f"Output saved to {output_filename}")
+    
+    if __name__ == "__main__":
+        save_tree_to_file()
+  ├── fixer.py
+    import os
+    
+    def create_fixer():
+        target_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "DiscordRPC.java")
+        
+        java_code = r"""package com.oryvex.kbclient;
+    
+    import net.minecraft.client.Minecraft;
+    
+    import java.io.IOException;
+    import java.io.RandomAccessFile;
+    import java.lang.management.ManagementFactory;
+    import java.nio.ByteBuffer;
+    import java.nio.ByteOrder;
+    import java.nio.charset.StandardCharsets;
+    
+    public final class DiscordRPC {
+    
+        private static final String APP_ID = "1554952903758716989";
+    
+        private static final int OP_HANDSHAKE = 0;
+        private static final int OP_FRAME     = 1;
+        private static final int OP_CLOSE     = 2;
+    
+        private static RandomAccessFile pipe;
+        private static Thread worker;
+        private static Thread reader;
+        private static volatile boolean running;
+        private static long startTime;
+        private static String lastDetails = "";
+        private static String lastState = "";
+    
+        private DiscordRPC() {}
+    
+        public static synchronized void start() {
+            if (running) return;
+            running = true;
+            
+            worker = new Thread(() -> {
+                if (APP_ID.startsWith("1234")) {
+                    KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+                    running = false;
+                    return;
+                }
+                KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+    
+                if (!connect()) {
+                    KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
+                    running = false;
+                    return;
+                }
+                
+                try {
+                    sendHandshake();
+                    String reply = readFrame();
+                    KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
 ├── gradle
 │   └── wrapper
 │       └── gradle-wrapper.properties
@@ -7552,13 +11176,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   import java.nio.ByteOrder;
   import java.nio.charset.StandardCharsets;
   
-  /**
-   * Discord Rich Presence - diagnostic build.
-   * Logs every step so you can see exactly where it fails.
-   */
   public final class DiscordRPC {
   
-      /** TODO: replace with your own Discord Application ID. */
       private static final String APP_ID = "1554952903758716989";
   
       private static final int OP_HANDSHAKE = 0;
@@ -7567,6 +11186,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       private static RandomAccessFile pipe;
       private static Thread worker;
+      private static Thread reader;
       private static volatile boolean running;
       private static long startTime;
       private static String lastDetails = "";
@@ -7576,58 +11196,69 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       public static synchronized void start() {
           if (running) return;
-          if (APP_ID.startsWith("1234")) {
-              KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
-              return;
-          }
-          KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
-  
-          if (!connect()) {
-              KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord desktop app running?");
-              return;
-          }
-          try {
-              sendHandshake();
-              String reply = readFrame(1000);
-              KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
-              if (reply == null || !reply.contains("\"READY\"")) {
-                  KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
-                  close();
+          running = true;
+          
+          worker = new Thread(() -> {
+              if (APP_ID.startsWith("1234")) {
+                  KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+                  running = false;
                   return;
               }
-              startTime = System.currentTimeMillis() / 1000L;
-              updatePresence(true);
-          } catch (IOException e) {
-              KBClientMod.logger.warn("[KB-RPC] handshake exception: " + e);
-              close();
-              return;
-          }
+              KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
   
-          running = true;
-          worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
+              if (!connect()) {
+                  KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
+                  running = false;
+                  return;
+              }
+              
+              try {
+                  sendHandshake();
+                  String reply = readFrame();
+                  KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+                  
+                  if (reply == null || !reply.contains("\"READY\"")) {
+                      KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                      close();
+                      running = false;
+                      return;
+                  }
+                  
+                  // FIXED: Raw Discord IPC strictly expects timestamps in MILLISECONDS.
+                  startTime = System.currentTimeMillis();
+                  updatePresence(true);
+                  
+                  reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
+                  reader.setDaemon(true);
+                  reader.start();
+                  
+                  loop();
+              } catch (Exception e) {
+                  KBClientMod.logger.warn("[KB-RPC] exception: " + e);
+                  close();
+                  running = false;
+              }
+          }, "KBClient-DiscordRPC-Worker");
+          
           worker.setDaemon(true);
           worker.start();
-          KBClientMod.logger.info("[KB-RPC] running");
       }
   
       public static synchronized void stop() {
           if (!running) return;
           running = false;
-          try { sendFrame(OP_CLOSE, "{}"); } catch (IOException ignored) { }
+          try { sendFrame(OP_CLOSE, "{}"); } catch (Exception ignored) { }
           if (worker != null) worker.interrupt();
+          if (reader != null) reader.interrupt();
           close();
           KBClientMod.logger.info("[KB-RPC] stopped");
       }
   
       public static boolean isRunning() { return running; }
   
-      // ------------------------------------------------------------------
-      // socket
-      // ------------------------------------------------------------------
       private static boolean connect() {
           String os = System.getProperty("os.name", "").toLowerCase();
           boolean win = os.contains("win");
-          KBClientMod.logger.info("[KB-RPC] OS=" + os + " (windows=" + win + ")");
   
           if (win) {
               String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
@@ -7636,29 +11267,18 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
                       String path = pfx + i;
                       try {
                           pipe = new RandomAccessFile(path, "rw");
-                          KBClientMod.logger.info("[KB-RPC] connected: " + path);
                           return true;
-                      } catch (IOException e) {
-                          // keep quiet, try next
-                      }
+                      } catch (IOException ignored) {}
                   }
               }
           } else {
-              // Unix domain socket - Java 8 RandomAccessFile cannot open these
-              // on Linux/macOS. This branch is here only so the log makes sense.
               for (int i = 0; i < 10; i++) {
                   String path = "/tmp/discord-ipc-" + i;
                   try {
                       pipe = new RandomAccessFile(path, "rw");
-                      KBClientMod.logger.info("[KB-RPC] connected: " + path);
                       return true;
-                  } catch (IOException e) {
-                      // try next
-                  }
+                  } catch (IOException ignored) {}
               }
-              KBClientMod.logger.warn("[KB-RPC] unix socket open failed. Java 8 on Linux/macOS");
-              KBClientMod.logger.warn("[KB-RPC] cannot connect to Discord IPC. Windows is required");
-              KBClientMod.logger.warn("[KB-RPC] for the dependency-free version. Add JNA later if needed.");
           }
           return false;
       }
@@ -7672,7 +11292,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       private static void sendHandshake() throws IOException {
           String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
-          KBClientMod.logger.info("[KB-RPC] -> handshake " + json);
           sendFrame(OP_HANDSHAKE, json);
       }
   
@@ -7686,15 +11305,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           pipe.write(buf.array());
       }
   
-      /** Read one frame with a soft timeout. Returns null on timeout. */
-      private static String readFrame(int timeoutMs) {
+      private static String readFrame() {
           try {
-              long deadline = System.currentTimeMillis() + timeoutMs;
-              // RandomAccessFile doesn't support timeouts; do a quick availability check.
-              while (pipe.length() < 8) {
-                  if (System.currentTimeMillis() > deadline) return null;
-                  Thread.sleep(20);
-              }
+              if (pipe == null) return null;
               byte[] header = new byte[8];
               pipe.readFully(header);
               ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
@@ -7703,18 +11316,24 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
               byte[] body = new byte[len];
               pipe.readFully(body);
-              String json = new String(body, StandardCharsets.UTF_8);
-              KBClientMod.logger.info("[KB-RPC] <- op=" + op + " " + json);
-              return json;
+              return new String(body, StandardCharsets.UTF_8);
           } catch (Throwable t) {
-              KBClientMod.logger.warn("[KB-RPC] readFrame error: " + t);
               return null;
           }
       }
   
-      // ------------------------------------------------------------------
-      // presence loop
-      // ------------------------------------------------------------------
+      private static void readerLoop() {
+          while (running) {
+              String frame = readFrame();
+              if (frame == null) {
+                  if (running) stop();
+                  break;
+              }
+              // Enabled log frames to catch any silent Discord rejection errors 
+              KBClientMod.logger.info("[KB-RPC] <- " + frame);
+          }
+      }
+  
       private static void loop() {
           while (running) {
               try {
@@ -7723,7 +11342,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               } catch (InterruptedException e) {
                   break;
               } catch (Throwable t) {
-                  KBClientMod.logger.warn("[KB-RPC] loop error: " + t);
                   break;
               }
           }
@@ -7776,11 +11394,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
                   + "}";
   
           try {
-              KBClientMod.logger.info("[KB-RPC] -> activity (pid=" + pid + ")");
+              KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY");
               sendFrame(OP_FRAME, json);
-              readFrame(800);
           } catch (IOException e) {
-              KBClientMod.logger.warn("[KB-RPC] send failed: " + e);
               running = false;
           }
       }

@@ -1,7 +1,6 @@
 import os
 
 def create_fixer():
-    # Target the DiscordRPC file
     target_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "DiscordRPC.java")
     
     java_code = r"""package com.oryvex.kbclient;
@@ -37,7 +36,6 @@ public final class DiscordRPC {
         if (running) return;
         running = true;
         
-        // Push initialization into a background thread to prevent Minecraft from hanging
         worker = new Thread(() -> {
             if (APP_ID.startsWith("1234")) {
                 KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
@@ -64,11 +62,10 @@ public final class DiscordRPC {
                     return;
                 }
                 
-                // FIXED: Discord IPC strictly expects timestamps in SECONDS
-                startTime = System.currentTimeMillis() / 1000L;
+                // FIXED: Raw Discord IPC strictly expects timestamps in MILLISECONDS.
+                startTime = System.currentTimeMillis();
                 updatePresence(true);
                 
-                // Dedicated reader thread to consume Discord responses
                 reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
                 reader.setDaemon(true);
                 reader.start();
@@ -146,7 +143,6 @@ public final class DiscordRPC {
         pipe.write(buf.array());
     }
 
-    // A clean blocking read. Calling .length() on a named pipe breaks IPC logic under Windows.
     private static String readFrame() {
         try {
             if (pipe == null) return null;
@@ -171,8 +167,8 @@ public final class DiscordRPC {
                 if (running) stop();
                 break;
             }
-            // Optional: log frames returned by Discord for debugging
-            // KBClientMod.logger.info("[KB-RPC] <- " + frame);
+            // Enabled log frames to catch any silent Discord rejection errors 
+            KBClientMod.logger.info("[KB-RPC] <- " + frame);
         }
     }
 
