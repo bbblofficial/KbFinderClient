@@ -38,3 +38,22 @@ jobs:
         with:
           name: KBClient-1.8.9
           path: build/libs/*.jar
+
+      - name: Obfuscate with ProGuard
+        run: |
+          curl -sL -o proguard.zip https://github.com/Guardsquare/proguard/releases/download/v7.4.2/proguard-7.4.2.zip
+          unzip -q proguard.zip
+          mkdir -p build/obf
+          for jar in build/libs/*.jar; do
+            name=$(basename "$jar" .jar)
+            proguard-7.4.2/bin/proguard.sh \
+              -injars "$jar" \
+              -outjars "build/obf/${name}-obf.jar" \
+              @proguard-rules.pro
+          done
+
+      - name: Upload Obfuscated Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KBClient-1.8.9-obfuscated
+          path: build/obf/*.jar

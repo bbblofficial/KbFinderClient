@@ -72,8 +72,7 @@ public final class LoadingArt {
         // tip
         String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
         Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
-        Draw.text("KB Client 1.0", 6, h - 12, Theme.DIM, 0.75f, false);
-        Draw.right("Created by muvixo", w - 6, h - 12, Theme.DIM, 0.75f, false);
+        Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
     
     }
 }

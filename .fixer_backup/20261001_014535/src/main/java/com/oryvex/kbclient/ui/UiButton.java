@@ -3,7 +3,7 @@ package com.oryvex.kbclient.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 
-/** Flat rounded button: fade-in entrance only, toggle switch, static gear icon. */
+/** Flat rounded button: hover animation, staggered entrance, toggle switch, animated gear icon. */
 public class UiButton extends GuiButton {
     public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4;
     public static final int ICON_NONE = 0, ICON_GEAR = 1;
@@ -15,7 +15,7 @@ public class UiButton extends GuiButton {
     /** entrance delay in ms */
     public long delay;
 
-    private float hover, knob;
+    private float hover, knob, spin;
     private final long born = System.currentTimeMillis();
     private long last = System.nanoTime();
 
@@ -38,12 +38,12 @@ public class UiButton extends GuiButton {
         last = nowN;
         hover += (((this.hovered && this.enabled) ? 1f : 0f) - hover) * Math.min(1f, dt * 14f);
         knob += ((on ? 1f : 0f) - knob) * Math.min(1f, dt * 16f);
+        spin = (spin + dt * (40f + 380f * hover)) % 360f;
 
-        // fade in only - no slide, no spin
         float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
         if (ap <= 0.01f) return;
 
-        int x = xPosition, y = yPosition, w = width, h = height;
+        int x = xPosition, y = yPosition + (int) ((1f - ap) * 8f), w = width, h = height;
         int fill, border, text;
         switch (style) {
             case PRIMARY:
@@ -83,7 +83,7 @@ public class UiButton extends GuiButton {
             int tw = Draw.width(displayString, 1f);
             float startX = x + (w - (tw + 18)) / 2f;
             float cy = y + h / 2f;
-            Draw.gear(startX + 6f, cy, 5.5f, 0f, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
+            Draw.gear(startX + 6f, cy, 5.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
             Draw.text(displayString, startX + 18f, y + (h - 8) / 2f, tc, 1f, true);
         } else {
             Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);

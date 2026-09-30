@@ -6,7 +6,6 @@ import com.oryvex.kbclient.kb.KBSample;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
 
 /** In-game overlay: status card (fades in/out) + hit toasts. */
 public final class Hud {
@@ -30,10 +29,6 @@ public final class Hud {
     }
 
     public static void render(Minecraft mc, KBTracker t) {
-        ScaledResolution res = new ScaledResolution(mc);
-        Draw.blend();
-        Draw.right("Created by muvixo", res.getScaledWidth() - 4, res.getScaledHeight() - 10, Theme.DIM, 0.7f, false);
-
         long ns = System.nanoTime();
         float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
         lastNs = ns;
@@ -75,13 +70,13 @@ public final class Hud {
         for (int i = toasts.size() - 1; i >= 0; i--) {
             Toast to = toasts.get(i);
             long age = now - to.born;
-            float in = age < 160 ? age / 160f : 1f; // fade in only - no slide
-            float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * in * a;
+            float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * a;
+            float slide = age < 160 ? (1f - age / 160f) * 10f : 0f;
             int tw = Draw.width(to.text, 0.85f) + 12;
             Draw.blend();
-            Draw.roundRect(x, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
+            Draw.roundRect(x - (int) slide, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
             int al = (int) (255 * fade);
-            if (al > 4) Draw.text(to.text, x + 6, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+            if (al > 4) Draw.text(to.text, x + 6 - slide, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
             ty += 14;
         }
         Draw.blend();

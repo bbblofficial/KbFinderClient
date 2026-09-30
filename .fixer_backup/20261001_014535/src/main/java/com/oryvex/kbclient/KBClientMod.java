@@ -17,14 +17,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiChat;
-import net.minecraft.client.gui.GuiConnecting;
-import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiDownloadTerrain;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
@@ -49,9 +46,8 @@ import org.lwjgl.input.Keyboard;
 public class KBClientMod {
     public static final String MODID = "kbclient";
     public static final String NAME = "KB Client";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "3.0.0";
     private static final String HOOK = "kb_client_handler";
-    private static final int RECONNECT_BTN_ID = 9001;
 
     private static KBClientMod instance;
     public static Logger logger;
@@ -62,7 +58,6 @@ public class KBClientMod {
     private boolean pendingOpen;
     private Object lastWorld;
     private boolean loadingInstalled;
-    private ServerData lastServer;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
@@ -127,34 +122,14 @@ public class KBClientMod {
 
     @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
-        if (e.gui instanceof GuiIngameMenu) {
-            for (int i = 0; i < e.buttonList.size(); i++) {
-                GuiButton b = e.buttonList.get(i);
-                if (b.id == 0) {
-                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
-                    u.icon = UiButton.ICON_GEAR;
-                    e.buttonList.set(i, u);
-                }
+        if (!(e.gui instanceof GuiIngameMenu)) return;
+        for (int i = 0; i < e.buttonList.size(); i++) {
+            GuiButton b = e.buttonList.get(i);
+            if (b.id == 0) {
+                UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                u.icon = UiButton.ICON_GEAR;
+                e.buttonList.set(i, u);
             }
-            return;
-        }
-
-        if (e.gui instanceof GuiDisconnected) {
-            int bw = 200, bh = 20;
-            UiButton reconnect = new UiButton(RECONNECT_BTN_ID, e.gui.width / 2 - bw / 2, e.gui.height / 4 + 108, bw, bh, "Reconnect");
-            reconnect.style(UiButton.PRIMARY);
-            reconnect.enabled = lastServer != null;
-            e.buttonList.add(reconnect);
-        }
-    }
-
-    /** Handles our injected "Reconnect" button on the Disconnected screen. */
-    @SubscribeEvent
-    public void onAction(GuiScreenEvent.ActionPerformedEvent.Pre e) {
-        if (!(e.gui instanceof GuiDisconnected) || e.button == null || e.button.id != RECONNECT_BTN_ID) return;
-        e.setCanceled(true);
-        if (lastServer != null) {
-            Minecraft.getMinecraft().displayGuiScreen(new GuiConnecting(e.gui, Minecraft.getMinecraft(), lastServer));
         }
     }
 
@@ -203,7 +178,6 @@ public class KBClientMod {
 
             String name = mc.isSingleplayer() ? "Singleplayer"
                     : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
-            if (!mc.isSingleplayer() && mc.getCurrentServerData() != null) lastServer = mc.getCurrentServerData();
             tracker.onConnect(name);
             logger.info("[KBClient] velocity hook installed on " + name);
         } catch (Throwable t) {

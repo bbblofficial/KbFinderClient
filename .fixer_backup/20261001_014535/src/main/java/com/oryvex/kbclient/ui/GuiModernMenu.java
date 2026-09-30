@@ -94,9 +94,8 @@ public class GuiModernMenu extends FadeScreen {
             Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
         }
 
-        Draw.text("KB Client 1.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+        Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
         Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
-        Draw.right("Created by muvixo", this.width - 6, this.height - 22, Theme.DIM, 0.7f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();

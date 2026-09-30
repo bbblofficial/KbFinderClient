@@ -33,7 +33,7 @@ public class KBTracker {
     private KBProfile reference;
     private String lastImport = "";
     private KBSample last;
-    private boolean recording = false;
+    private boolean recording = true;
     private int goal = 0;
     private int sessionHits = 0;
     private int nextId = 1;
@@ -81,7 +81,7 @@ public class KBTracker {
         reset();
         sprintBits.clear();
         server = name;
-        recording = false; // fixed: capture must be started explicitly with /findkb (or /kb start), it must not run on its own
+        recording = true;
         goal = 0;
     }
 
