@@ -1,48 +1,17 @@
 import os
 import re
 
-def fix_kbclient():
-    # 1. Generate a safe ProGuard configuration for Forge
-    proguard_rules = """-dontshrink
--dontoptimize
--keepattributes *Annotation*,Signature,Exceptions,InnerClasses,EnclosingMethod
+def patch_terrain_loading():
+    # 1. Create GuiFakeWorldLoad.java
+    fake_world_load_code = """package com.oryvex.kbclient.ui;
 
-# Prevent build failures from unreferenced Minecraft/Forge classes
--dontwarn net.minecraft.**
--dontwarn net.minecraftforge.**
--dontwarn org.apache.**
--dontwarn com.google.**
--dontwarn io.netty.**
--dontwarn org.lwjgl.**
--dontwarn club.minnced.**
-
-# Keep Forge mod entry points and event handlers intact for reflection
--keep @net.minecraftforge.fml.common.Mod class * { *; }
--keepclassmembers class * {
-    @net.minecraftforge.fml.common.eventhandler.SubscribeEvent *;
-    @net.minecraftforge.fml.common.Mod$EventHandler *;
-}
-
-# Protect the mod's core functionality and UI from being mangled
--keep class com.oryvex.kbclient.** { *; }
-"""
-    with open("proguard-rules.pro", "w", encoding="utf-8") as f:
-        f.write(proguard_rules)
-    print("Generated safe proguard-rules.pro")
-
-    # 2. Create the Fake Loading Screen
-    fake_loading_code = """package com.oryvex.kbclient.ui;
-
-import com.oryvex.kbclient.KBTracker;
 import net.minecraft.client.gui.GuiScreen;
 import java.io.IOException;
 
-public class GuiFakeLoading extends GuiScreen {
-    private final KBTracker tracker;
+public class GuiFakeWorldLoad extends GuiScreen {
     private final long start;
 
-    public GuiFakeLoading(KBTracker tracker) {
-        this.tracker = tracker;
+    public GuiFakeWorldLoad() {
         this.start = System.currentTimeMillis();
     }
 
@@ -51,10 +20,10 @@ public class GuiFakeLoading extends GuiScreen {
         long elapsed = System.currentTimeMillis() - start;
         int pct = (int) Math.min(100, (elapsed * 100) / 3000);
         
-        LoadingArt.draw(this.width, this.height, "Loading KB Client", "Initializing modules...", pct);
+        LoadingArt.draw(this.width, this.height, "Joining world", "Initializing client modules...", pct);
         
         if (elapsed >= 3000) {
-            this.mc.displayGuiScreen(new GuiModernMenu(tracker));
+            this.mc.displayGuiScreen(null);
         }
     }
     
@@ -62,46 +31,50 @@ public class GuiFakeLoading extends GuiScreen {
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
         // Block ESC so they can't skip the fake loading sequence
     }
+    
+    @Override
+    public boolean doesGuiPauseGame() {
+        // Must be false so the server doesn't time out and chunks load in the background
+        return false;
+    }
 }
 """
     os.makedirs("src/main/java/com/oryvex/kbclient/ui", exist_ok=True)
-    with open("src/main/java/com/oryvex/kbclient/ui/GuiFakeLoading.java", "w", encoding="utf-8") as f:
-        f.write(fake_loading_code)
-    print("Created GuiFakeLoading.java")
+    with open("src/main/java/com/oryvex/kbclient/ui/GuiFakeWorldLoad.java", "w", encoding="utf-8") as f:
+        f.write(fake_world_load_code)
+    print("Created GuiFakeWorldLoad.java")
 
-    # 3. Patch KBClientMod.java to show the fake loading screen first
+    # 2. Patch KBClientMod.java to intercept the world entry
     kbclient_path = "src/main/java/com/oryvex/kbclient/KBClientMod.java"
     if os.path.exists(kbclient_path):
         with open(kbclient_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Add state tracker so it only loads once per session
-        if "private boolean hasFakeLoaded = false;" not in content:
+        if "GuiFakeWorldLoad" not in content:
+            # Hook the moment the world loads in onTick to show the fake screen
             content = re.sub(
-                r'(private boolean loadingInstalled;)', 
-                r'\1\n    private boolean hasFakeLoaded = false;', 
+                r'if\s*\(\s*mc\.theWorld\s*!=\s*lastWorld\s*\)\s*\{\s*lastWorld\s*=\s*mc\.theWorld;\s*if\s*\(\s*mc\.theWorld\s*!=\s*null\s*&&\s*Fade\.ms\(\)\s*>\s*0\s*\)\s*Fade\.world\.trigger\(1f,\s*Fade\.ms\(\)\s*\*\s*3L\);\s*\}',
+                r'if (mc.theWorld != lastWorld) {\n            lastWorld = mc.theWorld;\n            if (mc.theWorld != null) {\n                if (Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);\n                mc.displayGuiScreen(new com.oryvex.kbclient.ui.GuiFakeWorldLoad());\n            }\n        }',
                 content
             )
+            
+            # Prevent the Fade overlay from stacking darkly over this specific GUI
+            content = content.replace(
+                "!(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading)) {",
+                "!(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {"
+            )
+            content = content.replace(
+                "!(e.gui instanceof GuiChat)) {",
+                "!(e.gui instanceof GuiChat) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {"
+            )
 
-        # Inject fake loading redirect
-        content = re.sub(
-            r'if \(e\.gui instanceof GuiMainMenu\) e\.gui = new GuiModernMenu\(tracker\);',
-            r'if (e.gui instanceof GuiMainMenu) {\n            if (!hasFakeLoaded) {\n                e.gui = new com.oryvex.kbclient.ui.GuiFakeLoading(tracker);\n                hasFakeLoaded = true;\n            } else {\n                e.gui = new GuiModernMenu(tracker);\n            }\n        }',
-            content
-        )
-
-        # Prevent the black fade overlay from applying over the fake loading screen
-        content = re.sub(
-            r'\} else if \(!\(e\.gui instanceof FadeScreen\) && !\(e\.gui instanceof GuiChat\)\) \{',
-            r'} else if (!(e.gui instanceof FadeScreen) && (!(e.gui instanceof GuiChat)) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading)) {',
-            content
-        )
-
-        with open(kbclient_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        print("Successfully patched KBClientMod.java")
+            with open(kbclient_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            print("Successfully patched KBClientMod.java")
+        else:
+            print("KBClientMod.java is already patched.")
     else:
         print(f"Error: Could not find {kbclient_path}")
 
 if __name__ == "__main__":
-    fix_kbclient()
+    patch_terrain_loading()

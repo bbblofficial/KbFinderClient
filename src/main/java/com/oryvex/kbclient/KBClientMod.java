@@ -118,7 +118,7 @@ public class KBClientMod {
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
             }
-        } else if (!(e.gui instanceof FadeScreen) && (!(e.gui instanceof GuiChat)) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading)) {
+        } else if (!(e.gui instanceof FadeScreen) && (!(e.gui instanceof GuiChat)) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {
             Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
         }
     }
@@ -184,7 +184,10 @@ public class KBClientMod {
 
         if (mc.theWorld != lastWorld) {
             lastWorld = mc.theWorld;
-            if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+            if (mc.theWorld != null) {
+                if (Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+                mc.displayGuiScreen(new com.oryvex.kbclient.ui.GuiFakeWorldLoad());
+            }
         }
 
         while (openKey.isPressed()) {
