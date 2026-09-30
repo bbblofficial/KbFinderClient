@@ -17,6 +17,9 @@ public final class DiscordRPC {
     private static final int OP_FRAME     = 1;
     private static final int OP_CLOSE     = 2;
 
+    /** Activity type sent to Discord. 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing. */
+    private static final int ACTIVITY_TYPE_PLAYING = 0;
+
     private static RandomAccessFile pipe;
     private static Thread worker;
     private static Thread reader;
@@ -30,7 +33,7 @@ public final class DiscordRPC {
     public static synchronized void start() {
         if (running) return;
         running = true;
-        
+
         worker = new Thread(() -> {
             if (APP_ID.startsWith("1234")) {
                 KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
@@ -44,27 +47,27 @@ public final class DiscordRPC {
                 running = false;
                 return;
             }
-            
+
             try {
                 sendHandshake();
                 String reply = readFrame();
                 KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
-                
+
                 if (reply == null || !reply.contains("\"READY\"")) {
                     KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
                     close();
                     running = false;
                     return;
                 }
-                
-                // FIXED: Raw Discord IPC strictly expects timestamps in MILLISECONDS.
+
+                // Raw Discord IPC expects timestamps in MILLISECONDS.
                 startTime = System.currentTimeMillis();
                 updatePresence(true);
-                
+
                 reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
                 reader.setDaemon(true);
                 reader.start();
-                
+
                 loop();
             } catch (Exception e) {
                 KBClientMod.logger.warn("[KB-RPC] exception: " + e);
@@ -72,7 +75,7 @@ public final class DiscordRPC {
                 running = false;
             }
         }, "KBClient-DiscordRPC-Worker");
-        
+
         worker.setDaemon(true);
         worker.start();
     }
@@ -162,7 +165,6 @@ public final class DiscordRPC {
                 if (running) stop();
                 break;
             }
-            // Enabled log frames to catch any silent Discord rejection errors 
             KBClientMod.logger.info("[KB-RPC] <- " + frame);
         }
     }
@@ -212,6 +214,7 @@ public final class DiscordRPC {
                 + "\"args\":{"
                 +   "\"pid\":" + pid + ","
                 +   "\"activity\":{"
+                +     "\"type\":" + ACTIVITY_TYPE_PLAYING + ","   // <-- "Playing" verb
                 +     "\"details\":" + quote(details) + ","
                 +     "\"state\":" + quote(state) + ","
                 +     "\"timestamps\":{\"start\":" + startTime + "},"
@@ -227,7 +230,7 @@ public final class DiscordRPC {
                 + "}";
 
         try {
-            KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY");
+            KBClientMod.logger.info("[KB-RPC] -> SET_ACTIVITY (type=" + ACTIVITY_TYPE_PLAYING + ")");
             sendFrame(OP_FRAME, json);
         } catch (IOException e) {
             running = false;
