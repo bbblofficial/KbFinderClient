@@ -62,6 +62,7 @@ public class KBClientMod {
     private boolean pendingOpen;
     private Object lastWorld;
     private boolean loadingInstalled;
+    private boolean hasFakeLoaded = false;
     private ServerData lastServer;
 
     public static KBClientMod getInstance() { return instance; }
@@ -104,13 +105,20 @@ public class KBClientMod {
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+        if (e.gui instanceof GuiMainMenu) {
+            if (!hasFakeLoaded) {
+                e.gui = new com.oryvex.kbclient.ui.GuiFakeLoading(tracker);
+                hasFakeLoaded = true;
+            } else {
+                e.gui = new GuiModernMenu(tracker);
+            }
+        }
 
         if (e.gui == null) {
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
             }
-        } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+        } else if (!(e.gui instanceof FadeScreen) && (!(e.gui instanceof GuiChat)) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading)) {
             Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
         }
     }

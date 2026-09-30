@@ -3990,17 +3990,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } catch (Throwable ignored) { }
       }
   }
-│   └── 20261001_012001_adder
-│       ├── adder_manifest.txt
+│   ├── 20261001_012001_adder
+│   │   ├── adder_manifest.txt
   M src/main/java/com/oryvex/kbclient/ui/GuiKbOptions.java
   M src/main/java/com/oryvex/kbclient/DiscordRPC.java
-│       └── src
-│           └── main
-│               └── java
-│                   └── com
-│                       └── oryvex
-│                           └── kbclient
-│                               ├── DiscordRPC.java
+│   │   └── src
+│   │       └── main
+│   │           └── java
+│   │               └── com
+│   │                   └── oryvex
+│   │                       └── kbclient
+│   │                           ├── DiscordRPC.java
   package com.oryvex.kbclient;
   
   import com.oryvex.kbclient.ui.GuiAnalyzer;
@@ -4312,8 +4312,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } catch (Throwable ignored) { }
       }
   }
-│                               └── ui
-│                                   └── GuiKbOptions.java
+│   │                           └── ui
+│   │                               └── GuiKbOptions.java
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
@@ -4400,6 +4400,925 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
           super.drawScreen(mouseX, mouseY, partialTicks);
           drawFade();
+      }
+  }
+│   └── 20261001_014535
+│       ├── .github
+│       │   └── workflows
+│       │       └── build.yml
+  name: Build KB Client 1.8.9
+  
+  on:
+    push:
+      branches: [ "**" ]
+    pull_request:
+      branches: [ "**" ]
+    workflow_dispatch:
+  
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+  
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v5
+  
+        - name: Setup Java 8
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin'
+            java-version: '8'
+  
+        - name: Install & Configure Gradle 4.10.3
+          run: |
+            wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+            unzip -q gradle-4.10.3-bin.zip
+            export PATH=$PWD/gradle-4.10.3/bin:$PATH
+            gradle wrapper --gradle-version 4.10.3
+            chmod +x gradlew
+  
+        - name: Build Mod with Gradle
+          run: |
+            ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+  
+        - name: Upload Mod Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: KBClient-1.8.9
+            path: build/libs/*.jar
+│       ├── build.gradle
+  buildscript {
+      repositories {
+          mavenCentral()
+          maven {
+              name = "forge"
+              url = "https://maven.minecraftforge.net/"
+          }
+      }
+      dependencies {
+          classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+      }
+  }
+  
+  apply plugin: "net.minecraftforge.gradle.forge"
+  
+  version = "3.0.0"
+  group = "com.oryvex.kbclient"
+  archivesBaseName = "KBClient"
+  
+  sourceCompatibility = targetCompatibility = "1.8"
+  compileJava.options.encoding = "UTF-8"
+  
+  minecraft {
+      version = "1.8.9-11.15.1.2318-1.8.9"
+      runDir = "run"
+      mappings = "stable_22"
+      makeObfSourceJar = false
+  }
+  
+  repositories {
+      mavenCentral()
+      maven {
+          name = "mojang"
+          url = "https://libraries.minecraft.net/"
+      }
+      maven {
+          name = "forge"
+          url = "https://maven.minecraftforge.net/"
+      }
+  }
+  
+  dependencies {}
+  
+  processResources {
+      inputs.property "version", project.version
+      inputs.property "mcversion", project.minecraft.version
+  
+      from(sourceSets.main.resources.srcDirs) {
+          include "mcmod.info"
+          expand "version": project.version, "mcversion": project.minecraft.version
+      }
+  
+      from(sourceSets.main.resources.srcDirs) {
+          exclude "mcmod.info"
+      }
+  }
+  
+  jar {
+      manifest {
+          attributes([
+              "FMLCorePluginContainsFMLMod": "true",
+              "ForceLoadAsMod": "true"
+          ])
+      }
+  }
+│       ├── fixer_manifest.txt
+  M src/main/java/com/oryvex/kbclient/KBTracker.java
+  M src/main/java/com/oryvex/kbclient/KBClientMod.java
+  M build.gradle
+  M src/main/java/com/oryvex/kbclient/ui/GuiModernMenu.java
+  M src/main/java/com/oryvex/kbclient/ui/LoadingArt.java
+  M src/main/java/com/oryvex/kbclient/ui/UiButton.java
+  M src/main/java/com/oryvex/kbclient/ui/Hud.java
+  M .github/workflows/build.yml
+  C proguard-rules.pro
+│       └── src
+│           └── main
+│               └── java
+│                   └── com
+│                       └── oryvex
+│                           └── kbclient
+│                               ├── KBClientMod.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.ui.Fade;
+  import com.oryvex.kbclient.ui.FadeScreen;
+  import com.oryvex.kbclient.ui.GuiAnalyzer;
+  import com.oryvex.kbclient.ui.GuiModernMenu;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.KBLoading;
+  import com.oryvex.kbclient.ui.LoadingArt;
+  import com.oryvex.kbclient.ui.Settings;
+  import com.oryvex.kbclient.ui.UiButton;
+  import io.netty.channel.Channel;
+  import io.netty.channel.ChannelDuplexHandler;
+  import io.netty.channel.ChannelHandlerContext;
+  import io.netty.channel.ChannelPipeline;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiChat;
+  import net.minecraft.client.gui.GuiDownloadTerrain;
+  import net.minecraft.client.gui.GuiIngameMenu;
+  import net.minecraft.client.gui.GuiMainMenu;
+  import net.minecraft.client.gui.GuiScreen;
+  import net.minecraft.client.gui.inventory.GuiContainer;
+  import net.minecraft.client.settings.KeyBinding;
+  import net.minecraft.network.NetworkManager;
+  import net.minecraft.network.play.server.S12PacketEntityVelocity;
+  import net.minecraftforge.client.ClientCommandHandler;
+  import net.minecraftforge.client.event.GuiOpenEvent;
+  import net.minecraftforge.client.event.GuiScreenEvent;
+  import net.minecraftforge.client.event.RenderGameOverlayEvent;
+  import net.minecraftforge.common.MinecraftForge;
+  import net.minecraftforge.fml.client.registry.ClientRegistry;
+  import net.minecraftforge.fml.common.Mod;
+  import net.minecraftforge.fml.common.Mod.EventHandler;
+  import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+  import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+  import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+  import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+  import net.minecraftforge.fml.common.gameevent.TickEvent;
+  import org.apache.logging.log4j.Logger;
+  import org.lwjgl.input.Keyboard;
+  
+  @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+       acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+  public class KBClientMod {
+      public static final String MODID = "kbclient";
+      public static final String NAME = "KB Client";
+      public static final String VERSION = "3.0.0";
+      private static final String HOOK = "kb_client_handler";
+  
+      private static KBClientMod instance;
+      public static Logger logger;
+  
+      private final KBTracker tracker = new KBTracker();
+      private KeyBinding openKey;
+      private Channel hookedChannel;
+      private boolean pendingOpen;
+      private Object lastWorld;
+      private boolean loadingInstalled;
+  
+      public static KBClientMod getInstance() { return instance; }
+      public KBTracker getTracker() { return tracker; }
+  
+      public void requestOpenAnalyzer() { pendingOpen = true; }
+  
+      @EventHandler
+      public void preInit(FMLPreInitializationEvent e) {
+          logger = e.getModLog();
+          instance = this;
+          Settings.load();
+      }
+  
+      @EventHandler
+      public void init(FMLInitializationEvent e) {
+          com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+          net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+          net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+          MinecraftForge.EVENT_BUS.register(this);
+          ClientCommandHandler.instance.registerCommand(new KBCommand());
+          openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+          ClientRegistry.registerKeyBinding(openKey);
+          installLoading();
+          DiscordRPC.start();
+      }
+  
+      private void installLoading() {
+          if (loadingInstalled) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          try {
+              ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+              loadingInstalled = true;
+              logger.info("[KBClient] custom loading screen installed");
+          } catch (Throwable t) {
+              logger.error("[KBClient] could not install loading screen: " + t);
+          }
+      }
+  
+      @SubscribeEvent
+      public void onGuiOpen(GuiOpenEvent e) {
+          Minecraft mc = Minecraft.getMinecraft();
+          if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+  
+          if (e.gui == null) {
+              if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                  Fade.world.trigger(0.45f);
+              }
+          } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+              Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+          }
+      }
+  
+      @SubscribeEvent
+      public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+          GuiScreen g = e.gui;
+          if (g == null || g instanceof FadeScreen) return;
+          if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+              LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+          }
+          Fade.screen.draw(g.width, g.height);
+      }
+  
+      @SubscribeEvent
+      public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+          if (!(e.gui instanceof GuiIngameMenu)) return;
+          for (int i = 0; i < e.buttonList.size(); i++) {
+              GuiButton b = e.buttonList.get(i);
+              if (b.id == 0) {
+                  UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                  u.icon = UiButton.ICON_GEAR;
+                  e.buttonList.set(i, u);
+              }
+          }
+      }
+  
+      @SubscribeEvent
+      public void onOverlay(RenderGameOverlayEvent.Post e) {
+          if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.thePlayer == null) return;
+          if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+          Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+      }
+  
+      @SubscribeEvent
+      public void onTick(TickEvent.ClientTickEvent e) {
+          if (e.phase != TickEvent.Phase.END) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          tracker.tick();
+          DiscordRPC.tick();
+  
+          if (mc.theWorld != lastWorld) {
+              lastWorld = mc.theWorld;
+              if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+          }
+  
+          while (openKey.isPressed()) {
+              if (mc.currentScreen == null) pendingOpen = true;
+          }
+          if (pendingOpen && mc.currentScreen == null) {
+              pendingOpen = false;
+              mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+          }
+  
+          if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+              NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+              if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+          }
+      }
+  
+      private void inject(Minecraft mc, Channel ch) {
+          hookedChannel = ch;
+          try {
+              ChannelPipeline pl = ch.pipeline();
+              if (pl.get(HOOK) != null) pl.remove(HOOK);
+              if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+              else pl.addLast(HOOK, new VelocityHook());
+  
+              String name = mc.isSingleplayer() ? "Singleplayer"
+                      : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+              tracker.onConnect(name);
+              logger.info("[KBClient] velocity hook installed on " + name);
+          } catch (Throwable t) {
+              logger.error("[KBClient] hook failed: " + t);
+          }
+      }
+  
+      private static class VelocityHook extends ChannelDuplexHandler {
+          @Override
+          public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+              if (msg instanceof S12PacketEntityVelocity) {
+                  S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                  final int id = v.getEntityID();
+                  final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                  final Minecraft mc = Minecraft.getMinecraft();
+                  mc.addScheduledTask(new Runnable() {
+                      @Override
+                      public void run() {
+                          EntityPlayerSP p = mc.thePlayer;
+                          if (p != null && p.getEntityId() == id) {
+                              KBClientMod.getInstance().getTracker().capture(x, y, z);
+                          }
+                      }
+                  });
+              }
+              super.channelRead(ctx, msg);
+          }
+      }
+  }
+│                               ├── KBTracker.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.kb.KBEstimator;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBSample;
+  import com.oryvex.kbclient.kb.KBYaml;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.Theme;
+  import java.io.File;
+  import java.io.IOException;
+  import java.nio.charset.StandardCharsets;
+  import java.nio.file.Files;
+  import java.text.SimpleDateFormat;
+  import java.util.ArrayList;
+  import java.util.Date;
+  import java.util.HashMap;
+  import java.util.List;
+  import java.util.Locale;
+  import java.util.Map;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.enchantment.EnchantmentHelper;
+  import net.minecraft.entity.player.EntityPlayer;
+  import net.minecraft.util.ChatComponentText;
+  
+  /** Collects knockback samples (main thread only), keeps a live profile and an imported reference. */
+  public class KBTracker {
+      public static final int MAX_SAMPLES = 120;
+  
+      private final List<KBSample> samples = new ArrayList<KBSample>();
+      private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
+      private KBProfile profile = new KBProfile();
+      private KBProfile reference;
+      private String lastImport = "";
+      private KBSample last;
+      private boolean recording = true;
+      private int goal = 0;
+      private int sessionHits = 0;
+      private int nextId = 1;
+      private long tick = 0;
+      private String server = "-";
+  
+      public KBTracker() {
+          profile.notes.add("Waiting for knockback - get hit by another player.");
+      }
+  
+      /** per client tick: remember the last 3 ticks of every player's sprint flag */
+      public synchronized void tick() {
+          tick++;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.theWorld == null) return;
+          for (EntityPlayer e : mc.theWorld.playerEntities) {
+              int id = e.getEntityId();
+              int s = e.isSprinting() ? 1 : 0;
+              Integer b = sprintBits.get(id);
+              int nb = (b == null) ? (s == 1 ? 0x7 : 0) : (((b << 1) | s) & 0x7);
+              sprintBits.put(id, nb);
+          }
+      }
+  
+      public synchronized KBProfile getProfile() { return profile; }
+      public synchronized KBProfile getReference() { return reference; }
+      public synchronized String getLastImport() { return lastImport; }
+      public synchronized KBSample getLast() { return last; }
+      public synchronized List<KBSample> snapshot() { return new ArrayList<KBSample>(samples); }
+      public synchronized boolean isRecording() { return recording; }
+      public synchronized void setRecording(boolean r) { recording = r; }
+      public synchronized int getGoal() { return goal; }
+      public synchronized int getSessionHits() { return sessionHits; }
+      public synchronized String getServer() { return server; }
+  
+      public synchronized void reset() {
+          samples.clear();
+          last = null;
+          sessionHits = 0;
+          profile = new KBProfile();
+          profile.notes.add("Waiting for knockback - get hit by another player.");
+      }
+  
+      public synchronized void onConnect(String name) {
+          reset();
+          sprintBits.clear();
+          server = name;
+          recording = true;
+          goal = 0;
+      }
+  
+      public synchronized void startGoal(int hits) {
+          reset();
+          goal = Math.max(1, hits);
+          recording = true;
+          chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
+      }
+  
+      // ---- YAML reference ------------------------------------------------------
+      public synchronized KBYaml.Result importYaml(String text) {
+          KBYaml.Result r = KBYaml.parse(text);
+          if (r.parsed > 0) {
+              reference = r.profile;
+              lastImport = r.summary();
+              chat(Theme.S + "a[KB] Imported: " + Theme.S + "f" + r.summary());
+              if (!r.unknown.isEmpty()) chat(Theme.S + "7Ignored unknown keys: " + r.unknown);
+          } else {
+              lastImport = "nothing imported";
+              chat(Theme.S + "c[KB] No knockback keys found. Copy a YAML config first.");
+          }
+          return r;
+      }
+  
+      public synchronized void clearReference() {
+          reference = null;
+          lastImport = "";
+      }
+  
+      /** Must be called on the client main thread, BEFORE the packet is applied. */
+      public synchronized void capture(int rawX, int rawY, int rawZ) {
+          Minecraft mc = Minecraft.getMinecraft();
+          EntityPlayerSP me = mc.thePlayer;
+          if (!recording || me == null || mc.theWorld == null) return;
+  
+          double vx = rawX / 8000.0, vy = rawY / 8000.0, vz = rawZ / 8000.0;
+          double h = Math.sqrt(vx * vx + vz * vz);
+  
+          EntityPlayer attacker = null;
+          double bestScore = -1.0e9;
+          for (EntityPlayer e : mc.theWorld.playerEntities) {
+              if (e == me || e.isDead) continue;
+              double dist = me.getDistanceToEntity(e);
+              if (dist > 7.0) continue;
+              double dx = me.posX - e.posX, dz = me.posZ - e.posZ;
+              double dh = Math.sqrt(dx * dx + dz * dz);
+              double score = -dist * 0.05;
+              if (h > 0.05 && dh > 0.001) score += (vx * dx + vz * dz) / (h * dh);
+              if (score > bestScore) { bestScore = score; attacker = e; }
+          }
+  
+          boolean has = attacker != null;
+          double ux = 0, uz = 0, dist = 0;
+          int state = KBSample.WALK;
+          int kb = 0;
+          String name = "?";
+          if (has) {
+              double dx = me.posX - attacker.posX, dz = me.posZ - attacker.posZ;
+              double dh = Math.sqrt(dx * dx + dz * dz);
+              if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
+              else if (h > 0.001) { ux = vx / h; uz = vz / h; }
+              Integer bits = sprintBits.get(attacker.getEntityId());
+              if (bits == null) state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
+              else if (bits == 0x7) state = KBSample.SPRINT;
+              else if (bits == 0) state = KBSample.WALK;
+              else state = KBSample.AMBIGUOUS;
+              try { kb = EnchantmentHelper.getKnockbackModifier(attacker); } catch (Throwable ignored) { }
+              name = attacker.getName();
+              dist = me.getDistanceToEntity(attacker);
+          }
+  
+          KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
+                  me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
+                  has, state, kb, ux, uz, dist, name);
+  
+          samples.add(s);
+          while (samples.size() > MAX_SAMPLES) samples.remove(0);
+          last = s;
+          profile = KBEstimator.calculate(samples);
+  
+          String tag = !has ? "no attacker" : (state == KBSample.AMBIGUOUS ? "W-TAP?" : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
+          int col = !has ? Theme.DIM : (state == KBSample.AMBIGUOUS ? Theme.DIM : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
+          Hud.push("Hit #" + s.id + "  H " + KBProfile.f(h, 4) + "  V " + KBProfile.f(vy, 4) + "  " + tag, col);
+  
+          if (goal > 0) {
+              sessionHits++;
+              if (sessionHits >= goal) {
+                  recording = false;
+                  goal = 0;
+                  printResults();
+              }
+          }
+      }
+  
+      public void chat(String msg) {
+          EntityPlayerSP p = Minecraft.getMinecraft().thePlayer;
+          if (p != null) p.addChatMessage(new ChatComponentText(msg));
+      }
+  
+      public void printResults() {
+          KBProfile p = profile;
+          String b = Theme.S + "b", g = Theme.S + "7", w = Theme.S + "f";
+          chat(b + "=========== KB PROFILE ===========");
+          chat(g + "HORIZONTAL: " + w + p.valueText(KBProfile.I_H) + g + "   EXTRA-H: " + w + p.valueText(KBProfile.I_EH));
+          chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V) + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
+          chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F) + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
+          chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue + g + " (override " + p.damageTicksOverride + ")");
+          chat(Theme.S + "aOpen the analyzer with [Right Shift] or /kb");
+      }
+  
+      public synchronized File export() throws IOException {
+          File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+          if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
+          String ts = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
+          File yml = new File(dir, "knockback-" + ts + ".yml");
+          Files.write(yml.toPath(), (profile.toYaml() + "\n").getBytes(StandardCharsets.UTF_8));
+  
+          StringBuilder sb = new StringBuilder();
+          sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,attacker,sprintState,attackerKb,distance,ux,uz\n");
+          for (KBSample k : samples) {
+              sb.append(k.id).append(',').append(k.tick).append(',')
+                .append(KBProfile.f(k.vx, 5)).append(',').append(KBProfile.f(k.vy, 5)).append(',')
+                .append(KBProfile.f(k.vz, 5)).append(',').append(KBProfile.f(k.h, 5)).append(',')
+                .append(KBProfile.f(k.px, 5)).append(',').append(KBProfile.f(k.py, 5)).append(',')
+                .append(KBProfile.f(k.pz, 5)).append(',').append(KBProfile.f(k.pH, 5)).append(',')
+                .append(k.victimSprint).append(',').append(k.victimGround).append(',')
+                .append(k.attacker.replace(',', '_')).append(',').append(k.sprintState).append(',')
+                .append(k.attackerKb).append(',').append(KBProfile.f(k.distance, 3)).append(',')
+                .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append('\n');
+          }
+          File csv = new File(dir, "knockback-" + ts + "-samples.csv");
+          Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
+          return yml;
+      }
+  }
+│                               └── ui
+│                                   ├── GuiModernMenu.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import java.awt.Color;
+  import java.io.IOException;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiMultiplayer;
+  import net.minecraft.client.gui.GuiSelectWorld;
+  
+  public class GuiModernMenu extends FadeScreen {
+      private final KBTracker tracker;
+      private int panelX, panelY, panelW, panelH, titleY;
+  
+      public GuiModernMenu(KBTracker tracker) {
+          this.tracker = tracker;
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+          int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
+          int rows = 4;
+          int total = rows * bh + (rows - 1) * gap;
+          int top = this.height / 2 - total / 2 + 26;
+          panelW = bw + 28;
+          panelH = total + 28;
+          panelX = cx - panelW / 2;
+          panelY = top - 14;
+          titleY = Math.max(8, panelY - 72);
+  
+          int half = (bw - gap) / 2;
+          this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
+          this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
+          this.buttonList.add(new UiButton(3, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(260));
+          this.buttonList.add(new UiButton(4, cx - bw / 2, top + 3 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(330));
+          this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 3 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(400));
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          switch (b.id) {
+              case 1: closeTo(new GuiSelectWorld(this)); break;
+              case 2: closeTo(new GuiMultiplayer(this)); break;
+              case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+              case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+              case 5:
+                  closeThen(new Runnable() {
+                      @Override
+                      public void run() { mc.shutdown(); }
+                  });
+                  break;
+              default: break;
+          }
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          // main menu cannot be closed with ESC
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
+          if (Settings.particles) {
+              Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
+              Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+          }
+  
+          int cx = this.width / 2;
+          float t = (System.currentTimeMillis() % 100000L) / 1000f;
+  
+          String title = "ORYVEX";
+          float sc = 4f;
+          float tx = cx - fontRendererObj.getStringWidth(title) * sc / 2f;
+          for (int i = 0; i < title.length(); i++) {
+              String ch = title.substring(i, i + 1);
+              float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+              int col = Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000;
+              Draw.text(ch, tx, titleY, col, sc, true);
+              tx += fontRendererObj.getStringWidth(ch) * sc;
+          }
+          Draw.centered("K N O C K B A C K   C L I E N T", cx, titleY + 38, Theme.MUTED, 0.9f, false);
+          Draw.rect(cx - 30, titleY + 52, 60, 1, Theme.ACCENT_DK);
+  
+          Draw.panel(panelX, panelY, panelW, panelH, 8, Theme.GLASS, Theme.BORDER);
+  
+          KBProfile p = tracker.getProfile();
+          if (p.hasData) {
+              String s = "Last profile   " + p.summary() + "   (" + p.used + " hits)";
+              int w = Draw.width(s, 0.85f) + 20;
+              int py = panelY + panelH + 10;
+              Draw.panel(cx - w / 2, py, w, 15, 7, Theme.PANEL, Theme.BORDER);
+              Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
+          }
+  
+          Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+          Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
+  
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  }
+│                                   ├── Hud.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBSample;
+  import java.util.ArrayList;
+  import java.util.List;
+  import net.minecraft.client.Minecraft;
+  
+  /** In-game overlay: status card (fades in/out) + hit toasts. */
+  public final class Hud {
+      private Hud() {}
+  
+      private static final class Toast {
+          final String text;
+          final int color;
+          final long born;
+          Toast(String t, int c) { text = t; color = c; born = System.currentTimeMillis(); }
+      }
+  
+      private static final List<Toast> toasts = new ArrayList<Toast>();
+      private static float alpha = 0f;
+      private static long lastNs = System.nanoTime();
+  
+      public static void push(String text, int color) {
+          if (!Settings.toasts) return;
+          toasts.add(new Toast(text, color));
+          while (toasts.size() > 4) toasts.remove(0);
+      }
+  
+      public static void render(Minecraft mc, KBTracker t) {
+          long ns = System.nanoTime();
+          float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
+          lastNs = ns;
+          alpha += ((Settings.hud ? 1f : 0f) - alpha) * Math.min(1f, dt * 8f);
+          if (alpha < 0.03f) return;
+          float a = alpha;
+  
+          KBProfile pr = t.getProfile();
+          KBSample last = t.getLast();
+          boolean goal = t.getGoal() > 0;
+          int x = 6, y = 6, w = 146, h = goal ? 52 : 46;
+  
+          Draw.blend();
+          Draw.panel(x, y, w, h, 4, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
+          Draw.roundRect(x + 1, y + 1, 2, h - 2, 1, Draw.fade(t.isRecording() ? Theme.ACCENT : Theme.DIM, a));
+  
+          Draw.text("KB CLIENT", x + 8, y + 5, Draw.fade(Theme.ACCENT, a), 0.8f, false);
+          Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 5,
+                  Draw.fade(t.isRecording() ? Theme.GOOD : Theme.WARN, a), 0.8f, false);
+          if (last != null) {
+              Draw.text("H " + KBProfile.f(last.h, 4) + "  V " + KBProfile.f(last.vy, 4), x + 8, y + 16, Draw.fade(Theme.TEXT, a), 0.9f, false);
+          } else {
+              Draw.text("Waiting for hits...", x + 8, y + 16, Draw.fade(Theme.MUTED, a), 0.9f, false);
+          }
+          Draw.text(pr.used + " used / " + pr.total + " samples", x + 8, y + 27, Draw.fade(Theme.MUTED, a), 0.75f, false);
+  
+          // 12 confidence pips, one per parameter
+          for (int i = 0; i < KBProfile.COUNT; i++) {
+              int c = pr.src[i] == KBProfile.SRC_NONE ? Theme.PANEL3 : Draw.confColor(pr.conf[i]);
+              Draw.rect(x + 8 + i * 11, y + 38, 9, 2, Draw.fade(c, a));
+          }
+          if (goal) {
+              Draw.bar(x + 8, y + 44, w - 16, 3, t.getSessionHits() / (double) t.getGoal(), Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.ACCENT, a));
+          }
+  
+          long now = System.currentTimeMillis();
+          for (int i = toasts.size() - 1; i >= 0; i--) if (now - toasts.get(i).born > 3600) toasts.remove(i);
+          int ty = y + h + 4;
+          for (int i = toasts.size() - 1; i >= 0; i--) {
+              Toast to = toasts.get(i);
+              long age = now - to.born;
+              float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * a;
+              float slide = age < 160 ? (1f - age / 160f) * 10f : 0f;
+              int tw = Draw.width(to.text, 0.85f) + 12;
+              Draw.blend();
+              Draw.roundRect(x - (int) slide, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
+              int al = (int) (255 * fade);
+              if (al > 4) Draw.text(to.text, x + 6 - slide, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+              ty += 14;
+          }
+          Draw.blend();
+      }
+  }
+│                                   ├── LoadingArt.java
+  package com.oryvex.kbclient.ui;
+  
+  import java.awt.Color;
+  
+  /** The custom loading screen artwork (used by the loading renderer and the terrain overlay). */
+  public final class LoadingArt {
+      private LoadingArt() {}
+  
+      private static final String[] TIPS = {
+          "Press Right Shift in-game to open the Knockback Analyzer.",
+          "Get hit by a walking AND a sprinting player to separate HORIZONTAL from EXTRA-HORIZONTAL.",
+          "Get hit while falling to measure VERTICAL when Y-LIMIT clamps it.",
+          "Use /kb import to compare a Carbon YAML against your detected profile.",
+          "Every value in the analyzer carries a source tag: MEAS, EST, DEF or FILE."
+      };
+  
+      /** pct < 0 = indeterminate */
+      public static void draw(int w, int h, String title, String sub, int pct) {
+          
+          Draw.blend();
+          Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
+          if (Settings.particles) {
+              Draw.particles(w, h, 60, 0x22D3EE, 0.35f);
+              Draw.particles(w, h, 20, 0xA78BFA, 0.30f);
+          }
+          float t = (System.currentTimeMillis() % 100000L) / 1000f;
+          int cx = w / 2, cy = h / 2;
+  
+          // logo
+          String logo = "ORYVEX";
+          float sc = 3f;
+          float tx = cx - Draw.font().getStringWidth(logo) * sc / 2f;
+          int ly = cy - 70;
+          for (int i = 0; i < logo.length(); i++) {
+              String ch = logo.substring(i, i + 1);
+              float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+              Draw.text(ch, tx, ly, Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000, sc, true);
+              tx += Draw.font().getStringWidth(ch) * sc;
+          }
+          Draw.centered("K N O C K B A C K   C L I E N T", cx, ly + 28, Theme.MUTED, 0.8f, false);
+  
+          // orbiting comet spinner
+          int sy = cy + 2;
+          Draw.roundRect(cx - 16, sy - 16, 32, 32, 16, Draw.alpha(0x22D3EE, 0.06f));
+          for (int i = 0; i < 12; i++) {
+              double ang = t * 3.4 - i * 0.5;
+              int dx = (int) Math.round(Math.cos(ang) * 13);
+              int dy = (int) Math.round(Math.sin(ang) * 13);
+              float a = 1f - i / 12f;
+              int sz = i < 3 ? 3 : 2;
+              Draw.rect(cx + dx - sz / 2, sy + dy - sz / 2, sz, sz, Draw.alpha(i % 2 == 0 ? 0x22D3EE : 0xA78BFA, a));
+          }
+  
+          // text + bar
+          String ttl = (title == null || title.isEmpty()) ? "Loading" : title;
+          Draw.centered(ttl, cx, cy + 26, Theme.TEXT, 1f, true);
+          if (sub != null && !sub.isEmpty()) Draw.centered(sub, cx, cy + 38, Theme.MUTED, 0.85f, false);
+  
+          int bw = 180, bx = cx - bw / 2, by = cy + 54;
+          Draw.roundRect(bx, by, bw, 4, 2, Theme.PANEL3);
+          if (pct >= 0) {
+              Draw.roundRect(bx, by, Math.max(2, bw * Math.min(100, pct) / 100), 4, 2, Theme.ACCENT);
+              Draw.centered(pct + "%", cx, by + 8, Theme.SOFT, 0.8f, false);
+          } else {
+              float p = (t * 0.9f) % 1f;
+              int seg = 56;
+              int sx = bx + (int) ((bw + seg) * p) - seg;
+              int x0 = Math.max(bx, sx), x1 = Math.min(bx + bw, sx + seg);
+              if (x1 > x0) Draw.roundRect(x0, by, x1 - x0, 4, 2, Theme.ACCENT);
+          }
+  
+          // tip
+          String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
+          Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
+          Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
+      
+      }
+  }
+│                                   └── UiButton.java
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.GuiButton;
+  
+  /** Flat rounded button: hover animation, staggered entrance, toggle switch, animated gear icon. */
+  public class UiButton extends GuiButton {
+      public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4;
+      public static final int ICON_NONE = 0, ICON_GEAR = 1;
+  
+      public int style = NORMAL;
+      public int icon = ICON_NONE;
+      public boolean selected;
+      public boolean on;
+      /** entrance delay in ms */
+      public long delay;
+  
+      private float hover, knob, spin;
+      private final long born = System.currentTimeMillis();
+      private long last = System.nanoTime();
+  
+      public UiButton(int id, int x, int y, int w, int h, String text) {
+          super(id, x, y, w, h, text);
+      }
+  
+      public UiButton style(int s) { this.style = s; return this; }
+      public UiButton icon(int i) { this.icon = i; return this; }
+      public UiButton delay(long d) { this.delay = d; return this; }
+  
+      @Override
+      public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+          if (!this.visible) return;
+          this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition
+                  && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+  
+          long nowN = System.nanoTime();
+          float dt = Math.min(0.1f, (nowN - last) / 1.0e9f);
+          last = nowN;
+          hover += (((this.hovered && this.enabled) ? 1f : 0f) - hover) * Math.min(1f, dt * 14f);
+          knob += ((on ? 1f : 0f) - knob) * Math.min(1f, dt * 16f);
+          spin = (spin + dt * (40f + 380f * hover)) % 360f;
+  
+          float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
+          if (ap <= 0.01f) return;
+  
+          int x = xPosition, y = yPosition + (int) ((1f - ap) * 8f), w = width, h = height;
+          int fill, border, text;
+          switch (style) {
+              case PRIMARY:
+                  fill = Draw.lerp(Theme.ACCENT_DK, 0xFF0891B2, hover);
+                  border = Draw.lerp(0xFF0891B2, Theme.ACCENT, hover);
+                  text = Theme.TEXT;
+                  break;
+              case DANGER:
+                  fill = Draw.lerp(0xFF2A1218, 0xFF5B1A22, hover);
+                  border = Draw.lerp(0xFF4A1D25, Theme.BAD, hover);
+                  text = Draw.lerp(0xFFFCA5A5, Theme.TEXT, hover);
+                  break;
+              case TAB:
+                  fill = selected ? Theme.PANEL2 : Draw.lerp(Theme.BG1, Theme.PANEL, hover);
+                  border = selected ? Theme.BORDER_HI : Draw.lerp(Theme.BG1, Theme.BORDER, hover);
+                  text = selected ? Theme.ACCENT : Draw.lerp(Theme.MUTED, Theme.TEXT, hover);
+                  break;
+              default:
+                  fill = Draw.lerp(Theme.PANEL2, Theme.PANEL3, hover);
+                  border = Draw.lerp(Theme.BORDER, Theme.ACCENT, hover);
+                  text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
+          }
+          if (!enabled) { fill = Theme.PANEL; border = Theme.BORDER; text = Theme.DIM; }
+  
+          Draw.blend();
+          Draw.panel(x, y, w, h, 4, Draw.fade(fill, ap), Draw.fade(border, ap));
+          if (style == TAB && selected) Draw.roundRect(x + 6, y + h - 2, w - 12, 2, 1, Draw.fade(Theme.ACCENT, ap));
+  
+          int tc = Draw.fade(text, ap);
+          if (style == TOGGLE) {
+              Draw.text(displayString, x + 8, y + (h - 8) / 2f, tc, 1f, false);
+              int sw = 24, sh = 10, sx = x + w - 8 - sw, sy = y + (h - sh) / 2;
+              Draw.roundRect(sx, sy, sw, sh, 5, Draw.fade(Draw.lerp(Theme.PANEL3, Theme.ACCENT_DK, knob), ap));
+              int kx = sx + 1 + (int) ((sw - sh) * knob);
+              Draw.roundRect(kx, sy + 1, sh - 2, sh - 2, 4, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, knob), ap));
+          } else if (icon == ICON_GEAR) {
+              int tw = Draw.width(displayString, 1f);
+              float startX = x + (w - (tw + 18)) / 2f;
+              float cy = y + h / 2f;
+              Draw.gear(startX + 6f, cy, 5.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
+              Draw.text(displayString, startX + 18f, y + (h - 8) / 2f, tc, 1f, true);
+          } else {
+              Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);
+          }
       }
   }
 ├── .git
@@ -5336,6 +6255,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803590 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804565 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805012 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  6fd0a957d9547b0ccbe0ef07f27b084c281747ba 228cdb55d4fe9336869810f6ce29991355c462f1 muvixo <godarshia20@gmail.com> 1790805747 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  228cdb55d4fe9336869810f6ce29991355c462f1 1e547a96b4ae28c5d8692db4cd99fcf06d924095 muvixo <godarshia20@gmail.com> 1790806060 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  1e547a96b4ae28c5d8692db4cd99fcf06d924095 35c569759415bf6b0eff8ca889077e6c30e5ab1e muvixo <godarshia20@gmail.com> 1790806670 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  35c569759415bf6b0eff8ca889077e6c30e5ab1e 117aac3bef20b6f1800b6200e728932f1a44ba47 muvixo <godarshia20@gmail.com> 1790806872 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │   └── refs
 │   │       ├── heads
 │   │       │   └── main
@@ -5357,6 +6280,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803590 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804565 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805012 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  6fd0a957d9547b0ccbe0ef07f27b084c281747ba 228cdb55d4fe9336869810f6ce29991355c462f1 muvixo <godarshia20@gmail.com> 1790805747 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  228cdb55d4fe9336869810f6ce29991355c462f1 1e547a96b4ae28c5d8692db4cd99fcf06d924095 muvixo <godarshia20@gmail.com> 1790806060 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  1e547a96b4ae28c5d8692db4cd99fcf06d924095 35c569759415bf6b0eff8ca889077e6c30e5ab1e muvixo <godarshia20@gmail.com> 1790806670 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  35c569759415bf6b0eff8ca889077e6c30e5ab1e 117aac3bef20b6f1800b6200e728932f1a44ba47 muvixo <godarshia20@gmail.com> 1790806872 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │       └── remotes
 │   │           └── origin
 │   │               └── main
@@ -5378,6 +6305,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803600 +0330	update by push
   4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804579 +0330	update by push
   66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805025 +0330	update by push
+  6fd0a957d9547b0ccbe0ef07f27b084c281747ba 228cdb55d4fe9336869810f6ce29991355c462f1 muvixo <godarshia20@gmail.com> 1790805758 +0330	update by push
+  228cdb55d4fe9336869810f6ce29991355c462f1 1e547a96b4ae28c5d8692db4cd99fcf06d924095 muvixo <godarshia20@gmail.com> 1790806071 +0330	update by push
+  1e547a96b4ae28c5d8692db4cd99fcf06d924095 35c569759415bf6b0eff8ca889077e6c30e5ab1e muvixo <godarshia20@gmail.com> 1790806682 +0330	update by push
+  35c569759415bf6b0eff8ca889077e6c30e5ab1e 117aac3bef20b6f1800b6200e728932f1a44ba47 muvixo <godarshia20@gmail.com> 1790806880 +0330	update by push
 │   ├── objects
 │   │   ├── 00
 │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
@@ -5403,6 +6334,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
 │   │   │   └── c48333df8c5f934786611ecf72ad389e6327e8
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   ├── 04
+│   │   │   ├── a2a6951ee8d10ba3c87d962a18ac76c9768b59
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── e27d2651708e911c67743c264f9ee4c728b70d
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── 05
 │   │   │   └── 355143713789598229d100e2b55eef6714a48f
   [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
@@ -5444,14 +6380,20 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 7052a7daa36d7e8e83b0e035dac14c15670003
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 11
+│   │   │   ├── 7aac3bef20b6f1800b6200e728932f1a44ba47
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── b82afaf0f2ffcbc56a0958e60ef3b28f68c75d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 12
+│   │   │   ├── 343dccbf6cc2b8df646bc2bb1c037898da70ee
+  [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
 │   │   │   ├── 5780a736bb886f89e3d0215a9c353151266777
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 95d164920ecac7c0bb665c77d5c8aadc94aa2c
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── 13
+│   │   │   ├── 053d3d529e4522c74fd8063631e3974cdf4294
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   ├── 5a3411652d2488203136be6a869af72cc71491
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── ade0edbf6767b99df5d25a40daac85d4a34c78
@@ -5460,12 +6402,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── bb303245e7a1a72f7c4c4eea3116732c964c06
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 18: invalid continuation byte]
 │   │   ├── 16
+│   │   │   ├── ceb900d4694c29dafa72ba77a25968b8760609
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
 │   │   ├── 17
 │   │   │   ├── 5829991ca9afb213cc310f859334c892d704f6
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   │   └── 85d5129163e0e9a17c21d1d44e40bf24728e76
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 19
+│   │   │   └── cbbf13371b3653378a91ee2df9220b14617aad
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 1a
 │   │   │   ├── 1902e01d3e0b68250820d92d8392fdb713aa16
@@ -5474,6 +6421,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 1b
 │   │   │   ├── 644aa73c66e2836e6e87e36817d55b87176f57
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 8070f23eb1a01b263bb814c1fe845b2b442503
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── f26b08d8885a6fba6469e03892d1164e085734
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -5488,20 +6437,31 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 7521bc5d22e37bd852c240683dff3b95f6506e
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 1e
-│   │   │   └── 06cca4abf0e085bb93de0d5fbe54102bbeb4a3
+│   │   │   ├── 06cca4abf0e085bb93de0d5fbe54102bbeb4a3
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 547a96b4ae28c5d8692db4cd99fcf06d924095
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 1f
 │   │   │   └── 6246cc6c33477750d13ebf39edf93b252db2f1
   [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
 │   │   ├── 20
+│   │   │   ├── 0cf09420bf78d71c21690513741dd15f87ff79
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── ad9283f5517a17599f40cd0ab15e18fccaeb9d
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
 │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
   [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
 │   │   ├── 21
 │   │   │   └── 419a4751472fb93ff3b691279c1e72b09da349
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 22
-│   │   │   └── 501dbfc8218db505990928e09b14e8e7a3d6a8
+│   │   │   ├── 501dbfc8218db505990928e09b14e8e7a3d6a8
   [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
+│   │   │   └── 8cdb55d4fe9336869810f6ce29991355c462f1
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 24
+│   │   │   └── cb983ab20e13203b67e78030aaf6b3016c98af
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 25
 │   │   │   └── fa3787adcb2bdc5f21342daf2e0ff2ac599ef4
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -5521,13 +6481,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── fb6f1e62b6697585558fd71e4ca7f270de63df
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 2a
-│   │   │   └── 26a8f7b9deda7e8536610467cd4aac881c8cb4
+│   │   │   ├── 26a8f7b9deda7e8536610467cd4aac881c8cb4
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── cb58aa13a3614833cbbcb1c663b74e2184b775
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 2b
 │   │   │   ├── 1902fa0fe2abe57ff92a4d71c51d07f8758fa6
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
-│   │   │   └── 2f80fbdec35e23e7575d038937fceb1fe0cc77
+│   │   │   ├── 2f80fbdec35e23e7575d038937fceb1fe0cc77
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   │   └── 4f6c7e50c752e0f3f4c9de406ed9dcee41c382
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 2c
 │   │   │   ├── 513a25e4a3aa540b6a9d5a25db3207c92e2f0a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -5552,10 +6516,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   │   └── d2702c23cffbe47dece410ebd23046cc6cdecc
   [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+│   │   ├── 30
+│   │   │   └── f2fd0b8892ef7f42929a43b686f902d9f2296c
+  [Error: 'utf-8' codec can't decode byte 0xd5 in position 2: invalid continuation byte]
 │   │   ├── 31
 │   │   │   └── 1977f1bd61a1a987fcb29f77b19bf162db7b48
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 32
+│   │   │   ├── 091c1dac34ddd0479f27c11c07c96010d683e1
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 326231a4c4db08f160d8eb945a7476a141679f
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── f395a1c525c73cd3af13ae6e9b30611cf8b0f1
@@ -5570,11 +6539,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 35
 │   │   │   ├── 74a9612c93215a680aae80dbd16c2da17d12df
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── b65973bdca7ecaf2b2a49b64387c4cfe0cac54
+│   │   │   ├── b65973bdca7ecaf2b2a49b64387c4cfe0cac54
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c569759415bf6b0eff8ca889077e6c30e5ab1e
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 36
 │   │   │   ├── 02c912dd95d8e27bfb69785529e9e81e5d6c27
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 37c2a0584c9ba3516e479e1a6e0d4aac505775
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+│   │   │   ├── 3bf1e072d924ad01a61e21e5f79eac499b90b3
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── 75066755f7e0651eacaffc4d64514c634eeca9
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   │   ├── 91dacd0642fc62f581b160ef10721512bdcf8c
@@ -5595,13 +6570,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 7def659ddd6591e5c6e45b2f66737a36d5bc33
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 3d
-│   │   │   └── ba2b12eb67f97ed7fcee5acea62eec91b955db
+│   │   │   ├── ba2b12eb67f97ed7fcee5acea62eec91b955db
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   └── c12290b9cb9e9b8824250a6aeaaec961080439
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 3e
 │   │   │   ├── 42c216f2f7649d7634a6684a54306fbe9d6668
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
 │   │   │   ├── 90521d1fea88a2a081687229ba5c874050abc3
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── cd537b75ff8f1bbd33b947f0940fba314129d5
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   │   └── d7a5563219e59359db4d94beddfc64fc61eeba
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 3f
@@ -5612,16 +6591,25 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 40
 │   │   │   ├── 4d11c81e48902504836c7e41dee9de17efb513
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   ├── 93255341bf761af651f0d3694898a68fe877ef
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── a3fce8d66455ade074a5752e28f29c3a1a2927
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 41
+│   │   │   ├── 852cadf9dcbc5562ef0afbaba5b0dbf6508840
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   │   └── 98a1158f99a643924bd9446b429315e6e41c2d
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 42
 │   │   │   └── 6bd3f48afb5fe7063e0b45713e84dcf929a95c
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 43
 │   │   │   ├── 33d7f88aa2f3b427b4be37b57bb5c03e55d9d6
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-│   │   │   └── 653004011bc43b8ed8274674da3278e8cc9c53
+│   │   │   ├── 653004011bc43b8ed8274674da3278e8cc9c53
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── ef97806c7ab3c760e250842abffea19c157bbe
+  [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
 │   │   ├── 44
 │   │   │   └── aa8444b3433b02ac64bbff6d7ea88a49051de2
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -5656,6 +6644,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 4e
 │   │   │   └── 3d09b495772bef6319cea482b46ff19bec6130
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── 4f
+│   │   │   └── 057e96c31af6b6626ad208494c8f9a3cc6f56a
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 51
 │   │   │   ├── 20dfbf51c39c18aabbb8762320e58ab24d4802
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -5681,6 +6672,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── cb23b1d93a547d0984251edf29171c6ff6de21
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   ├── 57
+│   │   │   └── 5a4bdbd53514587ec08f2397c08168bc211844
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 58
 │   │   │   └── c71e3d743689a26639ed12ea4c3e95d581b51e
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -5700,8 +6694,16 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── ed201e3fa574c011f0f63c1179fcf59433221e
   [Error: 'utf-8' codec can't decode byte 0x8a in position 22: invalid start byte]
+│   │   ├── 5e
+│   │   │   └── 87af481863f7c308b4f220b6b047517ba6cbae
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 5f
 │   │   │   └── 0817d3863cbfe29afd8211a25c8a1dda1fc4b1
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 60
+│   │   │   ├── 95150fbb2493204df2ec800b240ade741c1a48
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── d3cdca862250e8af4651ea880c6dc73c1483e1
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 61
 │   │   │   ├── 481a2ce558bf26681f9aee14bedfa09bc3d79a
@@ -5714,8 +6716,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── f7678f53c17b0aa322ab143c93c2abce8480d8
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 63
-│   │   │   └── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
+│   │   │   ├── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   │   └── 75bb598dfe9d9b3238648e55387432f019bf7d
+  [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
 │   │   ├── 64
 │   │   │   └── 4597158fa0b97026af0cf35afe0d08f93d87a5
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -5727,8 +6731,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 68
 │   │   │   ├── 7b44f9e62bdcbcd4155ab8ff51079fac7568aa
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── 8067e8679975cfbc4f97b902b8b6f82053121f
+│   │   │   ├── 8067e8679975cfbc4f97b902b8b6f82053121f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── fd82ddef37a2c99be05ea3ea326aee58c336c1
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 69
 │   │   │   ├── 240332a81ce7bf1f5a5c38d3861a8d757c0716
   [Error: 'utf-8' codec can't decode byte 0xda in position 6: invalid continuation byte]
@@ -5743,6 +6749,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── ae772c43a7663d4ecee7285d2a36dd95aa5215
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 6c
+│   │   │   ├── 00f9bafe33fc158efe303b83b44e23962ffa19
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 5030780ad8d76c6da33eefc32e0efabcf85df1
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   │   └── 761a287091540f3031413138713b297f6fdf56
@@ -5756,11 +6764,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 4b4b5af134387a3b61f643405cc59f42e4864e
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 6f
+│   │   │   ├── 14575b68589265339e5fd96d1a056a2146fcf9
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 3da9f65e7fd71cd411480982a87814032d46a5
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── d0a957d9547b0ccbe0ef07f27b084c281747ba
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 70
+│   │   │   ├── bebbcf322d87c2f3ef3d2ad4552f3383898b26
+  [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
 │   │   │   └── c0cad6ea281205c468201a91f7c55cba8dbaba
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 71
@@ -5769,15 +6781,23 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 72
 │   │   │   ├── 3c8b7866cd1606d16bbbda4c7b87f61a396836
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 3ccff54e0d1ba57ec249ab1fc23ceebb333410
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
 │   │   │   ├── 8aee2b8ee52ed6be5fd31635b409aa515f7066
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 73
+│   │   │   ├── 35d0d11d4bc58ed299840520d9c87312f3142b
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   ├── b2a93bb3a0c48e4b296c63bd0c20242a9d945d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── e2ff10f642d648e9bf1cd7d08da32bbddae8aa
+│   │   │   ├── c603c4ec650ba3ed567d04292ba48a06516581
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   │   ├── e2ff10f642d648e9bf1cd7d08da32bbddae8aa
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   │   └── f612ee5ff8f3e0590807d608934c7cb80ee17f
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 74
 │   │   │   └── 3779efc677a34bcf4281b30df29bd7e36f30b5
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 8: invalid start byte]
@@ -5820,8 +6840,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── ceab50ce929cb9f2c98d4afec13ea537e9f950
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
 │   │   ├── 7e
-│   │   │   └── 51984603a83a11e7d1a02676dbd7832546cc42
+│   │   │   ├── 51984603a83a11e7d1a02676dbd7832546cc42
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   │   └── 6ba0dc149bbe0b066814e49eafaad7736cfa0e
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 7f
 │   │   │   └── 94736b09be1eef916b506ac875c084acf7c047
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -5848,21 +6870,30 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── 23280de12fff9adba401038ab37f7c0582adf6
   [Error: 'utf-8' codec can't decode byte 0xa4 in position 2: invalid start byte]
+│   │   │   ├── d65e5668536eadab73feed1073fc816c276e1c
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── d939268d0481cd3c11f98eea52a10f04075e9a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 87
 │   │   │   └── 48608cc89c53a26f76e26fca4347586f7c7d7a
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 89
-│   │   │   └── 6557ae90876dcb45fd3da6bcfe2ac1c2d20804
+│   │   │   ├── 6557ae90876dcb45fd3da6bcfe2ac1c2d20804
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   │   └── de5f714d6d24efc96bb6e116badc3b4419ff95
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── 8a
 │   │   │   └── 794b5bd98c0b2a029bb14404885ff4d1d0e0a2
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 8b
 │   │   │   ├── b477084caa620cc37f9e89fa77a5da66182b39
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
-│   │   │   └── b9cdbc82320cf09167a5ab67216388c8e1a6ff
+│   │   │   ├── b9cdbc82320cf09167a5ab67216388c8e1a6ff
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c0635f3355d163b3e3e69fc13cda27988526e1
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 8c
+│   │   │   └── df32ef8831368ab750f11fc1a101e40e4f18cb
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 8d
 │   │   │   ├── 7478ad3105a85c44536de9b92072f45467a0fe
@@ -5879,7 +6910,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── e0f40edd53d06c5ecf55948f863cdf0b9788de
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 91
-│   │   │   └── 83b0db84f3b1854802f9f0cf62e4c657cdc0a3
+│   │   │   ├── 83b0db84f3b1854802f9f0cf62e4c657cdc0a3
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   │   └── abb23c2d67e040574193b34b845b8d24ca7d25
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   ├── 92
 │   │   │   └── 4b179cf9c9cf871ecbae1e73ec2d7f1242750e
@@ -5888,8 +6921,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 3f30d166e531b4b003974f329930e3e5fa03f0
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 95
-│   │   │   └── 98a4bc6a78b08225a8b1746f3e5681a4e674cc
+│   │   │   ├── 98a4bc6a78b08225a8b1746f3e5681a4e674cc
   [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
+│   │   │   └── fff6ba2fb6f3d1fdea60d9bd0e5f82fab98fde
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 96
 │   │   │   ├── 0dcaaf6ea8a84fc9797a7b76cf8f0f5762e20e
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
@@ -5898,15 +6933,24 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 98
 │   │   │   └── 8694cb6bd1b8a828d038f411935747bef98e14
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── 99
+│   │   │   ├── 2eca224fc1476c0a25cc7b6bdb2723dbc8e08d
+  [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
+│   │   │   └── e807a2530c278a12c494bf347150a8b73ed0a6
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 9a
 │   │   │   └── f51862dfefb0787b9fe01c863ad7b348cecd9c
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 9c
-│   │   │   └── 003211911f5906150920acb446e5ed3b58cfc0
+│   │   │   ├── 003211911f5906150920acb446e5ed3b58cfc0
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+│   │   │   └── 5796ecc90e32ffdbbb9073e21a16aa1747922c
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   ├── 9d
 │   │   │   ├── 300fde1535c481a9c98ce4423dfb7e67d3ed85
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 657732946e233d00e212e8f93bad8ce1dd3ecd
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   ├── 668c52354cc0d07c9842c8f89bd7f2aad55fa4
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 6d0f6f6ddc223830d9e36673c7cc11a7f25ba4
@@ -5922,6 +6966,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
 │   │   │   └── 76454055871144e8157d85c3327fe901f664a1
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 9f
+│   │   │   └── 6b3978a480f386f754f7ff5df37fda0e77a92e
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── a0
 │   │   │   └── 3fa07dbb4670a0ce9995f196a7bea841e87dd2
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -5936,6 +6983,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── a5
 │   │   │   └── 7006d8e68103a058715081299dc2d3519469bd
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── a6
+│   │   │   └── e1627a98211c467eeb4cecec7df4c535f21eec
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── a7
 │   │   │   ├── 304ebc82343ee37adc1f16c20f7be8f5533761
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
@@ -5964,10 +7014,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── ae
 │   │   │   └── 4436b4fa11e514562ae1ad366f2d5f254e0735
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── af
+│   │   │   └── 2baeca49c6c4e360c71fb3e05b1cfa06f95983
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b0
 │   │   │   ├── 43416bacf66acaf168c93e57fec3f5813147cf
   [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
-│   │   │   └── 47ca6a1568d38e6b79a82f91fe839d636f9a25
+│   │   │   ├── 47ca6a1568d38e6b79a82f91fe839d636f9a25
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── bba24fa3fa063d1c6d412b34c36bedaab8560b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b1
 │   │   │   ├── 2bd5555ee82fc5ffbdc0e0c5f4a3269cb59b29
@@ -5992,8 +7047,13 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── d3744ff48981496bdb6752d741d8c5dff68b32
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── b7
+│   │   │   ├── 473e1edb50de752fb63db8a511ed92e80360cc
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── bae240d0380bd7adfa3961971e4788f30aff19
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   ├── b9
+│   │   │   └── ea15cf830c29625b2513bff3b0bd5b46479837
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── bd
 │   │   │   └── 73cfbb94f042cd0f0756766841f97941d8cd84
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
@@ -6020,12 +7080,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── c4
 │   │   │   └── e561d8dddb063c29e44428c49d7e2851701704
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── c5
+│   │   │   └── 9082d7ea2e6a6d4679ec8fda473c9a84b6c230
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── c8
 │   │   │   ├── eaeb6de870faa79acea43ae9dd77475ec150c1
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   │   └── f1fdb85d61e0c5263eedb6bca5f66a68095f70
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── c9
+│   │   │   ├── 002f1690240ab7b3a031a027b1419d48ad0b01
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── f90a98f5b975ec882853a866b7d7ab8028015b
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   ├── ca
@@ -6042,6 +7107,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── cd
+│   │   │   ├── bbb6d3661eeef0a0f8b538114e7c27a95498d2
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 20: invalid continuation byte]
 │   │   │   └── c7e9d56d49b061013af88e5ebc6fb59e491193
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── ce
@@ -6083,8 +7150,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── da
 │   │   │   ├── 53e4081f5a541b7d985cd2ad1494ac7a57aa9a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── 975cf81b4ea65839254d75d879efee66acfbb9
+│   │   │   ├── 975cf81b4ea65839254d75d879efee66acfbb9
   [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
+│   │   │   └── c4588feaead0c45d5765d699ed402567e9f9d9
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── db
 │   │   │   ├── 4c7a81857e3cbabc80cd18dc65eb866e483ad7
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -6117,14 +7186,18 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── bac8b8f8454bd50a10f8ad2c3cd82c39a11ce1
   [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
 │   │   ├── e5
+│   │   │   ├── 37b6f2b17eaff9dd4a811839a0422037d4fe56
+  [Error: 'utf-8' codec can't decode byte 0xd5 in position 2: invalid continuation byte]
 │   │   │   └── cccda6b780031dd28971eb77595436f86871df
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e6
 │   │   │   └── d9c23a3dfb093af9952dda56425efde19aab10
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e7
-│   │   │   └── 74c483e362c9be05dc1c06fa676503245dcbcb
+│   │   │   ├── 74c483e362c9be05dc1c06fa676503245dcbcb
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c760da2e9638b7fc4616d2b5dfdf7c3390415e
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   ├── e8
 │   │   │   ├── 6bd4b357c3ec5a95a209a1e73be85b86f59f1a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -6135,6 +7208,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 2fa333ab2df1c4489b718799882c9c30d41a4b
   [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── ea
+│   │   │   └── a3613225c00b0e852b39a07ef4019c024eedf8
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── eb
 │   │   │   ├── 5f0f0b92494459cfd3703c794f2844617fa903
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -6146,6 +7222,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 20ab878509f4e7d6e1aba533ae24a84ebefc72
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── ed
+│   │   │   ├── 7b12e1e8a55c4db65e4f3854f7b4a8e2f1b506
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── ee
@@ -6165,6 +7243,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   ├── 2e0ba540090b98f2e83b84b0c5392b7ce2d424
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ff6cd2ed5c71bcb9daed061a3b3fa2f6cf75b8
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── f5
+│   │   │   └── fb548373c2dcdc242686cb59c52f7ca7367ecd
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── f6
 │   │   │   ├── 0bf0357a5ce3acbeee0e2efebedb79415c6a12
@@ -6205,15 +7286,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   └── refs
 │       ├── heads
 │       │   └── main
-  6fd0a957d9547b0ccbe0ef07f27b084c281747ba
+  117aac3bef20b6f1800b6200e728932f1a44ba47
 │       ├── remotes
 │       │   └── origin
 │       │       └── main
-  6fd0a957d9547b0ccbe0ef07f27b084c281747ba
+  117aac3bef20b6f1800b6200e728932f1a44ba47
 │       └── tags
 ├── .github
 │   └── workflows
-│       ├── build.yml
+│       └── build.yml
   name: Build KB Client 1.8.9
   
   on:
@@ -6254,47 +7335,25 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           with:
             name: KBClient-1.8.9
             path: build/libs/*.jar
-│       └── build.yml.bak
-  name: Build KB Client 1.8.9
   
-  on:
-    push:
-      branches: [ "**" ]
-    pull_request:
-      branches: [ "**" ]
-    workflow_dispatch:
-  
-  jobs:
-    build:
-      runs-on: ubuntu-latest
-  
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-  
-        - name: Setup Java 8
-          uses: actions/setup-java@v4
-          with:
-            distribution: 'temurin'
-            java-version: '8'
-  
-        - name: Install & Configure Gradle 4.10.3
+        - name: Obfuscate with ProGuard
           run: |
-            wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
-            unzip -q gradle-4.10.3-bin.zip
-            export PATH=$PWD/gradle-4.10.3/bin:$PATH
-            gradle wrapper --gradle-version 4.10.3
-            chmod +x gradlew
+            curl -sL -o proguard.zip https://github.com/Guardsquare/proguard/releases/download/v7.4.2/proguard-7.4.2.zip
+            unzip -q proguard.zip
+            mkdir -p build/obf
+            for jar in build/libs/*.jar; do
+              name=$(basename "$jar" .jar)
+              proguard-7.4.2/bin/proguard.sh \
+                -injars "$jar" \
+                -outjars "build/obf/${name}-obf.jar" \
+                @proguard-rules.pro
+            done
   
-        - name: Build Mod with Gradle
-          run: |
-            ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
-  
-        - name: Upload Mod Artifact
+        - name: Upload Obfuscated Artifact
           uses: actions/upload-artifact@v4
           with:
-            name: KBClient-1.8.9
-            path: build/libs/*.jar
+            name: KBClient-1.8.9-obfuscated
+            path: build/obf/*.jar
 ├── .gitignore
   .gradle/
   build/
@@ -6373,7 +7432,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
   apply plugin: "net.minecraftforge.gradle.forge"
   
-  version = "3.0.0"
+  version = "1.0.0"
   group = "com.oryvex.kbclient"
   archivesBaseName = "KBClient"
   
@@ -10459,17 +11518,17 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             } catch (Throwable ignored) { }
         }
     }
-  │   └── 20261001_012001_adder
-  │       ├── adder_manifest.txt
+  │   ├── 20261001_012001_adder
+  │   │   ├── adder_manifest.txt
     M src/main/java/com/oryvex/kbclient/ui/GuiKbOptions.java
     M src/main/java/com/oryvex/kbclient/DiscordRPC.java
-  │       └── src
-  │           └── main
-  │               └── java
-  │                   └── com
-  │                       └── oryvex
-  │                           └── kbclient
-  │                               ├── DiscordRPC.java
+  │   │   └── src
+  │   │       └── main
+  │   │           └── java
+  │   │               └── com
+  │   │                   └── oryvex
+  │   │                       └── kbclient
+  │   │                           ├── DiscordRPC.java
     package com.oryvex.kbclient;
     
     import com.oryvex.kbclient.ui.GuiAnalyzer;
@@ -10781,8 +11840,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             } catch (Throwable ignored) { }
         }
     }
-  │                               └── ui
-  │                                   └── GuiKbOptions.java
+  │   │                           └── ui
+  │   │                               └── GuiKbOptions.java
     package com.oryvex.kbclient.ui;
     
     import com.oryvex.kbclient.KBTracker;
@@ -10869,6 +11928,925 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
             super.drawScreen(mouseX, mouseY, partialTicks);
             drawFade();
+        }
+    }
+  │   └── 20261001_014535
+  │       ├── .github
+  │       │   └── workflows
+  │       │       └── build.yml
+    name: Build KB Client 1.8.9
+    
+    on:
+      push:
+        branches: [ "**" ]
+      pull_request:
+        branches: [ "**" ]
+      workflow_dispatch:
+    
+    jobs:
+      build:
+        runs-on: ubuntu-latest
+    
+        steps:
+          - name: Checkout repository
+            uses: actions/checkout@v5
+    
+          - name: Setup Java 8
+            uses: actions/setup-java@v5
+            with:
+              distribution: 'temurin'
+              java-version: '8'
+    
+          - name: Install & Configure Gradle 4.10.3
+            run: |
+              wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+              unzip -q gradle-4.10.3-bin.zip
+              export PATH=$PWD/gradle-4.10.3/bin:$PATH
+              gradle wrapper --gradle-version 4.10.3
+              chmod +x gradlew
+    
+          - name: Build Mod with Gradle
+            run: |
+              ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+    
+          - name: Upload Mod Artifact
+            uses: actions/upload-artifact@v4
+            with:
+              name: KBClient-1.8.9
+              path: build/libs/*.jar
+  │       ├── build.gradle
+    buildscript {
+        repositories {
+            mavenCentral()
+            maven {
+                name = "forge"
+                url = "https://maven.minecraftforge.net/"
+            }
+        }
+        dependencies {
+            classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+        }
+    }
+    
+    apply plugin: "net.minecraftforge.gradle.forge"
+    
+    version = "3.0.0"
+    group = "com.oryvex.kbclient"
+    archivesBaseName = "KBClient"
+    
+    sourceCompatibility = targetCompatibility = "1.8"
+    compileJava.options.encoding = "UTF-8"
+    
+    minecraft {
+        version = "1.8.9-11.15.1.2318-1.8.9"
+        runDir = "run"
+        mappings = "stable_22"
+        makeObfSourceJar = false
+    }
+    
+    repositories {
+        mavenCentral()
+        maven {
+            name = "mojang"
+            url = "https://libraries.minecraft.net/"
+        }
+        maven {
+            name = "forge"
+            url = "https://maven.minecraftforge.net/"
+        }
+    }
+    
+    dependencies {}
+    
+    processResources {
+        inputs.property "version", project.version
+        inputs.property "mcversion", project.minecraft.version
+    
+        from(sourceSets.main.resources.srcDirs) {
+            include "mcmod.info"
+            expand "version": project.version, "mcversion": project.minecraft.version
+        }
+    
+        from(sourceSets.main.resources.srcDirs) {
+            exclude "mcmod.info"
+        }
+    }
+    
+    jar {
+        manifest {
+            attributes([
+                "FMLCorePluginContainsFMLMod": "true",
+                "ForceLoadAsMod": "true"
+            ])
+        }
+    }
+  │       ├── fixer_manifest.txt
+    M src/main/java/com/oryvex/kbclient/KBTracker.java
+    M src/main/java/com/oryvex/kbclient/KBClientMod.java
+    M build.gradle
+    M src/main/java/com/oryvex/kbclient/ui/GuiModernMenu.java
+    M src/main/java/com/oryvex/kbclient/ui/LoadingArt.java
+    M src/main/java/com/oryvex/kbclient/ui/UiButton.java
+    M src/main/java/com/oryvex/kbclient/ui/Hud.java
+    M .github/workflows/build.yml
+    C proguard-rules.pro
+  │       └── src
+  │           └── main
+  │               └── java
+  │                   └── com
+  │                       └── oryvex
+  │                           └── kbclient
+  │                               ├── KBClientMod.java
+    package com.oryvex.kbclient;
+    
+    import com.oryvex.kbclient.ui.Fade;
+    import com.oryvex.kbclient.ui.FadeScreen;
+    import com.oryvex.kbclient.ui.GuiAnalyzer;
+    import com.oryvex.kbclient.ui.GuiModernMenu;
+    import com.oryvex.kbclient.ui.Hud;
+    import com.oryvex.kbclient.ui.KBLoading;
+    import com.oryvex.kbclient.ui.LoadingArt;
+    import com.oryvex.kbclient.ui.Settings;
+    import com.oryvex.kbclient.ui.UiButton;
+    import io.netty.channel.Channel;
+    import io.netty.channel.ChannelDuplexHandler;
+    import io.netty.channel.ChannelHandlerContext;
+    import io.netty.channel.ChannelPipeline;
+    import net.minecraft.client.Minecraft;
+    import net.minecraft.client.entity.EntityPlayerSP;
+    import net.minecraft.client.gui.GuiButton;
+    import net.minecraft.client.gui.GuiChat;
+    import net.minecraft.client.gui.GuiDownloadTerrain;
+    import net.minecraft.client.gui.GuiIngameMenu;
+    import net.minecraft.client.gui.GuiMainMenu;
+    import net.minecraft.client.gui.GuiScreen;
+    import net.minecraft.client.gui.inventory.GuiContainer;
+    import net.minecraft.client.settings.KeyBinding;
+    import net.minecraft.network.NetworkManager;
+    import net.minecraft.network.play.server.S12PacketEntityVelocity;
+    import net.minecraftforge.client.ClientCommandHandler;
+    import net.minecraftforge.client.event.GuiOpenEvent;
+    import net.minecraftforge.client.event.GuiScreenEvent;
+    import net.minecraftforge.client.event.RenderGameOverlayEvent;
+    import net.minecraftforge.common.MinecraftForge;
+    import net.minecraftforge.fml.client.registry.ClientRegistry;
+    import net.minecraftforge.fml.common.Mod;
+    import net.minecraftforge.fml.common.Mod.EventHandler;
+    import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+    import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+    import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+    import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+    import net.minecraftforge.fml.common.gameevent.TickEvent;
+    import org.apache.logging.log4j.Logger;
+    import org.lwjgl.input.Keyboard;
+    
+    @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+         acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+    public class KBClientMod {
+        public static final String MODID = "kbclient";
+        public static final String NAME = "KB Client";
+        public static final String VERSION = "3.0.0";
+        private static final String HOOK = "kb_client_handler";
+    
+        private static KBClientMod instance;
+        public static Logger logger;
+    
+        private final KBTracker tracker = new KBTracker();
+        private KeyBinding openKey;
+        private Channel hookedChannel;
+        private boolean pendingOpen;
+        private Object lastWorld;
+        private boolean loadingInstalled;
+    
+        public static KBClientMod getInstance() { return instance; }
+        public KBTracker getTracker() { return tracker; }
+    
+        public void requestOpenAnalyzer() { pendingOpen = true; }
+    
+        @EventHandler
+        public void preInit(FMLPreInitializationEvent e) {
+            logger = e.getModLog();
+            instance = this;
+            Settings.load();
+        }
+    
+        @EventHandler
+        public void init(FMLInitializationEvent e) {
+            com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+            net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+            MinecraftForge.EVENT_BUS.register(this);
+            ClientCommandHandler.instance.registerCommand(new KBCommand());
+            openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+            ClientRegistry.registerKeyBinding(openKey);
+            installLoading();
+            DiscordRPC.start();
+        }
+    
+        private void installLoading() {
+            if (loadingInstalled) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            try {
+                ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+                loadingInstalled = true;
+                logger.info("[KBClient] custom loading screen installed");
+            } catch (Throwable t) {
+                logger.error("[KBClient] could not install loading screen: " + t);
+            }
+        }
+    
+        @SubscribeEvent
+        public void onGuiOpen(GuiOpenEvent e) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+    
+            if (e.gui == null) {
+                if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                    Fade.world.trigger(0.45f);
+                }
+            } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+                Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+            }
+        }
+    
+        @SubscribeEvent
+        public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+            GuiScreen g = e.gui;
+            if (g == null || g instanceof FadeScreen) return;
+            if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+            }
+            Fade.screen.draw(g.width, g.height);
+        }
+    
+        @SubscribeEvent
+        public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+            if (!(e.gui instanceof GuiIngameMenu)) return;
+            for (int i = 0; i < e.buttonList.size(); i++) {
+                GuiButton b = e.buttonList.get(i);
+                if (b.id == 0) {
+                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                    u.icon = UiButton.ICON_GEAR;
+                    e.buttonList.set(i, u);
+                }
+            }
+        }
+    
+        @SubscribeEvent
+        public void onOverlay(RenderGameOverlayEvent.Post e) {
+            if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.thePlayer == null) return;
+            if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+            Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+        }
+    
+        @SubscribeEvent
+        public void onTick(TickEvent.ClientTickEvent e) {
+            if (e.phase != TickEvent.Phase.END) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            tracker.tick();
+            DiscordRPC.tick();
+    
+            if (mc.theWorld != lastWorld) {
+                lastWorld = mc.theWorld;
+                if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+            }
+    
+            while (openKey.isPressed()) {
+                if (mc.currentScreen == null) pendingOpen = true;
+            }
+            if (pendingOpen && mc.currentScreen == null) {
+                pendingOpen = false;
+                mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+            }
+    
+            if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+                NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+                if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+            }
+        }
+    
+        private void inject(Minecraft mc, Channel ch) {
+            hookedChannel = ch;
+            try {
+                ChannelPipeline pl = ch.pipeline();
+                if (pl.get(HOOK) != null) pl.remove(HOOK);
+                if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+                else pl.addLast(HOOK, new VelocityHook());
+    
+                String name = mc.isSingleplayer() ? "Singleplayer"
+                        : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+                tracker.onConnect(name);
+                logger.info("[KBClient] velocity hook installed on " + name);
+            } catch (Throwable t) {
+                logger.error("[KBClient] hook failed: " + t);
+            }
+        }
+    
+        private static class VelocityHook extends ChannelDuplexHandler {
+            @Override
+            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                if (msg instanceof S12PacketEntityVelocity) {
+                    S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                    final int id = v.getEntityID();
+                    final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                    final Minecraft mc = Minecraft.getMinecraft();
+                    mc.addScheduledTask(new Runnable() {
+                        @Override
+                        public void run() {
+                            EntityPlayerSP p = mc.thePlayer;
+                            if (p != null && p.getEntityId() == id) {
+                                KBClientMod.getInstance().getTracker().capture(x, y, z);
+                            }
+                        }
+                    });
+                }
+                super.channelRead(ctx, msg);
+            }
+        }
+    }
+  │                               ├── KBTracker.java
+    package com.oryvex.kbclient;
+    
+    import com.oryvex.kbclient.kb.KBEstimator;
+    import com.oryvex.kbclient.kb.KBProfile;
+    import com.oryvex.kbclient.kb.KBSample;
+    import com.oryvex.kbclient.kb.KBYaml;
+    import com.oryvex.kbclient.ui.Hud;
+    import com.oryvex.kbclient.ui.Theme;
+    import java.io.File;
+    import java.io.IOException;
+    import java.nio.charset.StandardCharsets;
+    import java.nio.file.Files;
+    import java.text.SimpleDateFormat;
+    import java.util.ArrayList;
+    import java.util.Date;
+    import java.util.HashMap;
+    import java.util.List;
+    import java.util.Locale;
+    import java.util.Map;
+    import net.minecraft.client.Minecraft;
+    import net.minecraft.client.entity.EntityPlayerSP;
+    import net.minecraft.enchantment.EnchantmentHelper;
+    import net.minecraft.entity.player.EntityPlayer;
+    import net.minecraft.util.ChatComponentText;
+    
+    /** Collects knockback samples (main thread only), keeps a live profile and an imported reference. */
+    public class KBTracker {
+        public static final int MAX_SAMPLES = 120;
+    
+        private final List<KBSample> samples = new ArrayList<KBSample>();
+        private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
+        private KBProfile profile = new KBProfile();
+        private KBProfile reference;
+        private String lastImport = "";
+        private KBSample last;
+        private boolean recording = true;
+        private int goal = 0;
+        private int sessionHits = 0;
+        private int nextId = 1;
+        private long tick = 0;
+        private String server = "-";
+    
+        public KBTracker() {
+            profile.notes.add("Waiting for knockback - get hit by another player.");
+        }
+    
+        /** per client tick: remember the last 3 ticks of every player's sprint flag */
+        public synchronized void tick() {
+            tick++;
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.theWorld == null) return;
+            for (EntityPlayer e : mc.theWorld.playerEntities) {
+                int id = e.getEntityId();
+                int s = e.isSprinting() ? 1 : 0;
+                Integer b = sprintBits.get(id);
+                int nb = (b == null) ? (s == 1 ? 0x7 : 0) : (((b << 1) | s) & 0x7);
+                sprintBits.put(id, nb);
+            }
+        }
+    
+        public synchronized KBProfile getProfile() { return profile; }
+        public synchronized KBProfile getReference() { return reference; }
+        public synchronized String getLastImport() { return lastImport; }
+        public synchronized KBSample getLast() { return last; }
+        public synchronized List<KBSample> snapshot() { return new ArrayList<KBSample>(samples); }
+        public synchronized boolean isRecording() { return recording; }
+        public synchronized void setRecording(boolean r) { recording = r; }
+        public synchronized int getGoal() { return goal; }
+        public synchronized int getSessionHits() { return sessionHits; }
+        public synchronized String getServer() { return server; }
+    
+        public synchronized void reset() {
+            samples.clear();
+            last = null;
+            sessionHits = 0;
+            profile = new KBProfile();
+            profile.notes.add("Waiting for knockback - get hit by another player.");
+        }
+    
+        public synchronized void onConnect(String name) {
+            reset();
+            sprintBits.clear();
+            server = name;
+            recording = true;
+            goal = 0;
+        }
+    
+        public synchronized void startGoal(int hits) {
+            reset();
+            goal = Math.max(1, hits);
+            recording = true;
+            chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
+        }
+    
+        // ---- YAML reference ------------------------------------------------------
+        public synchronized KBYaml.Result importYaml(String text) {
+            KBYaml.Result r = KBYaml.parse(text);
+            if (r.parsed > 0) {
+                reference = r.profile;
+                lastImport = r.summary();
+                chat(Theme.S + "a[KB] Imported: " + Theme.S + "f" + r.summary());
+                if (!r.unknown.isEmpty()) chat(Theme.S + "7Ignored unknown keys: " + r.unknown);
+            } else {
+                lastImport = "nothing imported";
+                chat(Theme.S + "c[KB] No knockback keys found. Copy a YAML config first.");
+            }
+            return r;
+        }
+    
+        public synchronized void clearReference() {
+            reference = null;
+            lastImport = "";
+        }
+    
+        /** Must be called on the client main thread, BEFORE the packet is applied. */
+        public synchronized void capture(int rawX, int rawY, int rawZ) {
+            Minecraft mc = Minecraft.getMinecraft();
+            EntityPlayerSP me = mc.thePlayer;
+            if (!recording || me == null || mc.theWorld == null) return;
+    
+            double vx = rawX / 8000.0, vy = rawY / 8000.0, vz = rawZ / 8000.0;
+            double h = Math.sqrt(vx * vx + vz * vz);
+    
+            EntityPlayer attacker = null;
+            double bestScore = -1.0e9;
+            for (EntityPlayer e : mc.theWorld.playerEntities) {
+                if (e == me || e.isDead) continue;
+                double dist = me.getDistanceToEntity(e);
+                if (dist > 7.0) continue;
+                double dx = me.posX - e.posX, dz = me.posZ - e.posZ;
+                double dh = Math.sqrt(dx * dx + dz * dz);
+                double score = -dist * 0.05;
+                if (h > 0.05 && dh > 0.001) score += (vx * dx + vz * dz) / (h * dh);
+                if (score > bestScore) { bestScore = score; attacker = e; }
+            }
+    
+            boolean has = attacker != null;
+            double ux = 0, uz = 0, dist = 0;
+            int state = KBSample.WALK;
+            int kb = 0;
+            String name = "?";
+            if (has) {
+                double dx = me.posX - attacker.posX, dz = me.posZ - attacker.posZ;
+                double dh = Math.sqrt(dx * dx + dz * dz);
+                if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
+                else if (h > 0.001) { ux = vx / h; uz = vz / h; }
+                Integer bits = sprintBits.get(attacker.getEntityId());
+                if (bits == null) state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
+                else if (bits == 0x7) state = KBSample.SPRINT;
+                else if (bits == 0) state = KBSample.WALK;
+                else state = KBSample.AMBIGUOUS;
+                try { kb = EnchantmentHelper.getKnockbackModifier(attacker); } catch (Throwable ignored) { }
+                name = attacker.getName();
+                dist = me.getDistanceToEntity(attacker);
+            }
+    
+            KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
+                    me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
+                    has, state, kb, ux, uz, dist, name);
+    
+            samples.add(s);
+            while (samples.size() > MAX_SAMPLES) samples.remove(0);
+            last = s;
+            profile = KBEstimator.calculate(samples);
+    
+            String tag = !has ? "no attacker" : (state == KBSample.AMBIGUOUS ? "W-TAP?" : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
+            int col = !has ? Theme.DIM : (state == KBSample.AMBIGUOUS ? Theme.DIM : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
+            Hud.push("Hit #" + s.id + "  H " + KBProfile.f(h, 4) + "  V " + KBProfile.f(vy, 4) + "  " + tag, col);
+    
+            if (goal > 0) {
+                sessionHits++;
+                if (sessionHits >= goal) {
+                    recording = false;
+                    goal = 0;
+                    printResults();
+                }
+            }
+        }
+    
+        public void chat(String msg) {
+            EntityPlayerSP p = Minecraft.getMinecraft().thePlayer;
+            if (p != null) p.addChatMessage(new ChatComponentText(msg));
+        }
+    
+        public void printResults() {
+            KBProfile p = profile;
+            String b = Theme.S + "b", g = Theme.S + "7", w = Theme.S + "f";
+            chat(b + "=========== KB PROFILE ===========");
+            chat(g + "HORIZONTAL: " + w + p.valueText(KBProfile.I_H) + g + "   EXTRA-H: " + w + p.valueText(KBProfile.I_EH));
+            chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V) + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
+            chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F) + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
+            chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue + g + " (override " + p.damageTicksOverride + ")");
+            chat(Theme.S + "aOpen the analyzer with [Right Shift] or /kb");
+        }
+    
+        public synchronized File export() throws IOException {
+            File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+            if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
+            String ts = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
+            File yml = new File(dir, "knockback-" + ts + ".yml");
+            Files.write(yml.toPath(), (profile.toYaml() + "\n").getBytes(StandardCharsets.UTF_8));
+    
+            StringBuilder sb = new StringBuilder();
+            sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,attacker,sprintState,attackerKb,distance,ux,uz\n");
+            for (KBSample k : samples) {
+                sb.append(k.id).append(',').append(k.tick).append(',')
+                  .append(KBProfile.f(k.vx, 5)).append(',').append(KBProfile.f(k.vy, 5)).append(',')
+                  .append(KBProfile.f(k.vz, 5)).append(',').append(KBProfile.f(k.h, 5)).append(',')
+                  .append(KBProfile.f(k.px, 5)).append(',').append(KBProfile.f(k.py, 5)).append(',')
+                  .append(KBProfile.f(k.pz, 5)).append(',').append(KBProfile.f(k.pH, 5)).append(',')
+                  .append(k.victimSprint).append(',').append(k.victimGround).append(',')
+                  .append(k.attacker.replace(',', '_')).append(',').append(k.sprintState).append(',')
+                  .append(k.attackerKb).append(',').append(KBProfile.f(k.distance, 3)).append(',')
+                  .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append('\n');
+            }
+            File csv = new File(dir, "knockback-" + ts + "-samples.csv");
+            Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
+            return yml;
+        }
+    }
+  │                               └── ui
+  │                                   ├── GuiModernMenu.java
+    package com.oryvex.kbclient.ui;
+    
+    import com.oryvex.kbclient.KBTracker;
+    import com.oryvex.kbclient.kb.KBProfile;
+    import java.awt.Color;
+    import java.io.IOException;
+    import net.minecraft.client.gui.GuiButton;
+    import net.minecraft.client.gui.GuiMultiplayer;
+    import net.minecraft.client.gui.GuiSelectWorld;
+    
+    public class GuiModernMenu extends FadeScreen {
+        private final KBTracker tracker;
+        private int panelX, panelY, panelW, panelH, titleY;
+    
+        public GuiModernMenu(KBTracker tracker) {
+            this.tracker = tracker;
+        }
+    
+        @Override
+        public void initGui() {
+            this.buttonList.clear();
+            int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
+            int rows = 4;
+            int total = rows * bh + (rows - 1) * gap;
+            int top = this.height / 2 - total / 2 + 26;
+            panelW = bw + 28;
+            panelH = total + 28;
+            panelX = cx - panelW / 2;
+            panelY = top - 14;
+            titleY = Math.max(8, panelY - 72);
+    
+            int half = (bw - gap) / 2;
+            this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
+            this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
+            this.buttonList.add(new UiButton(3, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(260));
+            this.buttonList.add(new UiButton(4, cx - bw / 2, top + 3 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(330));
+            this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 3 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(400));
+        }
+    
+        @Override
+        protected void actionPerformed(GuiButton b) throws IOException {
+            switch (b.id) {
+                case 1: closeTo(new GuiSelectWorld(this)); break;
+                case 2: closeTo(new GuiMultiplayer(this)); break;
+                case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+                case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+                case 5:
+                    closeThen(new Runnable() {
+                        @Override
+                        public void run() { mc.shutdown(); }
+                    });
+                    break;
+                default: break;
+            }
+        }
+    
+        @Override
+        protected void onKey(char c, int key) throws IOException {
+            // main menu cannot be closed with ESC
+        }
+    
+        @Override
+        public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+            this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
+            if (Settings.particles) {
+                Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
+                Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+            }
+    
+            int cx = this.width / 2;
+            float t = (System.currentTimeMillis() % 100000L) / 1000f;
+    
+            String title = "ORYVEX";
+            float sc = 4f;
+            float tx = cx - fontRendererObj.getStringWidth(title) * sc / 2f;
+            for (int i = 0; i < title.length(); i++) {
+                String ch = title.substring(i, i + 1);
+                float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+                int col = Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000;
+                Draw.text(ch, tx, titleY, col, sc, true);
+                tx += fontRendererObj.getStringWidth(ch) * sc;
+            }
+            Draw.centered("K N O C K B A C K   C L I E N T", cx, titleY + 38, Theme.MUTED, 0.9f, false);
+            Draw.rect(cx - 30, titleY + 52, 60, 1, Theme.ACCENT_DK);
+    
+            Draw.panel(panelX, panelY, panelW, panelH, 8, Theme.GLASS, Theme.BORDER);
+    
+            KBProfile p = tracker.getProfile();
+            if (p.hasData) {
+                String s = "Last profile   " + p.summary() + "   (" + p.used + " hits)";
+                int w = Draw.width(s, 0.85f) + 20;
+                int py = panelY + panelH + 10;
+                Draw.panel(cx - w / 2, py, w, 15, 7, Theme.PANEL, Theme.BORDER);
+                Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
+            }
+    
+            Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+            Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
+    
+            super.drawScreen(mouseX, mouseY, partialTicks);
+            drawFade();
+        }
+    }
+  │                                   ├── Hud.java
+    package com.oryvex.kbclient.ui;
+    
+    import com.oryvex.kbclient.KBTracker;
+    import com.oryvex.kbclient.kb.KBProfile;
+    import com.oryvex.kbclient.kb.KBSample;
+    import java.util.ArrayList;
+    import java.util.List;
+    import net.minecraft.client.Minecraft;
+    
+    /** In-game overlay: status card (fades in/out) + hit toasts. */
+    public final class Hud {
+        private Hud() {}
+    
+        private static final class Toast {
+            final String text;
+            final int color;
+            final long born;
+            Toast(String t, int c) { text = t; color = c; born = System.currentTimeMillis(); }
+        }
+    
+        private static final List<Toast> toasts = new ArrayList<Toast>();
+        private static float alpha = 0f;
+        private static long lastNs = System.nanoTime();
+    
+        public static void push(String text, int color) {
+            if (!Settings.toasts) return;
+            toasts.add(new Toast(text, color));
+            while (toasts.size() > 4) toasts.remove(0);
+        }
+    
+        public static void render(Minecraft mc, KBTracker t) {
+            long ns = System.nanoTime();
+            float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
+            lastNs = ns;
+            alpha += ((Settings.hud ? 1f : 0f) - alpha) * Math.min(1f, dt * 8f);
+            if (alpha < 0.03f) return;
+            float a = alpha;
+    
+            KBProfile pr = t.getProfile();
+            KBSample last = t.getLast();
+            boolean goal = t.getGoal() > 0;
+            int x = 6, y = 6, w = 146, h = goal ? 52 : 46;
+    
+            Draw.blend();
+            Draw.panel(x, y, w, h, 4, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
+            Draw.roundRect(x + 1, y + 1, 2, h - 2, 1, Draw.fade(t.isRecording() ? Theme.ACCENT : Theme.DIM, a));
+    
+            Draw.text("KB CLIENT", x + 8, y + 5, Draw.fade(Theme.ACCENT, a), 0.8f, false);
+            Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 5,
+                    Draw.fade(t.isRecording() ? Theme.GOOD : Theme.WARN, a), 0.8f, false);
+            if (last != null) {
+                Draw.text("H " + KBProfile.f(last.h, 4) + "  V " + KBProfile.f(last.vy, 4), x + 8, y + 16, Draw.fade(Theme.TEXT, a), 0.9f, false);
+            } else {
+                Draw.text("Waiting for hits...", x + 8, y + 16, Draw.fade(Theme.MUTED, a), 0.9f, false);
+            }
+            Draw.text(pr.used + " used / " + pr.total + " samples", x + 8, y + 27, Draw.fade(Theme.MUTED, a), 0.75f, false);
+    
+            // 12 confidence pips, one per parameter
+            for (int i = 0; i < KBProfile.COUNT; i++) {
+                int c = pr.src[i] == KBProfile.SRC_NONE ? Theme.PANEL3 : Draw.confColor(pr.conf[i]);
+                Draw.rect(x + 8 + i * 11, y + 38, 9, 2, Draw.fade(c, a));
+            }
+            if (goal) {
+                Draw.bar(x + 8, y + 44, w - 16, 3, t.getSessionHits() / (double) t.getGoal(), Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.ACCENT, a));
+            }
+    
+            long now = System.currentTimeMillis();
+            for (int i = toasts.size() - 1; i >= 0; i--) if (now - toasts.get(i).born > 3600) toasts.remove(i);
+            int ty = y + h + 4;
+            for (int i = toasts.size() - 1; i >= 0; i--) {
+                Toast to = toasts.get(i);
+                long age = now - to.born;
+                float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * a;
+                float slide = age < 160 ? (1f - age / 160f) * 10f : 0f;
+                int tw = Draw.width(to.text, 0.85f) + 12;
+                Draw.blend();
+                Draw.roundRect(x - (int) slide, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
+                int al = (int) (255 * fade);
+                if (al > 4) Draw.text(to.text, x + 6 - slide, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+                ty += 14;
+            }
+            Draw.blend();
+        }
+    }
+  │                                   ├── LoadingArt.java
+    package com.oryvex.kbclient.ui;
+    
+    import java.awt.Color;
+    
+    /** The custom loading screen artwork (used by the loading renderer and the terrain overlay). */
+    public final class LoadingArt {
+        private LoadingArt() {}
+    
+        private static final String[] TIPS = {
+            "Press Right Shift in-game to open the Knockback Analyzer.",
+            "Get hit by a walking AND a sprinting player to separate HORIZONTAL from EXTRA-HORIZONTAL.",
+            "Get hit while falling to measure VERTICAL when Y-LIMIT clamps it.",
+            "Use /kb import to compare a Carbon YAML against your detected profile.",
+            "Every value in the analyzer carries a source tag: MEAS, EST, DEF or FILE."
+        };
+    
+        /** pct < 0 = indeterminate */
+        public static void draw(int w, int h, String title, String sub, int pct) {
+            
+            Draw.blend();
+            Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
+            if (Settings.particles) {
+                Draw.particles(w, h, 60, 0x22D3EE, 0.35f);
+                Draw.particles(w, h, 20, 0xA78BFA, 0.30f);
+            }
+            float t = (System.currentTimeMillis() % 100000L) / 1000f;
+            int cx = w / 2, cy = h / 2;
+    
+            // logo
+            String logo = "ORYVEX";
+            float sc = 3f;
+            float tx = cx - Draw.font().getStringWidth(logo) * sc / 2f;
+            int ly = cy - 70;
+            for (int i = 0; i < logo.length(); i++) {
+                String ch = logo.substring(i, i + 1);
+                float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+                Draw.text(ch, tx, ly, Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000, sc, true);
+                tx += Draw.font().getStringWidth(ch) * sc;
+            }
+            Draw.centered("K N O C K B A C K   C L I E N T", cx, ly + 28, Theme.MUTED, 0.8f, false);
+    
+            // orbiting comet spinner
+            int sy = cy + 2;
+            Draw.roundRect(cx - 16, sy - 16, 32, 32, 16, Draw.alpha(0x22D3EE, 0.06f));
+            for (int i = 0; i < 12; i++) {
+                double ang = t * 3.4 - i * 0.5;
+                int dx = (int) Math.round(Math.cos(ang) * 13);
+                int dy = (int) Math.round(Math.sin(ang) * 13);
+                float a = 1f - i / 12f;
+                int sz = i < 3 ? 3 : 2;
+                Draw.rect(cx + dx - sz / 2, sy + dy - sz / 2, sz, sz, Draw.alpha(i % 2 == 0 ? 0x22D3EE : 0xA78BFA, a));
+            }
+    
+            // text + bar
+            String ttl = (title == null || title.isEmpty()) ? "Loading" : title;
+            Draw.centered(ttl, cx, cy + 26, Theme.TEXT, 1f, true);
+            if (sub != null && !sub.isEmpty()) Draw.centered(sub, cx, cy + 38, Theme.MUTED, 0.85f, false);
+    
+            int bw = 180, bx = cx - bw / 2, by = cy + 54;
+            Draw.roundRect(bx, by, bw, 4, 2, Theme.PANEL3);
+            if (pct >= 0) {
+                Draw.roundRect(bx, by, Math.max(2, bw * Math.min(100, pct) / 100), 4, 2, Theme.ACCENT);
+                Draw.centered(pct + "%", cx, by + 8, Theme.SOFT, 0.8f, false);
+            } else {
+                float p = (t * 0.9f) % 1f;
+                int seg = 56;
+                int sx = bx + (int) ((bw + seg) * p) - seg;
+                int x0 = Math.max(bx, sx), x1 = Math.min(bx + bw, sx + seg);
+                if (x1 > x0) Draw.roundRect(x0, by, x1 - x0, 4, 2, Theme.ACCENT);
+            }
+    
+            // tip
+            String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
+            Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
+            Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
+        
+        }
+    }
+  │                                   └── UiButton.java
+    package com.oryvex.kbclient.ui;
+    
+    import net.minecraft.client.Minecraft;
+    import net.minecraft.client.gui.GuiButton;
+    
+    /** Flat rounded button: hover animation, staggered entrance, toggle switch, animated gear icon. */
+    public class UiButton extends GuiButton {
+        public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4;
+        public static final int ICON_NONE = 0, ICON_GEAR = 1;
+    
+        public int style = NORMAL;
+        public int icon = ICON_NONE;
+        public boolean selected;
+        public boolean on;
+        /** entrance delay in ms */
+        public long delay;
+    
+        private float hover, knob, spin;
+        private final long born = System.currentTimeMillis();
+        private long last = System.nanoTime();
+    
+        public UiButton(int id, int x, int y, int w, int h, String text) {
+            super(id, x, y, w, h, text);
+        }
+    
+        public UiButton style(int s) { this.style = s; return this; }
+        public UiButton icon(int i) { this.icon = i; return this; }
+        public UiButton delay(long d) { this.delay = d; return this; }
+    
+        @Override
+        public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+            if (!this.visible) return;
+            this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition
+                    && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+    
+            long nowN = System.nanoTime();
+            float dt = Math.min(0.1f, (nowN - last) / 1.0e9f);
+            last = nowN;
+            hover += (((this.hovered && this.enabled) ? 1f : 0f) - hover) * Math.min(1f, dt * 14f);
+            knob += ((on ? 1f : 0f) - knob) * Math.min(1f, dt * 16f);
+            spin = (spin + dt * (40f + 380f * hover)) % 360f;
+    
+            float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
+            if (ap <= 0.01f) return;
+    
+            int x = xPosition, y = yPosition + (int) ((1f - ap) * 8f), w = width, h = height;
+            int fill, border, text;
+            switch (style) {
+                case PRIMARY:
+                    fill = Draw.lerp(Theme.ACCENT_DK, 0xFF0891B2, hover);
+                    border = Draw.lerp(0xFF0891B2, Theme.ACCENT, hover);
+                    text = Theme.TEXT;
+                    break;
+                case DANGER:
+                    fill = Draw.lerp(0xFF2A1218, 0xFF5B1A22, hover);
+                    border = Draw.lerp(0xFF4A1D25, Theme.BAD, hover);
+                    text = Draw.lerp(0xFFFCA5A5, Theme.TEXT, hover);
+                    break;
+                case TAB:
+                    fill = selected ? Theme.PANEL2 : Draw.lerp(Theme.BG1, Theme.PANEL, hover);
+                    border = selected ? Theme.BORDER_HI : Draw.lerp(Theme.BG1, Theme.BORDER, hover);
+                    text = selected ? Theme.ACCENT : Draw.lerp(Theme.MUTED, Theme.TEXT, hover);
+                    break;
+                default:
+                    fill = Draw.lerp(Theme.PANEL2, Theme.PANEL3, hover);
+                    border = Draw.lerp(Theme.BORDER, Theme.ACCENT, hover);
+                    text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
+            }
+            if (!enabled) { fill = Theme.PANEL; border = Theme.BORDER; text = Theme.DIM; }
+    
+            Draw.blend();
+            Draw.panel(x, y, w, h, 4, Draw.fade(fill, ap), Draw.fade(border, ap));
+            if (style == TAB && selected) Draw.roundRect(x + 6, y + h - 2, w - 12, 2, 1, Draw.fade(Theme.ACCENT, ap));
+    
+            int tc = Draw.fade(text, ap);
+            if (style == TOGGLE) {
+                Draw.text(displayString, x + 8, y + (h - 8) / 2f, tc, 1f, false);
+                int sw = 24, sh = 10, sx = x + w - 8 - sw, sy = y + (h - sh) / 2;
+                Draw.roundRect(sx, sy, sw, sh, 5, Draw.fade(Draw.lerp(Theme.PANEL3, Theme.ACCENT_DK, knob), ap));
+                int kx = sx + 1 + (int) ((sw - sh) * knob);
+                Draw.roundRect(kx, sy + 1, sh - 2, sh - 2, 4, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, knob), ap));
+            } else if (icon == ICON_GEAR) {
+                int tw = Draw.width(displayString, 1f);
+                float startX = x + (w - (tw + 18)) / 2f;
+                float cy = y + h / 2f;
+                Draw.gear(startX + 6f, cy, 5.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
+                Draw.text(displayString, startX + 18f, y + (h - 8) / 2f, tc, 1f, true);
+            } else {
+                Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);
+            }
         }
     }
   ├── .git
@@ -11160,848 +13138,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     # Cross platform projects tend to avoid non-ASCII filenames; prevent
     # them from being added to the repository. We exploit the fact that the
     # printable range starts at the space character and ends with tilde.
-    if [ "$allownonascii" != "true" ] &&
-    	# Note that the use of brackets around a tr range is ok here, (it's
-    	# even required, for portability to Solaris 10's /usr/bin/tr), since
-    	# the square bracket bytes happen to fall in the designated range.
-    	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
-    	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
-    then
-    	cat <<\EOF
-    Error: Attempt to add a non-ASCII file name.
-    
-    This can cause problems if you want to work with people on other platforms.
-    
-    To be portable it is advisable to rename the file.
-    
-    If you know what you are doing you can disable this check using:
-    
-      git config hooks.allownonascii true
-    EOF
-    	exit 1
-    fi
-    
-    # If there are whitespace errors, print the offending file names and fail.
-    exec git diff-index --check --cached $against --
-  │   │   ├── pre-merge-commit.sample
-    #!/bin/sh
-    #
-    # An example hook script to verify what is about to be committed.
-    # Called by "git merge" with no arguments.  The hook should
-    # exit with non-zero status after issuing an appropriate message to
-    # stderr if it wants to stop the merge commit.
-    #
-    # To enable this hook, rename this file to "pre-merge-commit".
-    
-    . git-sh-setup
-    test -x "$GIT_DIR/hooks/pre-commit" &&
-            exec "$GIT_DIR/hooks/pre-commit"
-    :
-  │   │   ├── pre-push.sample
-    #!/bin/sh
-    
-    # An example hook script to verify what is about to be pushed.  Called by "git
-    # push" after it has checked the remote status, but before anything has been
-    # pushed.  If this script exits with a non-zero status nothing will be pushed.
-    #
-    # This hook is called with the following parameters:
-    #
-    # $1 -- Name of the remote to which the push is being done
-    # $2 -- URL to which the push is being done
-    #
-    # If pushing without using a named remote those arguments will be equal.
-    #
-    # Information about the commits which are being pushed is supplied as lines to
-    # the standard input in the form:
-    #
-    #   <local ref> <local oid> <remote ref> <remote oid>
-    #
-    # This sample shows how to prevent push of commits where the log message starts
-    # with "WIP" (work in progress).
-    
-    remote="$1"
-    url="$2"
-    
-    zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-    
-    while read local_ref local_oid remote_ref remote_oid
-    do
-    	if test "$local_oid" = "$zero"
-    	then
-    		# Handle delete
-    		:
-    	else
-    		if test "$remote_oid" = "$zero"
-    		then
-    			# New branch, examine all commits
-    			range="$local_oid"
-    		else
-    			# Update to existing branch, examine new commits
-    			range="$remote_oid..$local_oid"
-    		fi
-    
-    		# Check for WIP commit
-    		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
-    		if test -n "$commit"
-    		then
-    			echo >&2 "Found WIP commit in $local_ref, not pushing"
-    			exit 1
-    		fi
-    	fi
-    done
-    
-    exit 0
-  │   │   ├── pre-rebase.sample
-    #!/bin/sh
-    #
-    # Copyright (c) 2006, 2008 Junio C Hamano
-    #
-    # The "pre-rebase" hook is run just before "git rebase" starts doing
-    # its job, and can prevent the command from running by exiting with
-    # non-zero status.
-    #
-    # The hook is called with the following parameters:
-    #
-    # $1 -- the upstream the series was forked from.
-    # $2 -- the branch being rebased (or empty when rebasing the current branch).
-    #
-    # This sample shows how to prevent topic branches that are already
-    # merged to 'next' branch from getting rebased, because allowing it
-    # would result in rebasing already published history.
-    
-    publish=next
-    basebranch="$1"
-    if test "$#" = 2
-    then
-    	topic="refs/heads/$2"
-    else
-    	topic=`git symbolic-ref HEAD` ||
-    	exit 0 ;# we do not interrupt rebasing detached HEAD
-    fi
-    
-    case "$topic" in
-    refs/heads/??/*)
-    	;;
-    *)
-    	exit 0 ;# we do not interrupt others.
-    	;;
-    esac
-    
-    # Now we are dealing with a topic branch being rebased
-    # on top of master.  Is it OK to rebase it?
-    
-    # Does the topic really exist?
-    git show-ref -q "$topic" || {
-    	echo >&2 "No such branch $topic"
-    	exit 1
-    }
-    
-    # Is topic fully merged to master?
-    not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
-    if test -z "$not_in_master"
-    then
-    	echo >&2 "$topic is fully merged to master; better remove it."
-    	exit 1 ;# we could allow it, but there is no point.
-    fi
-    
-    # Is topic ever merged to next?  If so you should not be rebasing it.
-    only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
-    only_next_2=`git rev-list ^master           ${publish} | sort`
-    if test "$only_next_1" = "$only_next_2"
-    then
-    	not_in_topic=`git rev-list "^$topic" master`
-    	if test -z "$not_in_topic"
-    	then
-    		echo >&2 "$topic is already up to date with master"
-    		exit 1 ;# we could allow it, but there is no point.
-    	else
-    		exit 0
-    	fi
-    else
-    	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
-    	/usr/bin/perl -e '
-    		my $topic = $ARGV[0];
-    		my $msg = "* $topic has commits already merged to public branch:\n";
-    		my (%not_in_next) = map {
-    			/^([0-9a-f]+) /;
-    			($1 => 1);
-    		} split(/\n/, $ARGV[1]);
-    		for my $elem (map {
-    				/^([0-9a-f]+) (.*)$/;
-    				[$1 => $2];
-    			} split(/\n/, $ARGV[2])) {
-    			if (!exists $not_in_next{$elem->[0]}) {
-    				if ($msg) {
-    					print STDERR $msg;
-    					undef $msg;
-    				}
-    				print STDERR " $elem->[1]\n";
-    			}
-    		}
-    	' "$topic" "$not_in_next" "$not_in_master"
-    	exit 1
-    fi
-    
-    <<\DOC_END
-    
-    This sample hook safeguards topic branches that have been
-    published from being rewound.
-    
-    The workflow assumed here is:
-    
-     * Once a topic branch forks from "master", "master" is never
-       merged into it again (either directly or indirectly).
-    
-     * Once a topic branch is fully cooked and merged into "master",
-       it is deleted.  If you need to build on top of it to correct
-       earlier mistakes, a new topic branch is created by forking at
-       the tip of the "master".  This is not strictly necessary, but
-       it makes it easier to keep your history simple.
-    
-     * Whenever you need to test or publish your changes to topic
-       branches, merge them into "next" branch.
-    
-    The script, being an example, hardcodes the publish branch name
-    to be "next", but it is trivial to make it configurable via
-    $GIT_DIR/config mechanism.
-    
-    With this workflow, you would want to know:
-    
-    (1) ... if a topic branch has ever been merged to "next".  Young
-        topic branches can have stupid mistakes you would rather
-        clean up before publishing, and things that have not been
-        merged into other branches can be easily rebased without
-        affecting other people.  But once it is published, you would
-        not want to rewind it.
-    
-    (2) ... if a topic branch has been fully merged to "master".
-        Then you can delete it.  More importantly, you should not
-        build on top of it -- other people may already want to
-        change things related to the topic as patches against your
-        "master", so if you need further changes, it is better to
-        fork the topic (perhaps with the same name) afresh from the
-        tip of "master".
-    
-    Let's look at this example:
-    
-    		   o---o---o---o---o---o---o---o---o---o "next"
-    		  /       /           /           /
-    		 /   a---a---b A     /           /
-    		/   /               /           /
-    	       /   /   c---c---c---c B         /
-    	      /   /   /             \         /
-    	     /   /   /   b---b C     \       /
-    	    /   /   /   /             \     /
-        ---o---o---o---o---o---o---o---o---o---o---o "master"
-    
-    
-    A, B and C are topic branches.
-    
-     * A has one fix since it was merged up to "next".
-    
-     * B has finished.  It has been fully merged up to "master" and "next",
-       and is ready to be deleted.
-    
-     * C has not merged to "next" at all.
-    
-    We would want to allow C to be rebased, refuse A, and encourage
-    B to be deleted.
-    
-    To compute (1):
-    
-    	git rev-list ^master ^topic next
-    	git rev-list ^master        next
-    
-    	if these match, topic has not merged in next at all.
-    
-    To compute (2):
-    
-    	git rev-list master..topic
-    
-    	if this is empty, it is fully merged to "master".
-    
-    DOC_END
-  │   │   ├── pre-receive.sample
-    #!/bin/sh
-    #
-    # An example hook script to make use of push options.
-    # The example simply echoes all push options that start with 'echoback='
-    # and rejects all pushes when the "reject" push option is used.
-    #
-    # To enable this hook, rename this file to "pre-receive".
-    
-    if test -n "$GIT_PUSH_OPTION_COUNT"
-    then
-    	i=0
-    	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
-    	do
-    		eval "value=\$GIT_PUSH_OPTION_$i"
-    		case "$value" in
-    		echoback=*)
-    			echo "echo from the pre-receive-hook: ${value#*=}" >&2
-    			;;
-    		reject)
-    			exit 1
-    		esac
-    		i=$((i + 1))
-    	done
-    fi
-  │   │   ├── prepare-commit-msg.sample
-    #!/bin/sh
-    #
-    # An example hook script to prepare the commit log message.
-    # Called by "git commit" with the name of the file that has the
-    # commit message, followed by the description of the commit
-    # message's source.  The hook's purpose is to edit the commit
-    # message file.  If the hook fails with a non-zero status,
-    # the commit is aborted.
-    #
-    # To enable this hook, rename this file to "prepare-commit-msg".
-    
-    # This hook includes three examples. The first one removes the
-    # "# Please enter the commit message..." help message.
-    #
-    # The second includes the output of "git diff --name-status -r"
-    # into the message, just before the "git status" output.  It is
-    # commented because it doesn't cope with --amend or with squashed
-    # commits.
-    #
-    # The third example adds a Signed-off-by line to the message, that can
-    # still be edited.  This is rarely a good idea.
-    
-    COMMIT_MSG_FILE=$1
-    COMMIT_SOURCE=$2
-    SHA1=$3
-    
-    /usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
-    
-    # case "$COMMIT_SOURCE,$SHA1" in
-    #  ,|template,)
-    #    /usr/bin/perl -i.bak -pe '
-    #       print "\n" . `git diff --cached --name-status -r`
-    # 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
-    #  *) ;;
-    # esac
-    
-    # SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-    # git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
-    # if test -z "$COMMIT_SOURCE"
-    # then
-    #   /usr/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
-    # fi
-  │   │   ├── push-to-checkout.sample
-    #!/bin/sh
-    
-    # An example hook script to update a checked-out tree on a git push.
-    #
-    # This hook is invoked by git-receive-pack(1) when it reacts to git
-    # push and updates reference(s) in its repository, and when the push
-    # tries to update the branch that is currently checked out and the
-    # receive.denyCurrentBranch configuration variable is set to
-    # updateInstead.
-    #
-    # By default, such a push is refused if the working tree and the index
-    # of the remote repository has any difference from the currently
-    # checked out commit; when both the working tree and the index match
-    # the current commit, they are updated to match the newly pushed tip
-    # of the branch. This hook is to be used to override the default
-    # behaviour; however the code below reimplements the default behaviour
-    # as a starting point for convenient modification.
-    #
-    # The hook receives the commit with which the tip of the current
-    # branch is going to be updated:
-    commit=$1
-    
-    # It can exit with a non-zero status to refuse the push (when it does
-    # so, it must not modify the index or the working tree).
-    die () {
-    	echo >&2 "$*"
-    	exit 1
-    }
-    
-    # Or it can make any necessary changes to the working tree and to the
-    # index to bring them to the desired state when the tip of the current
-    # branch is updated to the new commit, and exit with a zero status.
-    #
-    # For example, the hook can simply run git read-tree -u -m HEAD "$1"
-    # in order to emulate git fetch that is run in the reverse direction
-    # with git push, as the two-tree form of git read-tree -u -m is
-    # essentially the same as git switch or git checkout that switches
-    # branches while keeping the local changes in the working tree that do
-    # not interfere with the difference between the branches.
-    
-    # The below is a more-or-less exact translation to shell of the C code
-    # for the default behaviour for git's push-to-checkout hook defined in
-    # the push_to_deploy() function in builtin/receive-pack.c.
-    #
-    # Note that the hook will be executed from the repository directory,
-    # not from the working tree, so if you want to perform operations on
-    # the working tree, you will have to adapt your code accordingly, e.g.
-    # by adding "cd .." or using relative paths.
-    
-    if ! git update-index -q --ignore-submodules --refresh
-    then
-    	die "Up-to-date check failed"
-    fi
-    
-    if ! git diff-files --quiet --ignore-submodules --
-    then
-    	die "Working directory has unstaged changes"
-    fi
-    
-    # This is a rough translation of:
-    #
-    #   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
-    if git cat-file -e HEAD 2>/dev/null
-    then
-    	head=HEAD
-    else
-    	head=$(git hash-object -t tree --stdin </dev/null)
-    fi
-    
-    if ! git diff-index --quiet --cached --ignore-submodules $head --
-    then
-    	die "Working directory has staged changes"
-    fi
-    
-    if ! git read-tree -u -m "$commit"
-    then
-    	die "Could not update working tree to new HEAD"
-    fi
-  │   │   ├── sendemail-validate.sample
-    #!/bin/sh
-    
-    # An example hook script to validate a patch (and/or patch series) before
-    # sending it via email.
-    #
-    # The hook should exit with non-zero status after issuing an appropriate
-    # message if it wants to prevent the email(s) from being sent.
-    #
-    # To enable this hook, rename this file to "sendemail-validate".
-    #
-    # By default, it will only check that the patch(es) can be applied on top of
-    # the default upstream branch without conflicts in a secondary worktree. After
-    # validation (successful or not) of the last patch of a series, the worktree
-    # will be deleted.
-    #
-    # The following config variables can be set to change the default remote and
-    # remote ref that are used to apply the patches against:
-    #
-    #   sendemail.validateRemote (default: origin)
-    #   sendemail.validateRemoteRef (default: HEAD)
-    #
-    # Replace the TODO placeholders with appropriate checks according to your
-    # needs.
-    
-    validate_cover_letter () {
-    	file="$1"
-    	# TODO: Replace with appropriate checks (e.g. spell checking).
-    	true
-    }
-    
-    validate_patch () {
-    	file="$1"
-    	# Ensure that the patch applies without conflicts.
-    	git am -3 "$file" || return
-    	# TODO: Replace with appropriate checks for this patch
-    	# (e.g. checkpatch.pl).
-    	true
-    }
-    
-    validate_series () {
-    	# TODO: Replace with appropriate checks for the whole series
-    	# (e.g. quick build, coding style checks, etc.).
-    	true
-    }
-    
-    # main -------------------------------------------------------------------------
-    
-    if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
-    then
-    	remote=$(git config --default origin --get sendemail.validateRemote) &&
-    	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
-    	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
-    	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
-    	git config --replace-all sendemail.validateWorktree "$worktree"
-    else
-    	worktree=$(git config --get sendemail.validateWorktree)
-    fi || {
-    	echo "sendemail-validate: error: failed to prepare worktree" >&2
-    	exit 1
-    }
-    
-    unset GIT_DIR GIT_WORK_TREE
-    cd "$worktree" &&
-    
-    if grep -q "^diff --git " "$1"
-    then
-    	validate_patch "$1"
-    else
-    	validate_cover_letter "$1"
-    fi &&
-    
-    if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
-    then
-    	git config --unset-all sendemail.validateWorktree &&
-    	trap 'git worktree remove -ff "$worktree"' EXIT &&
-    	validate_series
-    fi
-  │   │   └── update.sample
-    #!/bin/sh
-    #
-    # An example hook script to block unannotated tags from entering.
-    # Called by "git receive-pack" with arguments: refname sha1-old sha1-new
-    #
-    # To enable this hook, rename this file to "update".
-    #
-    # Config
-    # ------
-    # hooks.allowunannotated
-    #   This boolean sets whether unannotated tags will be allowed into the
-    #   repository.  By default they won't be.
-    # hooks.allowdeletetag
-    #   This boolean sets whether deleting tags will be allowed in the
-    #   repository.  By default they won't be.
-    # hooks.allowmodifytag
-    #   This boolean sets whether a tag may be modified after creation. By default
-    #   it won't be.
-    # hooks.allowdeletebranch
-    #   This boolean sets whether deleting branches will be allowed in the
-    #   repository.  By default they won't be.
-    # hooks.denycreatebranch
-    #   This boolean sets whether remotely creating branches will be denied
-    #   in the repository.  By default this is allowed.
-    #
-    
-    # --- Command line
-    refname="$1"
-    oldrev="$2"
-    newrev="$3"
-    
-    # --- Safety check
-    if [ -z "$GIT_DIR" ]; then
-    	echo "Don't run this script from the command line." >&2
-    	echo " (if you want, you could supply GIT_DIR then run" >&2
-    	echo "  $0 <ref> <oldrev> <newrev>)" >&2
-    	exit 1
-    fi
-    
-    if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
-    	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
-    	exit 1
-    fi
-    
-    # --- Config
-    allowunannotated=$(git config --type=bool hooks.allowunannotated)
-    allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
-    denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
-    allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
-    allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
-    
-    # check for no description
-    projectdesc=$(sed -e '1q' "$GIT_DIR/description")
-    case "$projectdesc" in
-    "Unnamed repository"* | "")
-    	echo "*** Project description file hasn't been set" >&2
-    	exit 1
-    	;;
-    esac
-    
-    # --- Check types
-    # if $newrev is 0000...0000, it's a commit to delete a ref.
-    zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
-    if [ "$newrev" = "$zero" ]; then
-    	newrev_type=delete
-    else
-    	newrev_type=$(git cat-file -t $newrev)
-    fi
-    
-    case "$refname","$newrev_type" in
-    	refs/tags/*,commit)
-    		# un-annotated tag
-    		short_refname=${refname##refs/tags/}
-    		if [ "$allowunannotated" != "true" ]; then
-    			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
-    			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
-    			exit 1
-    		fi
-    		;;
-    	refs/tags/*,delete)
-    		# delete tag
-    		if [ "$allowdeletetag" != "true" ]; then
-    			echo "*** Deleting a tag is not allowed in this repository" >&2
-    			exit 1
-    		fi
-    		;;
-    	refs/tags/*,tag)
-    		# annotated tag
-    		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
-    		then
-    			echo "*** Tag '$refname' already exists." >&2
-    			echo "*** Modifying a tag is not allowed in this repository." >&2
-    			exit 1
-    		fi
-    		;;
-    	refs/heads/*,commit)
-    		# branch
-    		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
-    			echo "*** Creating a branch is not allowed in this repository" >&2
-    			exit 1
-    		fi
-    		;;
-    	refs/heads/*,delete)
-    		# delete branch
-    		if [ "$allowdeletebranch" != "true" ]; then
-    			echo "*** Deleting a branch is not allowed in this repository" >&2
-    			exit 1
-    		fi
-    		;;
-    	refs/remotes/*,commit)
-    		# tracking branch
-    		;;
-    	refs/remotes/*,delete)
-    		# delete tracking branch
-    		if [ "$allowdeletebranch" != "true" ]; then
-    			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
-    			exit 1
-    		fi
-    		;;
-    	*)
-    		# Anything else (is there anything else?)
-    		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
-    		exit 1
-    		;;
-    esac
-    
-    # --- Finished
-    exit 0
-  │   ├── index
-    [Error: 'utf-8' codec can't decode byte 0xbd in position 13: invalid start byte]
-  │   ├── info
-  │   │   └── exclude
-    # git ls-files --others --exclude-from=.git/info/exclude
-    # Lines that start with '#' are comments.
-    # For a project mostly in C, the following would be a good set of
-    # exclude patterns (uncomment them if you want to use them):
-    # *.[oa]
-    # *~
-  │   ├── logs
-  │   │   ├── HEAD
-    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
-    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    ec20ab878509f4e7d6e1aba533ae24a84ebefc72 311977f1bd61a1a987fcb29f77b19bf162db7b48 muvixo <godarshia20@gmail.com> 1790802411 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    311977f1bd61a1a987fcb29f77b19bf162db7b48 13ade0edbf6767b99df5d25a40daac85d4a34c78 muvixo <godarshia20@gmail.com> 1790802865 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    13ade0edbf6767b99df5d25a40daac85d4a34c78 ec2021fb98f47f6921e08e4941c29946b5b986cc muvixo <godarshia20@gmail.com> 1790803117 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803590 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804565 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805012 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-  │   │   └── refs
-  │   │       ├── heads
-  │   │       │   └── main
-    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
-    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801242 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802010 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    ec20ab878509f4e7d6e1aba533ae24a84ebefc72 311977f1bd61a1a987fcb29f77b19bf162db7b48 muvixo <godarshia20@gmail.com> 1790802411 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    311977f1bd61a1a987fcb29f77b19bf162db7b48 13ade0edbf6767b99df5d25a40daac85d4a34c78 muvixo <godarshia20@gmail.com> 1790802865 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    13ade0edbf6767b99df5d25a40daac85d4a34c78 ec2021fb98f47f6921e08e4941c29946b5b986cc muvixo <godarshia20@gmail.com> 1790803117 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803590 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804565 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-    66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805012 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
-  │   │       └── remotes
-  │   │           └── origin
-  │   │               └── main
-    0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790456 +0330	update by push
-    135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792639 +0330	update by push
-    c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793106 +0330	update by push
-    e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793441 +0330	update by push
-    037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794340 +0330	update by push
-    d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794874 +0330	update by push
-    59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800108 +0330	update by push
-    2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800308 +0330	update by push
-    58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800548 +0330	update by push
-    6f3da9f65e7fd71cd411480982a87814032d46a5 77b1cafb5c39a6ccac015bd232ff871a939569fc muvixo <godarshia20@gmail.com> 1790801256 +0330	update by push
-    77b1cafb5c39a6ccac015bd232ff871a939569fc 1d3aa31908e590852060437b4db980292258c964 muvixo <godarshia20@gmail.com> 1790801546 +0330	update by push
-    1d3aa31908e590852060437b4db980292258c964 ec20ab878509f4e7d6e1aba533ae24a84ebefc72 muvixo <godarshia20@gmail.com> 1790802023 +0330	update by push
-    ec20ab878509f4e7d6e1aba533ae24a84ebefc72 311977f1bd61a1a987fcb29f77b19bf162db7b48 muvixo <godarshia20@gmail.com> 1790802423 +0330	update by push
-    311977f1bd61a1a987fcb29f77b19bf162db7b48 13ade0edbf6767b99df5d25a40daac85d4a34c78 muvixo <godarshia20@gmail.com> 1790802875 +0330	update by push
-    13ade0edbf6767b99df5d25a40daac85d4a34c78 ec2021fb98f47f6921e08e4941c29946b5b986cc muvixo <godarshia20@gmail.com> 1790803128 +0330	update by push
-    ec2021fb98f47f6921e08e4941c29946b5b986cc 4d3f553ae817c73c94188e3c0c22e470ab97c1f6 muvixo <godarshia20@gmail.com> 1790803600 +0330	update by push
-    4d3f553ae817c73c94188e3c0c22e470ab97c1f6 66c7b1cf2f2c0b2ad8decec4f022d5b718495236 muvixo <godarshia20@gmail.com> 1790804579 +0330	update by push
-    66c7b1cf2f2c0b2ad8decec4f022d5b718495236 6fd0a957d9547b0ccbe0ef07f27b084c281747ba muvixo <godarshia20@gmail.com> 1790805025 +0330	update by push
-  │   ├── objects
-  │   │   ├── 00
-  │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
-  │   │   ├── 01
-  │   │   │   ├── 21e97b47c62e266da1f1d76a48e19eb529fb28
-    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
-  │   │   │   ├── 2d431944035dd0806f4ecf2e5864895180cd20
-    [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
-  │   │   │   └── 6781c055916334e20260270f97752a7ae911aa
-    [Error: 'utf-8' codec can't decode byte 0x8b in position 3: invalid start byte]
-  │   │   ├── 02
-  │   │   │   ├── 1515ef1f08397fb009a529545686526b74f3a0
-    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
-  │   │   │   ├── 713ffe8ba7f89ac0a9b62cb8dae2847aa8bb20
-    [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
-  │   │   │   └── c12c59c9a5beb3ba86b4cad2a8e4de94dd4641
-    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
-  │   │   ├── 03
-  │   │   │   ├── 7f00f76c704f0a15678598ab9146026a5b6a9c
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── a514169ebb3b7868cf60bfbf19c714b9bf3563
-    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
-  │   │   │   └── c48333df8c5f934786611ecf72ad389e6327e8
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   ├── 05
-  │   │   │   └── 355143713789598229d100e2b55eef6714a48f
-    [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
-  │   │   ├── 06
-  │   │   │   ├── 69aa04711a292495ac71068d4eb6983aafee51
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── c5c79ca7f4115be181651e9e657cc0bfd01728
-    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
-  │   │   ├── 08
-  │   │   │   ├── 524047de18a4973e6d2f45ce98bfe946621737
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── c04b94e4a28238631ba3ef59cd1c4c84ade5d9
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 0c
-  │   │   │   ├── 115f1ff7cd6d6dfde1e359853ffc80fee7544d
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 1ec99dd36988ea93bb9c1882e9f41c58993027
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── 4c7649c613b3ee0862209a7793eac05b6246ed
-    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
-  │   │   ├── 0d
-  │   │   │   ├── 15b1f5ce72821612867315fcc8d548006e57f7
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 76040aaa1081daf41104291df2ff4987d03a45
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 77a0814b3a19d5ef3558ae74e11cf4873af2b8
-    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
-  │   │   │   └── d85a1b497dbf7abfa47cc4852a268dd88510d3
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 0e
-  │   │   │   ├── c1701d8f234d8895938da50286aeb9685c8190
-    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
-  │   │   │   └── e8d5c1b34bb6f29ad0727f43c377f52b62f175
-    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
-  │   │   ├── 0f
-  │   │   │   └── 27f7bea47f54d6f8a8bd169c8a7648c56338ab
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 10
-  │   │   │   └── 7052a7daa36d7e8e83b0e035dac14c15670003
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 11
-  │   │   │   └── b82afaf0f2ffcbc56a0958e60ef3b28f68c75d
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 12
-  │   │   │   ├── 5780a736bb886f89e3d0215a9c353151266777
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── 95d164920ecac7c0bb665c77d5c8aadc94aa2c
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── 13
-  │   │   │   ├── 5a3411652d2488203136be6a869af72cc71491
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   └── ade0edbf6767b99df5d25a40daac85d4a34c78
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   ├── 14
-  │   │   │   └── bb303245e7a1a72f7c4c4eea3116732c964c06
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 18: invalid continuation byte]
-  │   │   ├── 16
-  │   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
-    [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
-  │   │   ├── 17
-  │   │   │   ├── 5829991ca9afb213cc310f859334c892d704f6
-    [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
-  │   │   │   └── 85d5129163e0e9a17c21d1d44e40bf24728e76
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 1a
-  │   │   │   ├── 1902e01d3e0b68250820d92d8392fdb713aa16
-    [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
-  │   │   │   └── eff7c1c49e30acfbda3ce2834102b157bd6b20
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 1b
-  │   │   │   ├── 644aa73c66e2836e6e87e36817d55b87176f57
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── f26b08d8885a6fba6469e03892d1164e085734
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 1c
-  │   │   │   └── b2344069b7a615498586444f4364418c0bdf86
-    [Error: 'utf-8' codec can't decode byte 0x83 in position 22: invalid start byte]
-  │   │   ├── 1d
-  │   │   │   ├── 3aa31908e590852060437b4db980292258c964
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── 5b29fbd59593cbadef9e8c2f5129d1d4391584
-    [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
-  │   │   │   └── 7521bc5d22e37bd852c240683dff3b95f6506e
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 1e
-  │   │   │   └── 06cca4abf0e085bb93de0d5fbe54102bbeb4a3
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 1f
-  │   │   │   └── 6246cc6c33477750d13ebf39edf93b252db2f1
-    [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
-  │   │   ├── 20
-  │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
-    [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
-  │   │   ├── 21
-  │   │   │   └── 419a4751472fb93ff3b691279c1e72b09da349
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 22
-  │   │   │   └── 501dbfc8218db505990928e09b14e8e7a3d6a8
-    [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
-  │   │   ├── 25
-  │   │   │   └── fa3787adcb2bdc5f21342daf2e0ff2ac599ef4
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 27
-  │   │   │   ├── 09c4023304edf4f0206a3b8c84c2104dd58021
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── 68efb67801d47b638572f33b62517fbf3b37b9
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── 28
-  │   │   │   └── b6a32ed39e9885d04061e4fcd494ffb30fd720
-    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   ├── 29
-  │   │   │   ├── ac24ba094cda13782700c6ce62edf134c07f35
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── d8f77d1e30d7494fc1874929016dd40c06f2e8
-    [Error: 'utf-8' codec can't decode byte 0xd7 in position 22: invalid continuation byte]
-  │   │   │   └── fb6f1e62b6697585558fd71e4ca7f270de63df
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 2a
-  │   │   │   └── 26a8f7b9deda7e8536610467cd4aac881c8cb4
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 2b
-  │   │   │   ├── 1902fa0fe2abe57ff92a4d71c51d07f8758fa6
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
-  │   │   │   └── 2f80fbdec35e23e7575d038937fceb1fe0cc77
-    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
-  │   │   ├── 2c
-  │   │   │   ├── 513a25e4a3aa540b6a9d5a25db3207c92e2f0a
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 7efc58d85cbe88ba9bce61394dbd7e3239530e
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
 ├── gradle
 │   └── wrapper
 │       └── gradle-wrapper.properties
@@ -12012,6 +13148,37 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   distributionUrl=https\://services.gradle.org/distributions/gradle-4.10.3-bin.zip
 ├── gradle.properties
   org.gradle.jvmargs=-Xmx2048M -Dhttps.protocols=TLSv1.2 -Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000
+├── proguard-rules.pro
+  # ProGuard rules for KB Client (Forge 1.8.9 client mod)
+  # Run against the built mod jar only (Minecraft/Forge/Netty classes are not
+  # reprocessed - they're just referenced, so warnings about them are expected).
+  
+  -dontoptimize
+  -dontpreverify
+  -dontwarn **
+  -ignorewarnings
+  
+  -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+  
+  # Forge finds the mod entry point by its @Mod annotation and calls its
+  # @EventHandler lifecycle methods by reflection - both must survive.
+  -keep @net.minecraftforge.fml.common.Mod class * {
+      @net.minecraftforge.fml.common.Mod$EventHandler <methods>;
+  }
+  
+  # Forge's event bus finds listeners by @SubscribeEvent via reflection.
+  -keepclassmembers class * {
+      @net.minecraftforge.fml.common.eventhandler.SubscribeEvent <methods>;
+  }
+  
+  # Registered client command - keep its identity/usage strings and dispatch.
+  -keep class com.oryvex.kbclient.KBCommand { *; }
+  
+  # Keep enum semantics (values()/valueOf() are used reflectively by libraries).
+  -keepclassmembers enum * {
+      public static **[] values();
+      public static ** valueOf(java.lang.String);
+  }
 ├── settings.gradle
   rootProject.name = 'KBClient'
 └── src
@@ -12502,11 +13669,14 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   import net.minecraft.client.entity.EntityPlayerSP;
   import net.minecraft.client.gui.GuiButton;
   import net.minecraft.client.gui.GuiChat;
+  import net.minecraft.client.gui.GuiDisconnected;
   import net.minecraft.client.gui.GuiDownloadTerrain;
   import net.minecraft.client.gui.GuiIngameMenu;
   import net.minecraft.client.gui.GuiMainMenu;
   import net.minecraft.client.gui.GuiScreen;
   import net.minecraft.client.gui.inventory.GuiContainer;
+  import net.minecraft.client.multiplayer.GuiConnecting;
+  import net.minecraft.client.multiplayer.ServerData;
   import net.minecraft.client.settings.KeyBinding;
   import net.minecraft.network.NetworkManager;
   import net.minecraft.network.play.server.S12PacketEntityVelocity;
@@ -12531,8 +13701,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   public class KBClientMod {
       public static final String MODID = "kbclient";
       public static final String NAME = "KB Client";
-      public static final String VERSION = "3.0.0";
+      public static final String VERSION = "1.0.0";
       private static final String HOOK = "kb_client_handler";
+      private static final int RECONNECT_BTN_ID = 9001;
   
       private static KBClientMod instance;
       public static Logger logger;
@@ -12543,6 +13714,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       private boolean pendingOpen;
       private Object lastWorld;
       private boolean loadingInstalled;
+      private ServerData lastServer;
   
       public static KBClientMod getInstance() { return instance; }
       public KBTracker getTracker() { return tracker; }
@@ -12607,14 +13779,34 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       @SubscribeEvent
       public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
-          if (!(e.gui instanceof GuiIngameMenu)) return;
-          for (int i = 0; i < e.buttonList.size(); i++) {
-              GuiButton b = e.buttonList.get(i);
-              if (b.id == 0) {
-                  UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
-                  u.icon = UiButton.ICON_GEAR;
-                  e.buttonList.set(i, u);
+          if (e.gui instanceof GuiIngameMenu) {
+              for (int i = 0; i < e.buttonList.size(); i++) {
+                  GuiButton b = e.buttonList.get(i);
+                  if (b.id == 0) {
+                      UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                      u.icon = UiButton.ICON_GEAR;
+                      e.buttonList.set(i, u);
+                  }
               }
+              return;
+          }
+  
+          if (e.gui instanceof GuiDisconnected) {
+              int bw = 200, bh = 20;
+              UiButton reconnect = new UiButton(RECONNECT_BTN_ID, e.gui.width / 2 - bw / 2, e.gui.height / 4 + 108, bw, bh, "Reconnect");
+              reconnect.style(UiButton.PRIMARY);
+              reconnect.enabled = lastServer != null;
+              e.buttonList.add(reconnect);
+          }
+      }
+  
+      /** Handles our injected "Reconnect" button on the Disconnected screen. */
+      @SubscribeEvent
+      public void onAction(GuiScreenEvent.ActionPerformedEvent.Pre e) {
+          if (!(e.gui instanceof GuiDisconnected) || e.button == null || e.button.id != RECONNECT_BTN_ID) return;
+          e.setCanceled(true);
+          if (lastServer != null) {
+              Minecraft.getMinecraft().displayGuiScreen(new GuiConnecting(e.gui, Minecraft.getMinecraft(), lastServer));
           }
       }
   
@@ -12663,6 +13855,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
               String name = mc.isSingleplayer() ? "Singleplayer"
                       : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+              if (!mc.isSingleplayer() && mc.getCurrentServerData() != null) lastServer = mc.getCurrentServerData();
               tracker.onConnect(name);
               logger.info("[KBClient] velocity hook installed on " + name);
           } catch (Throwable t) {
@@ -12833,7 +14026,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       private KBProfile reference;
       private String lastImport = "";
       private KBSample last;
-      private boolean recording = true;
+      private boolean recording = false;
       private int goal = 0;
       private int sessionHits = 0;
       private int nextId = 1;
@@ -12881,7 +14074,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           reset();
           sprintBits.clear();
           server = name;
-          recording = true;
+          recording = false; // fixed: capture must be started explicitly with /findkb (or /kb start), it must not run on its own
           goal = 0;
       }
   
@@ -14521,7 +15714,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       @Override
       public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-      if (bDisc != null) bDisc.displayString = "Discord RPC: " + com.oryvex.kbclient.DiscordRPC.statusText();
           drawBackdrop(30);
           Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
           Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);
@@ -14627,8 +15819,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
           }
   
-          Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+          Draw.text("KB Client 1.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
           Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
+          Draw.right("Created by muvixo", this.width - 6, this.height - 22, Theme.DIM, 0.7f, false);
   
           super.drawScreen(mouseX, mouseY, partialTicks);
           drawFade();
@@ -14643,6 +15836,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   import java.util.ArrayList;
   import java.util.List;
   import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.ScaledResolution;
   
   /** In-game overlay: status card (fades in/out) + hit toasts. */
   public final class Hud {
@@ -14666,6 +15860,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       }
   
       public static void render(Minecraft mc, KBTracker t) {
+          ScaledResolution res = new ScaledResolution(mc);
+          Draw.blend();
+          Draw.right("Created by muvixo", res.getScaledWidth() - 4, res.getScaledHeight() - 10, Theme.DIM, 0.7f, false);
+  
           long ns = System.nanoTime();
           float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
           lastNs = ns;
@@ -14707,13 +15905,13 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           for (int i = toasts.size() - 1; i >= 0; i--) {
               Toast to = toasts.get(i);
               long age = now - to.born;
-              float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * a;
-              float slide = age < 160 ? (1f - age / 160f) * 10f : 0f;
+              float in = age < 160 ? age / 160f : 1f; // fade in only - no slide
+              float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * in * a;
               int tw = Draw.width(to.text, 0.85f) + 12;
               Draw.blend();
-              Draw.roundRect(x - (int) slide, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
+              Draw.roundRect(x, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
               int al = (int) (255 * fade);
-              if (al > 4) Draw.text(to.text, x + 6 - slide, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+              if (al > 4) Draw.text(to.text, x + 6, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
               ty += 14;
           }
           Draw.blend();
@@ -14914,7 +16112,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           // tip
           String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
           Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
-          Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
+          Draw.text("KB Client 1.0", 6, h - 12, Theme.DIM, 0.75f, false);
+          Draw.right("Created by muvixo", w - 6, h - 12, Theme.DIM, 0.75f, false);
       
       }
   }
@@ -15011,7 +16210,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   import net.minecraft.client.Minecraft;
   import net.minecraft.client.gui.GuiButton;
   
-  /** Flat rounded button: hover animation, staggered entrance, toggle switch, animated gear icon. */
+  /** Flat rounded button: fade-in entrance only, toggle switch, static gear icon. */
   public class UiButton extends GuiButton {
       public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4;
       public static final int ICON_NONE = 0, ICON_GEAR = 1;
@@ -15023,7 +16222,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       /** entrance delay in ms */
       public long delay;
   
-      private float hover, knob, spin;
+      private float hover, knob;
       private final long born = System.currentTimeMillis();
       private long last = System.nanoTime();
   
@@ -15046,12 +16245,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           last = nowN;
           hover += (((this.hovered && this.enabled) ? 1f : 0f) - hover) * Math.min(1f, dt * 14f);
           knob += ((on ? 1f : 0f) - knob) * Math.min(1f, dt * 16f);
-          spin = (spin + dt * (40f + 380f * hover)) % 360f;
   
+          // fade in only - no slide, no spin
           float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
           if (ap <= 0.01f) return;
   
-          int x = xPosition, y = yPosition + (int) ((1f - ap) * 8f), w = width, h = height;
+          int x = xPosition, y = yPosition, w = width, h = height;
           int fill, border, text;
           switch (style) {
               case PRIMARY:
@@ -15091,7 +16290,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               int tw = Draw.width(displayString, 1f);
               float startX = x + (w - (tw + 18)) / 2f;
               float cy = y + h / 2f;
-              Draw.gear(startX + 6f, cy, 5.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
+              Draw.gear(startX + 6f, cy, 5.5f, 0f, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
               Draw.text(displayString, startX + 18f, y + (h - 8) / 2f, tc, 1f, true);
           } else {
               Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);
