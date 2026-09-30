@@ -11,11 +11,11 @@ public final class Settings {
 
     public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
 
-    public static boolean hud = true;
-    public static boolean particles = true;
-    public static boolean toasts = true;
-    public static boolean customLoading = true;
-    public static boolean discordRpc = true;
+    public static boolean hud = false;
+    public static boolean particles = false;
+    public static boolean toasts = false;
+    public static boolean customLoading = false;
+    public static boolean discordRpc = false;
     public static int fade = 2;
 
     private static File file() {
@@ -31,11 +31,11 @@ public final class Settings {
             Properties p = new Properties();
             FileInputStream in = new FileInputStream(f);
             try { p.load(in); } finally { in.close(); }
-            hud = Boolean.parseBoolean(p.getProperty("hud", "true"));
-            particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
-            toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
-            customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
-            discordRpc = Boolean.parseBoolean(p.getProperty("discordRpc", "true"));
+            hud = false;
+            particles = false;
+            toasts = false;
+            customLoading = false;
+            discordRpc = false;
             fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
         } catch (Throwable ignored) { }
     }
