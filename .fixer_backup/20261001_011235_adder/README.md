@@ -43,10 +43,3 @@ and while moving, on the ground AND while falling, and let someone click fast.
   * /kb start 15 | stop | resume | reset | export | hud | status | yaml
   * /kb import [file] | sample | clear
   * Exports go to .minecraft/kbclient/*.yml and *-samples.csv
-
-## Discord Rich Presence
-KB Client shows a "Playing KB Client" status in Discord (menus / singleplayer world /
-server address, with an elapsed timer). Toggle it in KB Client Options ->
-"Discord Rich Presence". Needs the Discord desktop app running (Windows).
-Art assets `oryvex` and `minecraft` (see `discord_assets/`) must be uploaded in the
-Discord Developer Portal -> Rich Presence -> Art Assets.

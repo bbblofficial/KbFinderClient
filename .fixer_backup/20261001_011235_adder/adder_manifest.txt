@@ -1,0 +1,5 @@
+M src/main/java/com/oryvex/kbclient/KBClientMod.java
+M src/main/java/com/oryvex/kbclient/ui/Settings.java
+M src/main/java/com/oryvex/kbclient/ui/GuiKbOptions.java
+M README.md
+C src/main/java/com/oryvex/kbclient/DiscordRPC.java

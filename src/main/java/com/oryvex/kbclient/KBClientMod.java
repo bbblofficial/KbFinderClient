@@ -81,6 +81,7 @@ public class KBClientMod {
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
+        DiscordRPC.start();
     }
 
     private void installLoading() {
@@ -146,6 +147,7 @@ public class KBClientMod {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         tracker.tick();
+        DiscordRPC.tick();
 
         if (mc.theWorld != lastWorld) {
             lastWorld = mc.theWorld;
