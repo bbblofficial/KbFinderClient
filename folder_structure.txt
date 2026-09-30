@@ -1,0 +1,4074 @@
+C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
+
+├── .git
+│   ├── COMMIT_EDITMSG
+  Initial commit: Knockback Client Mod 1.8.9
+│   ├── HEAD
+  ref: refs/heads/main
+│   ├── config
+  [core]
+  	repositoryformatversion = 0
+  	filemode = false
+  	bare = false
+  	logallrefupdates = true
+  	symlinks = false
+  	ignorecase = true
+  [remote "origin"]
+  	url = https://github.com/bbblofficial/KbFinderClient.git
+  	fetch = +refs/heads/*:refs/remotes/origin/*
+  [branch "main"]
+  	remote = origin
+  	merge = refs/heads/main
+│   ├── description
+  Unnamed repository; edit this file 'description' to name the repository.
+│   ├── hooks
+│   │   ├── applypatch-msg.sample
+  #!/bin/sh
+  #
+  # An example hook script to check the commit log message taken by
+  # applypatch from an e-mail message.
+  #
+  # The hook should exit with non-zero status after issuing an
+  # appropriate message if it wants to stop the commit.  The hook is
+  # allowed to edit the commit message file.
+  #
+  # To enable this hook, rename this file to "applypatch-msg".
+  
+  . git-sh-setup
+  commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
+  test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
+  :
+│   │   ├── commit-msg.sample
+  #!/bin/sh
+  #
+  # An example hook script to check the commit log message.
+  # Called by "git commit" with one argument, the name of the file
+  # that has the commit message.  The hook should exit with non-zero
+  # status after issuing an appropriate message if it wants to stop the
+  # commit.  The hook is allowed to edit the commit message file.
+  #
+  # To enable this hook, rename this file to "commit-msg".
+  
+  # Uncomment the below to add a Signed-off-by line to the message.
+  # Doing this in a hook is a bad idea in general, but the prepare-commit-msg
+  # hook is more suited to it.
+  #
+  # SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+  # grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+  
+  # This example catches duplicate Signed-off-by lines.
+  
+  test "" = "$(grep '^Signed-off-by: ' "$1" |
+  	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
+  	echo >&2 Duplicate Signed-off-by lines.
+  	exit 1
+  }
+│   │   ├── fsmonitor-watchman.sample
+  #!/usr/bin/perl
+  
+  use strict;
+  use warnings;
+  use IPC::Open2;
+  
+  # An example hook script to integrate Watchman
+  # (https://facebook.github.io/watchman/) with git to speed up detecting
+  # new and modified files.
+  #
+  # The hook is passed a version (currently 2) and last update token
+  # formatted as a string and outputs to stdout a new update token and
+  # all files that have been modified since the update token. Paths must
+  # be relative to the root of the working tree and separated by a single NUL.
+  #
+  # To enable this hook, rename this file to "query-watchman" and set
+  # 'git config core.fsmonitor .git/hooks/query-watchman'
+  #
+  my ($version, $last_update_token) = @ARGV;
+  
+  # Uncomment for debugging
+  # print STDERR "$0 $version $last_update_token\n";
+  
+  # Check the hook interface version
+  if ($version ne 2) {
+  	die "Unsupported query-fsmonitor hook version '$version'.\n" .
+  	    "Falling back to scanning...\n";
+  }
+  
+  my $git_work_tree = get_working_dir();
+  
+  my $retry = 1;
+  
+  my $json_pkg;
+  eval {
+  	require JSON::XS;
+  	$json_pkg = "JSON::XS";
+  	1;
+  } or do {
+  	require JSON::PP;
+  	$json_pkg = "JSON::PP";
+  };
+  
+  launch_watchman();
+  
+  sub launch_watchman {
+  	my $o = watchman_query();
+  	if (is_work_tree_watched($o)) {
+  		output_result($o->{clock}, @{$o->{files}});
+  	}
+  }
+  
+  sub output_result {
+  	my ($clockid, @files) = @_;
+  
+  	# Uncomment for debugging watchman output
+  	# open (my $fh, ">", ".git/watchman-output.out");
+  	# binmode $fh, ":utf8";
+  	# print $fh "$clockid\n@files\n";
+  	# close $fh;
+  
+  	binmode STDOUT, ":utf8";
+  	print $clockid;
+  	print "\0";
+  	local $, = "\0";
+  	print @files;
+  }
+  
+  sub watchman_clock {
+  	my $response = qx/watchman clock "$git_work_tree"/;
+  	die "Failed to get clock id on '$git_work_tree'.\n" .
+  		"Falling back to scanning...\n" if $? != 0;
+  
+  	return $json_pkg->new->utf8->decode($response);
+  }
+  
+  sub watchman_query {
+  	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
+  	or die "open2() failed: $!\n" .
+  	"Falling back to scanning...\n";
+  
+  	# In the query expression below we're asking for names of files that
+  	# changed since $last_update_token but not from the .git folder.
+  	#
+  	# To accomplish this, we're using the "since" generator to use the
+  	# recency index to select candidate nodes and "fields" to limit the
+  	# output to file names only. Then we're using the "expression" term to
+  	# further constrain the results.
+  	my $last_update_line = "";
+  	if (substr($last_update_token, 0, 1) eq "c") {
+  		$last_update_token = "\"$last_update_token\"";
+  		$last_update_line = qq[\n"since": $last_update_token,];
+  	}
+  	my $query = <<"	END";
+  		["query", "$git_work_tree", {$last_update_line
+  			"fields": ["name"],
+  			"expression": ["not", ["dirname", ".git"]]
+  		}]
+  	END
+  
+  	# Uncomment for debugging the watchman query
+  	# open (my $fh, ">", ".git/watchman-query.json");
+  	# print $fh $query;
+  	# close $fh;
+  
+  	print CHLD_IN $query;
+  	close CHLD_IN;
+  	my $response = do {local $/; <CHLD_OUT>};
+  
+  	# Uncomment for debugging the watch response
+  	# open ($fh, ">", ".git/watchman-response.json");
+  	# print $fh $response;
+  	# close $fh;
+  
+  	die "Watchman: command returned no output.\n" .
+  	"Falling back to scanning...\n" if $response eq "";
+  	die "Watchman: command returned invalid output: $response\n" .
+  	"Falling back to scanning...\n" unless $response =~ /^\{/;
+  
+  	return $json_pkg->new->utf8->decode($response);
+  }
+  
+  sub is_work_tree_watched {
+  	my ($output) = @_;
+  	my $error = $output->{error};
+  	if ($retry > 0 and $error and $error =~ m/unable to resolve root .* directory (.*) is not watched/) {
+  		$retry--;
+  		my $response = qx/watchman watch "$git_work_tree"/;
+  		die "Failed to make watchman watch '$git_work_tree'.\n" .
+  		    "Falling back to scanning...\n" if $? != 0;
+  		$output = $json_pkg->new->utf8->decode($response);
+  		$error = $output->{error};
+  		die "Watchman: $error.\n" .
+  		"Falling back to scanning...\n" if $error;
+  
+  		# Uncomment for debugging watchman output
+  		# open (my $fh, ">", ".git/watchman-output.out");
+  		# close $fh;
+  
+  		# Watchman will always return all files on the first query so
+  		# return the fast "everything is dirty" flag to git and do the
+  		# Watchman query just to get it over with now so we won't pay
+  		# the cost in git to look up each individual file.
+  		my $o = watchman_clock();
+  		$error = $output->{error};
+  
+  		die "Watchman: $error.\n" .
+  		"Falling back to scanning...\n" if $error;
+  
+  		output_result($o->{clock}, ("/"));
+  		$last_update_token = $o->{clock};
+  
+  		eval { launch_watchman() };
+  		return 0;
+  	}
+  
+  	die "Watchman: $error.\n" .
+  	"Falling back to scanning...\n" if $error;
+  
+  	return 1;
+  }
+  
+  sub get_working_dir {
+  	my $working_dir;
+  	if ($^O =~ 'msys' || $^O =~ 'cygwin') {
+  		$working_dir = Win32::GetCwd();
+  		$working_dir =~ tr/\\/\//;
+  	} else {
+  		require Cwd;
+  		$working_dir = Cwd::cwd();
+  	}
+  
+  	return $working_dir;
+  }
+│   │   ├── post-update.sample
+  #!/bin/sh
+  #
+  # An example hook script to prepare a packed repository for use over
+  # dumb transports.
+  #
+  # To enable this hook, rename this file to "post-update".
+  
+  exec git update-server-info
+│   │   ├── pre-applypatch.sample
+  #!/bin/sh
+  #
+  # An example hook script to verify what is about to be committed
+  # by applypatch from an e-mail message.
+  #
+  # The hook should exit with non-zero status after issuing an
+  # appropriate message if it wants to stop the commit.
+  #
+  # To enable this hook, rename this file to "pre-applypatch".
+  
+  . git-sh-setup
+  precommit="$(git rev-parse --git-path hooks/pre-commit)"
+  test -x "$precommit" && exec "$precommit" ${1+"$@"}
+  :
+│   │   ├── pre-commit.sample
+  #!/bin/sh
+  #
+  # An example hook script to verify what is about to be committed.
+  # Called by "git commit" with no arguments.  The hook should
+  # exit with non-zero status after issuing an appropriate message if
+  # it wants to stop the commit.
+  #
+  # To enable this hook, rename this file to "pre-commit".
+  
+  if git rev-parse --verify HEAD >/dev/null 2>&1
+  then
+  	against=HEAD
+  else
+  	# Initial commit: diff against an empty tree object
+  	against=$(git hash-object -t tree /dev/null)
+  fi
+  
+  # If you want to allow non-ASCII filenames set this variable to true.
+  allownonascii=$(git config --type=bool hooks.allownonascii)
+  
+  # Redirect output to stderr.
+  exec 1>&2
+  
+  # Cross platform projects tend to avoid non-ASCII filenames; prevent
+  # them from being added to the repository. We exploit the fact that the
+  # printable range starts at the space character and ends with tilde.
+  if [ "$allownonascii" != "true" ] &&
+  	# Note that the use of brackets around a tr range is ok here, (it's
+  	# even required, for portability to Solaris 10's /usr/bin/tr), since
+  	# the square bracket bytes happen to fall in the designated range.
+  	test $(git diff-index --cached --name-only --diff-filter=A -z $against |
+  	  LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+  then
+  	cat <<\EOF
+  Error: Attempt to add a non-ASCII file name.
+  
+  This can cause problems if you want to work with people on other platforms.
+  
+  To be portable it is advisable to rename the file.
+  
+  If you know what you are doing you can disable this check using:
+  
+    git config hooks.allownonascii true
+  EOF
+  	exit 1
+  fi
+  
+  # If there are whitespace errors, print the offending file names and fail.
+  exec git diff-index --check --cached $against --
+│   │   ├── pre-merge-commit.sample
+  #!/bin/sh
+  #
+  # An example hook script to verify what is about to be committed.
+  # Called by "git merge" with no arguments.  The hook should
+  # exit with non-zero status after issuing an appropriate message to
+  # stderr if it wants to stop the merge commit.
+  #
+  # To enable this hook, rename this file to "pre-merge-commit".
+  
+  . git-sh-setup
+  test -x "$GIT_DIR/hooks/pre-commit" &&
+          exec "$GIT_DIR/hooks/pre-commit"
+  :
+│   │   ├── pre-push.sample
+  #!/bin/sh
+  
+  # An example hook script to verify what is about to be pushed.  Called by "git
+  # push" after it has checked the remote status, but before anything has been
+  # pushed.  If this script exits with a non-zero status nothing will be pushed.
+  #
+  # This hook is called with the following parameters:
+  #
+  # $1 -- Name of the remote to which the push is being done
+  # $2 -- URL to which the push is being done
+  #
+  # If pushing without using a named remote those arguments will be equal.
+  #
+  # Information about the commits which are being pushed is supplied as lines to
+  # the standard input in the form:
+  #
+  #   <local ref> <local oid> <remote ref> <remote oid>
+  #
+  # This sample shows how to prevent push of commits where the log message starts
+  # with "WIP" (work in progress).
+  
+  remote="$1"
+  url="$2"
+  
+  zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+  
+  while read local_ref local_oid remote_ref remote_oid
+  do
+  	if test "$local_oid" = "$zero"
+  	then
+  		# Handle delete
+  		:
+  	else
+  		if test "$remote_oid" = "$zero"
+  		then
+  			# New branch, examine all commits
+  			range="$local_oid"
+  		else
+  			# Update to existing branch, examine new commits
+  			range="$remote_oid..$local_oid"
+  		fi
+  
+  		# Check for WIP commit
+  		commit=$(git rev-list -n 1 --grep '^WIP' "$range")
+  		if test -n "$commit"
+  		then
+  			echo >&2 "Found WIP commit in $local_ref, not pushing"
+  			exit 1
+  		fi
+  	fi
+  done
+  
+  exit 0
+│   │   ├── pre-rebase.sample
+  #!/bin/sh
+  #
+  # Copyright (c) 2006, 2008 Junio C Hamano
+  #
+  # The "pre-rebase" hook is run just before "git rebase" starts doing
+  # its job, and can prevent the command from running by exiting with
+  # non-zero status.
+  #
+  # The hook is called with the following parameters:
+  #
+  # $1 -- the upstream the series was forked from.
+  # $2 -- the branch being rebased (or empty when rebasing the current branch).
+  #
+  # This sample shows how to prevent topic branches that are already
+  # merged to 'next' branch from getting rebased, because allowing it
+  # would result in rebasing already published history.
+  
+  publish=next
+  basebranch="$1"
+  if test "$#" = 2
+  then
+  	topic="refs/heads/$2"
+  else
+  	topic=`git symbolic-ref HEAD` ||
+  	exit 0 ;# we do not interrupt rebasing detached HEAD
+  fi
+  
+  case "$topic" in
+  refs/heads/??/*)
+  	;;
+  *)
+  	exit 0 ;# we do not interrupt others.
+  	;;
+  esac
+  
+  # Now we are dealing with a topic branch being rebased
+  # on top of master.  Is it OK to rebase it?
+  
+  # Does the topic really exist?
+  git show-ref -q "$topic" || {
+  	echo >&2 "No such branch $topic"
+  	exit 1
+  }
+  
+  # Is topic fully merged to master?
+  not_in_master=`git rev-list --pretty=oneline ^master "$topic"`
+  if test -z "$not_in_master"
+  then
+  	echo >&2 "$topic is fully merged to master; better remove it."
+  	exit 1 ;# we could allow it, but there is no point.
+  fi
+  
+  # Is topic ever merged to next?  If so you should not be rebasing it.
+  only_next_1=`git rev-list ^master "^$topic" ${publish} | sort`
+  only_next_2=`git rev-list ^master           ${publish} | sort`
+  if test "$only_next_1" = "$only_next_2"
+  then
+  	not_in_topic=`git rev-list "^$topic" master`
+  	if test -z "$not_in_topic"
+  	then
+  		echo >&2 "$topic is already up to date with master"
+  		exit 1 ;# we could allow it, but there is no point.
+  	else
+  		exit 0
+  	fi
+  else
+  	not_in_next=`git rev-list --pretty=oneline ^${publish} "$topic"`
+  	/usr/bin/perl -e '
+  		my $topic = $ARGV[0];
+  		my $msg = "* $topic has commits already merged to public branch:\n";
+  		my (%not_in_next) = map {
+  			/^([0-9a-f]+) /;
+  			($1 => 1);
+  		} split(/\n/, $ARGV[1]);
+  		for my $elem (map {
+  				/^([0-9a-f]+) (.*)$/;
+  				[$1 => $2];
+  			} split(/\n/, $ARGV[2])) {
+  			if (!exists $not_in_next{$elem->[0]}) {
+  				if ($msg) {
+  					print STDERR $msg;
+  					undef $msg;
+  				}
+  				print STDERR " $elem->[1]\n";
+  			}
+  		}
+  	' "$topic" "$not_in_next" "$not_in_master"
+  	exit 1
+  fi
+  
+  <<\DOC_END
+  
+  This sample hook safeguards topic branches that have been
+  published from being rewound.
+  
+  The workflow assumed here is:
+  
+   * Once a topic branch forks from "master", "master" is never
+     merged into it again (either directly or indirectly).
+  
+   * Once a topic branch is fully cooked and merged into "master",
+     it is deleted.  If you need to build on top of it to correct
+     earlier mistakes, a new topic branch is created by forking at
+     the tip of the "master".  This is not strictly necessary, but
+     it makes it easier to keep your history simple.
+  
+   * Whenever you need to test or publish your changes to topic
+     branches, merge them into "next" branch.
+  
+  The script, being an example, hardcodes the publish branch name
+  to be "next", but it is trivial to make it configurable via
+  $GIT_DIR/config mechanism.
+  
+  With this workflow, you would want to know:
+  
+  (1) ... if a topic branch has ever been merged to "next".  Young
+      topic branches can have stupid mistakes you would rather
+      clean up before publishing, and things that have not been
+      merged into other branches can be easily rebased without
+      affecting other people.  But once it is published, you would
+      not want to rewind it.
+  
+  (2) ... if a topic branch has been fully merged to "master".
+      Then you can delete it.  More importantly, you should not
+      build on top of it -- other people may already want to
+      change things related to the topic as patches against your
+      "master", so if you need further changes, it is better to
+      fork the topic (perhaps with the same name) afresh from the
+      tip of "master".
+  
+  Let's look at this example:
+  
+  		   o---o---o---o---o---o---o---o---o---o "next"
+  		  /       /           /           /
+  		 /   a---a---b A     /           /
+  		/   /               /           /
+  	       /   /   c---c---c---c B         /
+  	      /   /   /             \         /
+  	     /   /   /   b---b C     \       /
+  	    /   /   /   /             \     /
+      ---o---o---o---o---o---o---o---o---o---o---o "master"
+  
+  
+  A, B and C are topic branches.
+  
+   * A has one fix since it was merged up to "next".
+  
+   * B has finished.  It has been fully merged up to "master" and "next",
+     and is ready to be deleted.
+  
+   * C has not merged to "next" at all.
+  
+  We would want to allow C to be rebased, refuse A, and encourage
+  B to be deleted.
+  
+  To compute (1):
+  
+  	git rev-list ^master ^topic next
+  	git rev-list ^master        next
+  
+  	if these match, topic has not merged in next at all.
+  
+  To compute (2):
+  
+  	git rev-list master..topic
+  
+  	if this is empty, it is fully merged to "master".
+  
+  DOC_END
+│   │   ├── pre-receive.sample
+  #!/bin/sh
+  #
+  # An example hook script to make use of push options.
+  # The example simply echoes all push options that start with 'echoback='
+  # and rejects all pushes when the "reject" push option is used.
+  #
+  # To enable this hook, rename this file to "pre-receive".
+  
+  if test -n "$GIT_PUSH_OPTION_COUNT"
+  then
+  	i=0
+  	while test "$i" -lt "$GIT_PUSH_OPTION_COUNT"
+  	do
+  		eval "value=\$GIT_PUSH_OPTION_$i"
+  		case "$value" in
+  		echoback=*)
+  			echo "echo from the pre-receive-hook: ${value#*=}" >&2
+  			;;
+  		reject)
+  			exit 1
+  		esac
+  		i=$((i + 1))
+  	done
+  fi
+│   │   ├── prepare-commit-msg.sample
+  #!/bin/sh
+  #
+  # An example hook script to prepare the commit log message.
+  # Called by "git commit" with the name of the file that has the
+  # commit message, followed by the description of the commit
+  # message's source.  The hook's purpose is to edit the commit
+  # message file.  If the hook fails with a non-zero status,
+  # the commit is aborted.
+  #
+  # To enable this hook, rename this file to "prepare-commit-msg".
+  
+  # This hook includes three examples. The first one removes the
+  # "# Please enter the commit message..." help message.
+  #
+  # The second includes the output of "git diff --name-status -r"
+  # into the message, just before the "git status" output.  It is
+  # commented because it doesn't cope with --amend or with squashed
+  # commits.
+  #
+  # The third example adds a Signed-off-by line to the message, that can
+  # still be edited.  This is rarely a good idea.
+  
+  COMMIT_MSG_FILE=$1
+  COMMIT_SOURCE=$2
+  SHA1=$3
+  
+  /usr/bin/perl -i.bak -ne 'print unless(m/^. Please enter the commit message/..m/^#$/)' "$COMMIT_MSG_FILE"
+  
+  # case "$COMMIT_SOURCE,$SHA1" in
+  #  ,|template,)
+  #    /usr/bin/perl -i.bak -pe '
+  #       print "\n" . `git diff --cached --name-status -r`
+  # 	 if /^#/ && $first++ == 0' "$COMMIT_MSG_FILE" ;;
+  #  *) ;;
+  # esac
+  
+  # SOB=$(git var GIT_COMMITTER_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
+  # git interpret-trailers --in-place --trailer "$SOB" "$COMMIT_MSG_FILE"
+  # if test -z "$COMMIT_SOURCE"
+  # then
+  #   /usr/bin/perl -i.bak -pe 'print "\n" if !$first_line++' "$COMMIT_MSG_FILE"
+  # fi
+│   │   ├── push-to-checkout.sample
+  #!/bin/sh
+  
+  # An example hook script to update a checked-out tree on a git push.
+  #
+  # This hook is invoked by git-receive-pack(1) when it reacts to git
+  # push and updates reference(s) in its repository, and when the push
+  # tries to update the branch that is currently checked out and the
+  # receive.denyCurrentBranch configuration variable is set to
+  # updateInstead.
+  #
+  # By default, such a push is refused if the working tree and the index
+  # of the remote repository has any difference from the currently
+  # checked out commit; when both the working tree and the index match
+  # the current commit, they are updated to match the newly pushed tip
+  # of the branch. This hook is to be used to override the default
+  # behaviour; however the code below reimplements the default behaviour
+  # as a starting point for convenient modification.
+  #
+  # The hook receives the commit with which the tip of the current
+  # branch is going to be updated:
+  commit=$1
+  
+  # It can exit with a non-zero status to refuse the push (when it does
+  # so, it must not modify the index or the working tree).
+  die () {
+  	echo >&2 "$*"
+  	exit 1
+  }
+  
+  # Or it can make any necessary changes to the working tree and to the
+  # index to bring them to the desired state when the tip of the current
+  # branch is updated to the new commit, and exit with a zero status.
+  #
+  # For example, the hook can simply run git read-tree -u -m HEAD "$1"
+  # in order to emulate git fetch that is run in the reverse direction
+  # with git push, as the two-tree form of git read-tree -u -m is
+  # essentially the same as git switch or git checkout that switches
+  # branches while keeping the local changes in the working tree that do
+  # not interfere with the difference between the branches.
+  
+  # The below is a more-or-less exact translation to shell of the C code
+  # for the default behaviour for git's push-to-checkout hook defined in
+  # the push_to_deploy() function in builtin/receive-pack.c.
+  #
+  # Note that the hook will be executed from the repository directory,
+  # not from the working tree, so if you want to perform operations on
+  # the working tree, you will have to adapt your code accordingly, e.g.
+  # by adding "cd .." or using relative paths.
+  
+  if ! git update-index -q --ignore-submodules --refresh
+  then
+  	die "Up-to-date check failed"
+  fi
+  
+  if ! git diff-files --quiet --ignore-submodules --
+  then
+  	die "Working directory has unstaged changes"
+  fi
+  
+  # This is a rough translation of:
+  #
+  #   head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX
+  if git cat-file -e HEAD 2>/dev/null
+  then
+  	head=HEAD
+  else
+  	head=$(git hash-object -t tree --stdin </dev/null)
+  fi
+  
+  if ! git diff-index --quiet --cached --ignore-submodules $head --
+  then
+  	die "Working directory has staged changes"
+  fi
+  
+  if ! git read-tree -u -m "$commit"
+  then
+  	die "Could not update working tree to new HEAD"
+  fi
+│   │   ├── sendemail-validate.sample
+  #!/bin/sh
+  
+  # An example hook script to validate a patch (and/or patch series) before
+  # sending it via email.
+  #
+  # The hook should exit with non-zero status after issuing an appropriate
+  # message if it wants to prevent the email(s) from being sent.
+  #
+  # To enable this hook, rename this file to "sendemail-validate".
+  #
+  # By default, it will only check that the patch(es) can be applied on top of
+  # the default upstream branch without conflicts in a secondary worktree. After
+  # validation (successful or not) of the last patch of a series, the worktree
+  # will be deleted.
+  #
+  # The following config variables can be set to change the default remote and
+  # remote ref that are used to apply the patches against:
+  #
+  #   sendemail.validateRemote (default: origin)
+  #   sendemail.validateRemoteRef (default: HEAD)
+  #
+  # Replace the TODO placeholders with appropriate checks according to your
+  # needs.
+  
+  validate_cover_letter () {
+  	file="$1"
+  	# TODO: Replace with appropriate checks (e.g. spell checking).
+  	true
+  }
+  
+  validate_patch () {
+  	file="$1"
+  	# Ensure that the patch applies without conflicts.
+  	git am -3 "$file" || return
+  	# TODO: Replace with appropriate checks for this patch
+  	# (e.g. checkpatch.pl).
+  	true
+  }
+  
+  validate_series () {
+  	# TODO: Replace with appropriate checks for the whole series
+  	# (e.g. quick build, coding style checks, etc.).
+  	true
+  }
+  
+  # main -------------------------------------------------------------------------
+  
+  if test "$GIT_SENDEMAIL_FILE_COUNTER" = 1
+  then
+  	remote=$(git config --default origin --get sendemail.validateRemote) &&
+  	ref=$(git config --default HEAD --get sendemail.validateRemoteRef) &&
+  	worktree=$(mktemp --tmpdir -d sendemail-validate.XXXXXXX) &&
+  	git worktree add -fd --checkout "$worktree" "refs/remotes/$remote/$ref" &&
+  	git config --replace-all sendemail.validateWorktree "$worktree"
+  else
+  	worktree=$(git config --get sendemail.validateWorktree)
+  fi || {
+  	echo "sendemail-validate: error: failed to prepare worktree" >&2
+  	exit 1
+  }
+  
+  unset GIT_DIR GIT_WORK_TREE
+  cd "$worktree" &&
+  
+  if grep -q "^diff --git " "$1"
+  then
+  	validate_patch "$1"
+  else
+  	validate_cover_letter "$1"
+  fi &&
+  
+  if test "$GIT_SENDEMAIL_FILE_COUNTER" = "$GIT_SENDEMAIL_FILE_TOTAL"
+  then
+  	git config --unset-all sendemail.validateWorktree &&
+  	trap 'git worktree remove -ff "$worktree"' EXIT &&
+  	validate_series
+  fi
+│   │   └── update.sample
+  #!/bin/sh
+  #
+  # An example hook script to block unannotated tags from entering.
+  # Called by "git receive-pack" with arguments: refname sha1-old sha1-new
+  #
+  # To enable this hook, rename this file to "update".
+  #
+  # Config
+  # ------
+  # hooks.allowunannotated
+  #   This boolean sets whether unannotated tags will be allowed into the
+  #   repository.  By default they won't be.
+  # hooks.allowdeletetag
+  #   This boolean sets whether deleting tags will be allowed in the
+  #   repository.  By default they won't be.
+  # hooks.allowmodifytag
+  #   This boolean sets whether a tag may be modified after creation. By default
+  #   it won't be.
+  # hooks.allowdeletebranch
+  #   This boolean sets whether deleting branches will be allowed in the
+  #   repository.  By default they won't be.
+  # hooks.denycreatebranch
+  #   This boolean sets whether remotely creating branches will be denied
+  #   in the repository.  By default this is allowed.
+  #
+  
+  # --- Command line
+  refname="$1"
+  oldrev="$2"
+  newrev="$3"
+  
+  # --- Safety check
+  if [ -z "$GIT_DIR" ]; then
+  	echo "Don't run this script from the command line." >&2
+  	echo " (if you want, you could supply GIT_DIR then run" >&2
+  	echo "  $0 <ref> <oldrev> <newrev>)" >&2
+  	exit 1
+  fi
+  
+  if [ -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+  	echo "usage: $0 <ref> <oldrev> <newrev>" >&2
+  	exit 1
+  fi
+  
+  # --- Config
+  allowunannotated=$(git config --type=bool hooks.allowunannotated)
+  allowdeletebranch=$(git config --type=bool hooks.allowdeletebranch)
+  denycreatebranch=$(git config --type=bool hooks.denycreatebranch)
+  allowdeletetag=$(git config --type=bool hooks.allowdeletetag)
+  allowmodifytag=$(git config --type=bool hooks.allowmodifytag)
+  
+  # check for no description
+  projectdesc=$(sed -e '1q' "$GIT_DIR/description")
+  case "$projectdesc" in
+  "Unnamed repository"* | "")
+  	echo "*** Project description file hasn't been set" >&2
+  	exit 1
+  	;;
+  esac
+  
+  # --- Check types
+  # if $newrev is 0000...0000, it's a commit to delete a ref.
+  zero=$(git hash-object --stdin </dev/null | tr '[0-9a-f]' '0')
+  if [ "$newrev" = "$zero" ]; then
+  	newrev_type=delete
+  else
+  	newrev_type=$(git cat-file -t $newrev)
+  fi
+  
+  case "$refname","$newrev_type" in
+  	refs/tags/*,commit)
+  		# un-annotated tag
+  		short_refname=${refname##refs/tags/}
+  		if [ "$allowunannotated" != "true" ]; then
+  			echo "*** The un-annotated tag, $short_refname, is not allowed in this repository" >&2
+  			echo "*** Use 'git tag [ -a | -s ]' for tags you want to propagate." >&2
+  			exit 1
+  		fi
+  		;;
+  	refs/tags/*,delete)
+  		# delete tag
+  		if [ "$allowdeletetag" != "true" ]; then
+  			echo "*** Deleting a tag is not allowed in this repository" >&2
+  			exit 1
+  		fi
+  		;;
+  	refs/tags/*,tag)
+  		# annotated tag
+  		if [ "$allowmodifytag" != "true" ] && git rev-parse $refname > /dev/null 2>&1
+  		then
+  			echo "*** Tag '$refname' already exists." >&2
+  			echo "*** Modifying a tag is not allowed in this repository." >&2
+  			exit 1
+  		fi
+  		;;
+  	refs/heads/*,commit)
+  		# branch
+  		if [ "$oldrev" = "$zero" -a "$denycreatebranch" = "true" ]; then
+  			echo "*** Creating a branch is not allowed in this repository" >&2
+  			exit 1
+  		fi
+  		;;
+  	refs/heads/*,delete)
+  		# delete branch
+  		if [ "$allowdeletebranch" != "true" ]; then
+  			echo "*** Deleting a branch is not allowed in this repository" >&2
+  			exit 1
+  		fi
+  		;;
+  	refs/remotes/*,commit)
+  		# tracking branch
+  		;;
+  	refs/remotes/*,delete)
+  		# delete tracking branch
+  		if [ "$allowdeletebranch" != "true" ]; then
+  			echo "*** Deleting a tracking branch is not allowed in this repository" >&2
+  			exit 1
+  		fi
+  		;;
+  	*)
+  		# Anything else (is there anything else?)
+  		echo "*** Update hook: unknown type of update to ref $refname of type $newrev_type" >&2
+  		exit 1
+  		;;
+  esac
+  
+  # --- Finished
+  exit 0
+│   ├── index
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 13: invalid start byte]
+│   ├── info
+│   │   └── exclude
+  # git ls-files --others --exclude-from=.git/info/exclude
+  # Lines that start with '#' are comments.
+  # For a project mostly in C, the following would be a good set of
+  # exclude patterns (uncomment them if you want to use them):
+  # *.[oa]
+  # *~
+│   ├── logs
+│   │   ├── HEAD
+  0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
+  135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+│   │   └── refs
+│   │       ├── heads
+│   │       │   └── main
+  0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790423 +0330	commit (initial): Initial commit: Knockback Client Mod 1.8.9
+  135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792620 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793014 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+│   │       └── remotes
+│   │           └── origin
+│   │               └── main
+  0000000000000000000000000000000000000000 135a3411652d2488203136be6a869af72cc71491 muvixo <godarshia20@gmail.com> 1790790456 +0330	update by push
+  135a3411652d2488203136be6a869af72cc71491 c03e3c6df878d742fefcfa2e50c2e5365bc055dd muvixo <godarshia20@gmail.com> 1790792639 +0330	update by push
+  c03e3c6df878d742fefcfa2e50c2e5365bc055dd e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 muvixo <godarshia20@gmail.com> 1790793106 +0330	update by push
+  e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793441 +0330	update by push
+│   ├── objects
+│   │   ├── 00
+│   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   ├── 01
+│   │   │   ├── 21e97b47c62e266da1f1d76a48e19eb529fb28
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   └── 6781c055916334e20260270f97752a7ae911aa
+  [Error: 'utf-8' codec can't decode byte 0x8b in position 3: invalid start byte]
+│   │   ├── 02
+│   │   │   └── 713ffe8ba7f89ac0a9b62cb8dae2847aa8bb20
+  [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+│   │   ├── 03
+│   │   │   ├── 7f00f76c704f0a15678598ab9146026a5b6a9c
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   └── a514169ebb3b7868cf60bfbf19c714b9bf3563
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   ├── 0e
+│   │   │   ├── c1701d8f234d8895938da50286aeb9685c8190
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+│   │   │   └── e8d5c1b34bb6f29ad0727f43c377f52b62f175
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── 12
+│   │   │   ├── 5780a736bb886f89e3d0215a9c353151266777
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 95d164920ecac7c0bb665c77d5c8aadc94aa2c
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── 13
+│   │   │   └── 5a3411652d2488203136be6a869af72cc71491
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 16
+│   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
+  [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
+│   │   ├── 17
+│   │   │   └── 5829991ca9afb213cc310f859334c892d704f6
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 1a
+│   │   │   └── 1902e01d3e0b68250820d92d8392fdb713aa16
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+│   │   ├── 1d
+│   │   │   └── 5b29fbd59593cbadef9e8c2f5129d1d4391584
+  [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+│   │   ├── 20
+│   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
+  [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+│   │   ├── 25
+│   │   │   └── fa3787adcb2bdc5f21342daf2e0ff2ac599ef4
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 29
+│   │   │   └── d8f77d1e30d7494fc1874929016dd40c06f2e8
+  [Error: 'utf-8' codec can't decode byte 0xd7 in position 22: invalid continuation byte]
+│   │   ├── 2b
+│   │   │   ├── 1902fa0fe2abe57ff92a4d71c51d07f8758fa6
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   │   └── 2f80fbdec35e23e7575d038937fceb1fe0cc77
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── 2c
+│   │   │   ├── 513a25e4a3aa540b6a9d5a25db3207c92e2f0a
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 7efc58d85cbe88ba9bce61394dbd7e3239530e
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   ├── 35
+│   │   │   └── 74a9612c93215a680aae80dbd16c2da17d12df
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 36
+│   │   │   └── 75066755f7e0651eacaffc4d64514c634eeca9
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 38
+│   │   │   └── 06c0d2ae5e2636870edadc995a0095ead6f33e
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+│   │   ├── 3a
+│   │   │   └── 76d497e8b4b0824cf23a16e6ab8cf04b4e8a8b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 3e
+│   │   │   └── 42c216f2f7649d7634a6684a54306fbe9d6668
+  [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+│   │   ├── 43
+│   │   │   ├── 33d7f88aa2f3b427b4be37b57bb5c03e55d9d6
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   └── 653004011bc43b8ed8274674da3278e8cc9c53
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 4b
+│   │   │   ├── 4907400e0f793d2cc25fd8a369954559bee21e
+  [Error: 'utf-8' codec can't decode byte 0x8f in position 5: invalid start byte]
+│   │   │   └── 825dc642cb6eb9a060e54bf8d69288fbee4904
+  x+)JMU0`  
+  ,
+│   │   ├── 54
+│   │   │   └── 1b1f7114dfa9e2badba8a443a125b4d1575935
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 55
+│   │   │   └── c4d2bc75cc5826f545b06f1cae874f4034e964
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── 56
+│   │   │   ├── 304504dea0cf3ffe9390842841c02feb53c426
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   └── 4a84d43f5898c8ec05cc39d3f975a8af7baa82
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 5b
+│   │   │   └── b7720f69ccb269ba273cef7fbdbb37d51f4c3f
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 5c
+│   │   │   ├── 5ab7faf8e28049f3b53d9c9d91bb529d19e8a0
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c8c39e4284ecae09861c8a243e888562dfdacc
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 5f
+│   │   │   └── 0817d3863cbfe29afd8211a25c8a1dda1fc4b1
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 61
+│   │   │   ├── 481a2ce558bf26681f9aee14bedfa09bc3d79a
+  [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
+│   │   │   └── 97ed89f9c5b256a30504050f2dde3688ae9b1b
+  [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+│   │   ├── 66
+│   │   │   └── a410d77909287ab7fb5d655d7369e296f9fcc0
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 68
+│   │   │   └── 7b44f9e62bdcbcd4155ab8ff51079fac7568aa
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 69
+│   │   │   └── 240332a81ce7bf1f5a5c38d3861a8d757c0716
+  [Error: 'utf-8' codec can't decode byte 0xda in position 6: invalid continuation byte]
+│   │   ├── 6d
+│   │   │   ├── 85b0a084027f1e308475f0af9cbd70f02e9580
+  [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
+│   │   │   └── 949951d7f09a39cd9c075428c0301357d8d47c
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 72
+│   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 73
+│   │   │   └── b2a93bb3a0c48e4b296c63bd0c20242a9d945d
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 74
+│   │   │   └── 3779efc677a34bcf4281b30df29bd7e36f30b5
+  [Error: 'utf-8' codec can't decode byte 0xb6 in position 8: invalid start byte]
+│   │   ├── 76
+│   │   │   └── 5731b3985ea3aaca75fa730c8513a4faeb4572
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── 77
+│   │   │   └── 57549f6bca5a24744f82dd9b172655c2ab4b2a
+  [Error: 'utf-8' codec can't decode byte 0xc5 in position 2: invalid continuation byte]
+│   │   ├── 78
+│   │   │   └── 4a4f37d6ee710a1d39b0ac3adcf323c5b2d86d
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 7a
+│   │   │   ├── 85d9ba6fb90a20aa290fd0c77c1d246144e691
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c7d4089f1cc7c6c823c2bbe7ffed1582a5caf6
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── 85
+│   │   │   └── 0fe4546ce4a71ce3796baec76141fe404e3044
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 87
+│   │   │   └── 48608cc89c53a26f76e26fca4347586f7c7d7a
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 8b
+│   │   │   └── b477084caa620cc37f9e89fa77a5da66182b39
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 8d
+│   │   │   ├── 7478ad3105a85c44536de9b92072f45467a0fe
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+│   │   │   └── cfda1f5af38b6fa2ae605b4738d3a039459fc8
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── 90
+│   │   │   └── 69f7482e8d6555efa38fbe7400fe3f74be1f94
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 9a
+│   │   │   └── f51862dfefb0787b9fe01c863ad7b348cecd9c
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 9c
+│   │   │   └── 003211911f5906150920acb446e5ed3b58cfc0
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+│   │   ├── 9d
+│   │   │   ├── 300fde1535c481a9c98ce4423dfb7e67d3ed85
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 9c60344706cd0005ce38dd8b2478c84aee06f6
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── ac73e50f02fbba40a68e2cd58b2262306c01ba
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   │   └── ce5aabbd0e08d082950bab3fff17f250135ee3
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 9e
+│   │   │   └── 76454055871144e8157d85c3327fe901f664a1
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── a7
+│   │   │   └── 7e139bf99c6b2bdd176da4eb331ff5bfe81d4e
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── aa
+│   │   │   └── d3ff3f54d5d7163dc4ec90fbeaa2d2da5f76ab
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── b2
+│   │   │   └── 767594d80dca795b856665081702eb2f2193fd
+  [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
+│   │   ├── c0
+│   │   │   ├── 16d0828f5e055b06862e71d6b55ae9d82f5cac
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   │   └── 3e3c6df878d742fefcfa2e50c2e5365bc055dd
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── ca
+│   │   │   └── 8dabfbd618b87d2022539d2e07a25109740226
+  [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
+│   │   ├── cb
+│   │   │   └── 94e95242de355f6b7774c7d3b9343b241ca572
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+│   │   ├── cc
+│   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── d4
+│   │   │   ├── 0d2d64eacf5198fa811e4862762d5f6af5941e
+  [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
+│   │   │   └── f5bbf99f45e7cc2cdded9978834375b9fd14b3
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 21: invalid continuation byte]
+│   │   ├── d6
+│   │   │   └── fac41076412294ea7736bf369299aa352b09f6
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── d9
+│   │   │   ├── b9b6160d63bf359ce75f0b80a6a3724aee92e8
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── e419f5781a77f79865cdfc93519c9184793de7
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── da
+│   │   │   └── 975cf81b4ea65839254d75d879efee66acfbb9
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
+│   │   ├── db
+│   │   │   ├── 4c7a81857e3cbabc80cd18dc65eb866e483ad7
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+│   │   │   └── 6187653794f639173cce5edd013d32da5828c7
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── e4
+│   │   │   ├── 0eb29518aa6ad4f6438edd5f2f3cc44a8d00d4
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   ├── 9bbe05ca61fe156aa345db0e856291a0227985
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── bac8b8f8454bd50a10f8ad2c3cd82c39a11ce1
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+│   │   ├── e6
+│   │   │   └── d9c23a3dfb093af9952dda56425efde19aab10
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── e7
+│   │   │   └── 74c483e362c9be05dc1c06fa676503245dcbcb
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── e9
+│   │   │   └── 2fa333ab2df1c4489b718799882c9c30d41a4b
+  [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── eb
+│   │   │   └── 5f0f0b92494459cfd3703c794f2844617fa903
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── ed
+│   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── f6
+│   │   │   └── 6a251c8d8b047a7c623476764633be7e89f923
+  [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── f8
+│   │   │   └── a27d01ff139eb66b25ca0a7e1cab0cfa8c9c98
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── fb
+│   │   │   └── 06f54071c71eb018ddce81991a7db1f298ecf2
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   ├── fd
+│   │   │   └── 6b486f30cbef8999a6cbdd534799f870a27612
+  [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── info
+│   │   └── pack
+│   └── refs
+│       ├── heads
+│       │   └── main
+  037f00f76c704f0a15678598ab9146026a5b6a9c
+│       ├── remotes
+│       │   └── origin
+│       │       └── main
+  037f00f76c704f0a15678598ab9146026a5b6a9c
+│       └── tags
+├── .github
+│   └── workflows
+│       ├── build.yml
+  name: Build KB Client 1.8.9
+  
+  on:
+    push:
+      branches: [ "**" ]
+    pull_request:
+      branches: [ "**" ]
+    workflow_dispatch:
+  
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+  
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v5
+  
+        - name: Setup Java 8
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin'
+            java-version: '8'
+  
+        - name: Install & Configure Gradle 4.10.3
+          run: |
+            wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+            unzip -q gradle-4.10.3-bin.zip
+            export PATH=$PWD/gradle-4.10.3/bin:$PATH
+            gradle wrapper --gradle-version 4.10.3
+            chmod +x gradlew
+  
+        - name: Build Mod with Gradle
+          run: |
+            ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+  
+        - name: Upload Mod Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: KBClient-1.8.9
+            path: build/libs/*.jar
+│       └── build.yml.bak
+  name: Build KB Client 1.8.9
+  
+  on:
+    push:
+      branches: [ "**" ]
+    pull_request:
+      branches: [ "**" ]
+    workflow_dispatch:
+  
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+  
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+  
+        - name: Setup Java 8
+          uses: actions/setup-java@v4
+          with:
+            distribution: 'temurin'
+            java-version: '8'
+  
+        - name: Install & Configure Gradle 4.10.3
+          run: |
+            wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+            unzip -q gradle-4.10.3-bin.zip
+            export PATH=$PWD/gradle-4.10.3/bin:$PATH
+            gradle wrapper --gradle-version 4.10.3
+            chmod +x gradlew
+  
+        - name: Build Mod with Gradle
+          run: |
+            ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+  
+        - name: Upload Mod Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: KBClient-1.8.9
+            path: build/libs/*.jar
+├── .gitignore
+  .gradle/
+  build/
+  run/
+  out/
+  *.iml
+  .idea/
+  gradle-4.10.3/
+  gradle-4.10.3-bin.zip
+├── README.md
+  # KB Client 3.0 (Minecraft 1.8.9 Forge)
+  
+  Modern-UI client + knockback profile detector for Carbon / Spigot servers.
+  
+  ## What's new in 3.0
+  * Every screen fades in; every KB Client screen also fades out.
+    Vanilla screens (pause menu, inventory, world select...) fade in, and closing
+    back to the game plays a soft world fade.
+  * Fully custom loading screen: world loading, world saving and terrain download.
+  * Custom Options button (animated gear) on the main menu and the pause menu,
+    plus a custom Options screen (HUD, particles, toasts, loading screen, fade speed).
+  * New detector + exact YAML parser (see below).
+  
+  ## The 12 parameters
+  ONE-POINT-SEVEN, HORIZONTAL, VERTICAL, EXTRA-HORIZONTAL, EXTRA-VERTICAL, FRICTION,
+  Y-LIMIT, DAMAGE-TICKS.OVERRIDE, DAMAGE-TICKS.VALUE, DYNAMIC-LIMIT, LIMIT-HORIZONTAL, H-LIMIT
+  
+  ### Exact extraction (YAML parser)
+  `/kb import` (clipboard) or `/kb import file.yml` (from .minecraft/kbclient/) or the
+  Import button parses a Carbon config exactly as written: comments ignored (full-line
+  and inline), nested sections (DAMAGE-TICKS -> OVERRIDE / VALUE), booleans, decimals
+  and integers. All 12 keys are read, none defaulted. Missing / unparsable keys are
+  listed explicitly. `/kb sample` loads a built-in example.
+  The Compare tab shows Detected vs Reference with deltas.
+  
+  ### Packet detector
+  Every velocity packet (S12) is snapshotted and fitted with the Carbon model
+      new = old / FRICTION + dir * (HORIZONTAL [+ EXTRA-HORIZONTAL if attacker sprints])
+      newY = oldY / FRICTION + VERTICAL [+ EXTRA-VERTICAL], clamped to Y-LIMIT
+  Each value shows a source tag: MEAS (measured), EST (estimated / lower bound),
+  DEF (not observable yet), FILE (imported).
+  
+  Some keys are NOT physically observable from packets alone:
+    * DAMAGE-TICKS.VALUE while OVERRIDE is false (vanilla 20 is in effect)
+    * H-LIMIT while LIMIT-HORIZONTAL is false (never clamps)
+  Use the YAML import for the exact values of those.
+  
+  To raise confidence: get hit by a walking AND a sprinting player, while standing
+  and while moving, on the ground AND while falling, and let someone click fast.
+  
+  ## Controls
+    * Right Shift - open analyzer      * /kb - open analyzer
+    * /kb start 15 | stop | resume | reset | export | hud | status | yaml
+    * /kb import [file] | sample | clear
+    * Exports go to .minecraft/kbclient/*.yml and *-samples.csv
+├── build.gradle
+  buildscript {
+      repositories {
+          mavenCentral()
+          maven {
+              name = "forge"
+              url = "https://maven.minecraftforge.net/"
+          }
+      }
+      dependencies {
+          classpath "net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT"
+      }
+  }
+  
+  apply plugin: "net.minecraftforge.gradle.forge"
+  
+  version = "3.0.0"
+  group = "com.oryvex.kbclient"
+  archivesBaseName = "KBClient"
+  
+  sourceCompatibility = targetCompatibility = "1.8"
+  compileJava.options.encoding = "UTF-8"
+  
+  minecraft {
+      version = "1.8.9-11.15.1.2318-1.8.9"
+      runDir = "run"
+      mappings = "stable_22"
+      makeObfSourceJar = false
+  }
+  
+  repositories {
+      mavenCentral()
+      maven {
+          name = "mojang"
+          url = "https://libraries.minecraft.net/"
+      }
+      maven {
+          name = "forge"
+          url = "https://maven.minecraftforge.net/"
+      }
+  }
+  
+  dependencies {}
+  
+  processResources {
+      inputs.property "version", project.version
+      inputs.property "mcversion", project.minecraft.version
+  
+      from(sourceSets.main.resources.srcDirs) {
+          include "mcmod.info"
+          expand "version": project.version, "mcversion": project.minecraft.version
+      }
+  
+      from(sourceSets.main.resources.srcDirs) {
+          exclude "mcmod.info"
+      }
+  }
+  
+  jar {
+      manifest {
+          attributes([
+              "FMLCorePluginContainsFMLMod": "true",
+              "ForceLoadAsMod": "true"
+          ])
+      }
+  }
+├── ee.py
+  import os
+  
+  def print_tree(folder_path, file_handle, prefix="", show_content=False):
+      entries = sorted(os.listdir(folder_path))
+      for i, entry in enumerate(entries):
+          path = os.path.join(folder_path, entry)
+          is_last = i == len(entries) - 1
+          connector = "└── " if is_last else "├── "
+          file_handle.write(f"{prefix}{connector}{entry}\n")
+  
+          if os.path.isdir(path):
+              extension_prefix = "    " if is_last else "│   "
+              print_tree(path, file_handle, prefix + extension_prefix, show_content)
+          else:
+              if show_content:
+                  try:
+                      with open(path, "r", encoding="utf-8") as f:
+                          content = f.read().strip()
+                          if content:
+                              content_lines = content.splitlines()
+                              # Content appears directly under the file name
+                              for line in content_lines:
+                                  file_handle.write(f"  {line}\n")  # Just 2 spaces
+                  except Exception as e:
+                      file_handle.write(f"  [Error: {e}]\n")
+  
+  def save_tree_to_file(output_filename="folder_structure.txt"):
+      current_folder = os.path.dirname(os.path.abspath(__file__))
+      
+      with open(output_filename, "w", encoding="utf-8") as f:
+          f.write(f"{current_folder}/\n\n")
+          print_tree(current_folder, f, show_content=True)
+      
+      print(f"Output saved to {output_filename}")
+  
+  if __name__ == "__main__":
+      save_tree_to_file()
+├── folder_structure.txt
+├── gradle
+│   └── wrapper
+│       └── gradle-wrapper.properties
+  distributionBase=GRADLE_USER_HOME
+  distributionPath=wrapper/dists
+  zipStoreBase=GRADLE_USER_HOME
+  zipStorePath=wrapper/dists
+  distributionUrl=https\://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+├── gradle.properties
+  org.gradle.jvmargs=-Xmx2048M -Dhttps.protocols=TLSv1.2 -Dorg.gradle.internal.http.connectionTimeout=120000 -Dorg.gradle.internal.http.socketTimeout=120000
+├── settings.gradle
+  rootProject.name = 'KBClient'
+└── src
+    └── main
+        ├── java
+        │   └── com
+        │       └── oryvex
+        │           └── kbclient
+        │               ├── KBClientMod.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.ui.Fade;
+  import com.oryvex.kbclient.ui.FadeScreen;
+  import com.oryvex.kbclient.ui.GuiAnalyzer;
+  import com.oryvex.kbclient.ui.GuiModernMenu;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.KBLoading;
+  import com.oryvex.kbclient.ui.LoadingArt;
+  import com.oryvex.kbclient.ui.Settings;
+  import com.oryvex.kbclient.ui.UiButton;
+  import io.netty.channel.Channel;
+  import io.netty.channel.ChannelDuplexHandler;
+  import io.netty.channel.ChannelHandlerContext;
+  import io.netty.channel.ChannelPipeline;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiChat;
+  import net.minecraft.client.gui.GuiDownloadTerrain;
+  import net.minecraft.client.gui.GuiIngameMenu;
+  import net.minecraft.client.gui.GuiMainMenu;
+  import net.minecraft.client.gui.GuiScreen;
+  import net.minecraft.client.gui.inventory.GuiContainer;
+  import net.minecraft.client.settings.KeyBinding;
+  import net.minecraft.network.NetworkManager;
+  import net.minecraft.network.play.server.S12PacketEntityVelocity;
+  import net.minecraftforge.client.ClientCommandHandler;
+  import net.minecraftforge.client.event.GuiOpenEvent;
+  import net.minecraftforge.client.event.GuiScreenEvent;
+  import net.minecraftforge.client.event.RenderGameOverlayEvent;
+  import net.minecraftforge.common.MinecraftForge;
+  import net.minecraftforge.fml.client.registry.ClientRegistry;
+  import net.minecraftforge.fml.common.Mod;
+  import net.minecraftforge.fml.common.Mod.EventHandler;
+  import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+  import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+  import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+  import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+  import net.minecraftforge.fml.common.gameevent.TickEvent;
+  import org.apache.logging.log4j.Logger;
+  import org.lwjgl.input.Keyboard;
+  
+  @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+       acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+  public class KBClientMod {
+      public static final String MODID = "kbclient";
+      public static final String NAME = "KB Client";
+      public static final String VERSION = "3.0.0";
+      private static final String HOOK = "kb_client_handler";
+  
+      private static KBClientMod instance;
+      public static Logger logger;
+  
+      private final KBTracker tracker = new KBTracker();
+      private KeyBinding openKey;
+      private Channel hookedChannel;
+      private boolean pendingOpen;
+      private Object lastWorld;
+      private boolean loadingInstalled;
+  
+      public static KBClientMod getInstance() { return instance; }
+      public KBTracker getTracker() { return tracker; }
+  
+      /** Opened on the next tick, because chat closes itself right after running a command. */
+      public void requestOpenAnalyzer() { pendingOpen = true; }
+  
+      @EventHandler
+      public void preInit(FMLPreInitializationEvent e) {
+          logger = e.getModLog();
+          instance = this;
+          Settings.load();
+      }
+  
+      @EventHandler
+      public void init(FMLInitializationEvent e) {
+          MinecraftForge.EVENT_BUS.register(this);
+          ClientCommandHandler.instance.registerCommand(new KBCommand());
+          openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+          ClientRegistry.registerKeyBinding(openKey);
+          installLoading();
+      }
+  
+      /** swap Minecraft's loading renderer (world load/save) for the custom one */
+      private void installLoading() {
+          if (loadingInstalled) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          try {
+              ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+              loadingInstalled = true;
+              logger.info("[KBClient] custom loading screen installed");
+          } catch (Throwable t) {
+              logger.error("[KBClient] could not install loading screen: " + t);
+          }
+      }
+  
+      // ---- screens + fades -----------------------------------------------------
+      @SubscribeEvent
+      public void onGuiOpen(GuiOpenEvent e) {
+          Minecraft mc = Minecraft.getMinecraft();
+          if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+  
+          if (e.gui == null) {
+              // back to the game: soft world fade (not after chat)
+              if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                  Fade.world.trigger(0.45f);
+              }
+          } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+              Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+          }
+      }
+  
+      /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+      @SubscribeEvent
+      public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+          GuiScreen g = e.gui;
+          if (g == null || g instanceof FadeScreen) return;
+          if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+              LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+          }
+          Fade.screen.draw(g.width, g.height);
+      }
+  
+      /** restyle the pause menu's Options button */
+      @SubscribeEvent
+      public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+          if (!(e.gui instanceof GuiIngameMenu)) return;
+          for (int i = 0; i < e.buttonList.size(); i++) {
+              GuiButton b = e.buttonList.get(i);
+              if (b.id == 0) {
+                  UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                  u.icon = UiButton.ICON_GEAR;
+                  e.buttonList.set(i, u);
+              }
+          }
+      }
+  
+      @SubscribeEvent
+      public void onOverlay(RenderGameOverlayEvent.Post e) {
+          if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.thePlayer == null) return;
+          if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+          Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+      }
+  
+      @SubscribeEvent
+      public void onTick(TickEvent.ClientTickEvent e) {
+          if (e.phase != TickEvent.Phase.END) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          tracker.tick();
+  
+          if (mc.theWorld != lastWorld) {
+              lastWorld = mc.theWorld;
+              if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+          }
+  
+          while (openKey.isPressed()) {
+              if (mc.currentScreen == null) pendingOpen = true;
+          }
+          if (pendingOpen && mc.currentScreen == null) {
+              pendingOpen = false;
+              mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+          }
+  
+          if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+              NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+              if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+          }
+      }
+  
+      private void inject(Minecraft mc, Channel ch) {
+          hookedChannel = ch;
+          try {
+              ChannelPipeline pl = ch.pipeline();
+              if (pl.get(HOOK) != null) pl.remove(HOOK);
+              if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+              else pl.addLast(HOOK, new VelocityHook());
+  
+              String name = mc.isSingleplayer() ? "Singleplayer"
+                      : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+              tracker.onConnect(name);
+              logger.info("[KBClient] velocity hook installed on " + name);
+          } catch (Throwable t) {
+              logger.error("[KBClient] hook failed: " + t);
+          }
+      }
+  
+      /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
+      private static class VelocityHook extends ChannelDuplexHandler {
+          @Override
+          public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+              if (msg instanceof S12PacketEntityVelocity) {
+                  S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                  final int id = v.getEntityID();
+                  final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                  final Minecraft mc = Minecraft.getMinecraft();
+                  mc.addScheduledTask(new Runnable() {
+                      @Override
+                      public void run() {
+                          EntityPlayerSP p = mc.thePlayer;
+                          if (p != null && p.getEntityId() == id) {
+                              KBClientMod.getInstance().getTracker().capture(x, y, z);
+                          }
+                      }
+                  });
+              }
+              super.channelRead(ctx, msg);
+          }
+      }
+  }
+        │               ├── KBCommand.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBYaml;
+  import com.oryvex.kbclient.ui.GuiAnalyzer;
+  import com.oryvex.kbclient.ui.Settings;
+  import com.oryvex.kbclient.ui.Theme;
+  import java.io.File;
+  import java.nio.charset.StandardCharsets;
+  import java.nio.file.Files;
+  import java.util.Arrays;
+  import java.util.List;
+  import java.util.Locale;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.GuiScreen;
+  import net.minecraft.command.CommandBase;
+  import net.minecraft.command.ICommandSender;
+  import net.minecraft.util.BlockPos;
+  
+  public class KBCommand extends CommandBase {
+      @Override
+      public String getCommandName() { return "kb"; }
+  
+      @Override
+      public List<String> getCommandAliases() { return Arrays.asList("findkb", "kbgui"); }
+  
+      @Override
+      public String getCommandUsage(ICommandSender sender) {
+          return "/kb [gui | start <hits> | stop | resume | reset | export | hud | status | yaml | import [file] | sample | clear]";
+      }
+  
+      @Override
+      public boolean canCommandSenderUseCommand(ICommandSender sender) { return true; }
+  
+      @Override
+      public int getRequiredPermissionLevel() { return 0; }
+  
+      @Override
+      public void processCommand(ICommandSender sender, String[] args) {
+          KBClientMod mod = KBClientMod.getInstance();
+          KBTracker t = mod.getTracker();
+          String a = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "gui";
+  
+          if (a.matches("\\d+")) { t.startGoal(Integer.parseInt(a)); return; }
+          if (a.equals("start")) {
+              int n = 10;
+              if (args.length > 1) { try { n = Integer.parseInt(args[1]); } catch (NumberFormatException ignored) { } }
+              t.startGoal(n);
+          } else if (a.equals("stop")) {
+              t.setRecording(false);
+              t.chat(Theme.S + "e[KB] recording paused");
+          } else if (a.equals("resume")) {
+              t.setRecording(true);
+              t.chat(Theme.S + "a[KB] recording resumed");
+          } else if (a.equals("reset")) {
+              t.reset();
+              t.chat(Theme.S + "e[KB] samples cleared");
+          } else if (a.equals("export")) {
+              try { t.chat(Theme.S + "a[KB] saved " + t.export().getAbsolutePath()); }
+              catch (Exception e) { t.chat(Theme.S + "c[KB] export failed: " + e.getMessage()); }
+          } else if (a.equals("hud")) {
+              Settings.hud = !Settings.hud;
+              Settings.save();
+              t.chat(Theme.S + "b[KB] HUD " + (Settings.hud ? "on" : "off"));
+          } else if (a.equals("yaml")) {
+              GuiScreen.setClipboardString(t.getProfile().toYaml());
+              t.chat(Theme.S + "a[KB] YAML copied to clipboard");
+          } else if (a.equals("status")) {
+              KBProfile p = t.getProfile();
+              t.chat(Theme.S + "b[KB] " + Theme.S + "7" + p.used + "/" + p.total + " samples | " + p.summary());
+          } else if (a.equals("sample")) {
+              t.importYaml(KBYaml.SAMPLE);
+              GuiAnalyzer.openTab(4);
+              mod.requestOpenAnalyzer();
+          } else if (a.equals("clear")) {
+              t.clearReference();
+              t.chat(Theme.S + "e[KB] reference cleared");
+          } else if (a.equals("import")) {
+              try {
+                  String text;
+                  if (args.length > 1) {
+                      File f = new File(new File(Minecraft.getMinecraft().mcDataDir, "kbclient"), args[1]);
+                      if (!f.exists() && !args[1].contains(".")) f = new File(f.getPath() + ".yml");
+                      text = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+                  } else {
+                      text = GuiScreen.getClipboardString();
+                  }
+                  KBYaml.Result r = t.importYaml(text);
+                  if (r.parsed > 0) { GuiAnalyzer.openTab(4); mod.requestOpenAnalyzer(); }
+              } catch (Exception e) {
+                  t.chat(Theme.S + "c[KB] import failed: " + e.getMessage());
+              }
+          } else {
+              mod.requestOpenAnalyzer();
+          }
+      }
+  
+      @Override
+      public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
+          if (args.length == 1) return getListOfStringsMatchingLastWord(args, "gui", "start", "stop", "resume", "reset", "export", "hud", "status", "yaml", "import", "sample", "clear");
+          if (args.length == 2 && args[0].equalsIgnoreCase("start")) return getListOfStringsMatchingLastWord(args, "5", "10", "15", "20", "30");
+          return null;
+      }
+  }
+        │               ├── KBTracker.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.kb.KBEstimator;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBSample;
+  import com.oryvex.kbclient.kb.KBYaml;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.Theme;
+  import java.io.File;
+  import java.io.IOException;
+  import java.nio.charset.StandardCharsets;
+  import java.nio.file.Files;
+  import java.text.SimpleDateFormat;
+  import java.util.ArrayList;
+  import java.util.Date;
+  import java.util.HashMap;
+  import java.util.List;
+  import java.util.Locale;
+  import java.util.Map;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.enchantment.EnchantmentHelper;
+  import net.minecraft.entity.player.EntityPlayer;
+  import net.minecraft.util.ChatComponentText;
+  
+  /** Collects knockback samples (main thread only), keeps a live profile and an imported reference. */
+  public class KBTracker {
+      public static final int MAX_SAMPLES = 120;
+  
+      private final List<KBSample> samples = new ArrayList<KBSample>();
+      private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
+      private KBProfile profile = new KBProfile();
+      private KBProfile reference;
+      private String lastImport = "";
+      private KBSample last;
+      private boolean recording = true;
+      private int goal = 0;
+      private int sessionHits = 0;
+      private int nextId = 1;
+      private long tick = 0;
+      private String server = "-";
+  
+      public KBTracker() {
+          profile.notes.add("Waiting for knockback - get hit by another player.");
+      }
+  
+      /** per client tick: remember the last 3 ticks of every player's sprint flag */
+      public synchronized void tick() {
+          tick++;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.theWorld == null) return;
+          for (EntityPlayer e : mc.theWorld.playerEntities) {
+              int id = e.getEntityId();
+              int s = e.isSprinting() ? 1 : 0;
+              Integer b = sprintBits.get(id);
+              int nb = (b == null) ? (s == 1 ? 0x7 : 0) : (((b << 1) | s) & 0x7);
+              sprintBits.put(id, nb);
+          }
+      }
+  
+      public synchronized KBProfile getProfile() { return profile; }
+      public synchronized KBProfile getReference() { return reference; }
+      public synchronized String getLastImport() { return lastImport; }
+      public synchronized KBSample getLast() { return last; }
+      public synchronized List<KBSample> snapshot() { return new ArrayList<KBSample>(samples); }
+      public synchronized boolean isRecording() { return recording; }
+      public synchronized void setRecording(boolean r) { recording = r; }
+      public synchronized int getGoal() { return goal; }
+      public synchronized int getSessionHits() { return sessionHits; }
+      public synchronized String getServer() { return server; }
+  
+      public synchronized void reset() {
+          samples.clear();
+          last = null;
+          sessionHits = 0;
+          profile = new KBProfile();
+          profile.notes.add("Waiting for knockback - get hit by another player.");
+      }
+  
+      public synchronized void onConnect(String name) {
+          reset();
+          sprintBits.clear();
+          server = name;
+          recording = true;
+          goal = 0;
+      }
+  
+      public synchronized void startGoal(int hits) {
+          reset();
+          goal = Math.max(1, hits);
+          recording = true;
+          chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
+      }
+  
+      // ---- YAML reference ------------------------------------------------------
+      public synchronized KBYaml.Result importYaml(String text) {
+          KBYaml.Result r = KBYaml.parse(text);
+          if (r.parsed > 0) {
+              reference = r.profile;
+              lastImport = r.summary();
+              chat(Theme.S + "a[KB] Imported: " + Theme.S + "f" + r.summary());
+              if (!r.unknown.isEmpty()) chat(Theme.S + "7Ignored unknown keys: " + r.unknown);
+          } else {
+              lastImport = "nothing imported";
+              chat(Theme.S + "c[KB] No knockback keys found. Copy a YAML config first.");
+          }
+          return r;
+      }
+  
+      public synchronized void clearReference() {
+          reference = null;
+          lastImport = "";
+      }
+  
+      /** Must be called on the client main thread, BEFORE the packet is applied. */
+      public synchronized void capture(int rawX, int rawY, int rawZ) {
+          Minecraft mc = Minecraft.getMinecraft();
+          EntityPlayerSP me = mc.thePlayer;
+          if (!recording || me == null || mc.theWorld == null) return;
+  
+          double vx = rawX / 8000.0, vy = rawY / 8000.0, vz = rawZ / 8000.0;
+          double h = Math.sqrt(vx * vx + vz * vz);
+  
+          EntityPlayer attacker = null;
+          double bestScore = -1.0e9;
+          for (EntityPlayer e : mc.theWorld.playerEntities) {
+              if (e == me || e.isDead) continue;
+              double dist = me.getDistanceToEntity(e);
+              if (dist > 7.0) continue;
+              double dx = me.posX - e.posX, dz = me.posZ - e.posZ;
+              double dh = Math.sqrt(dx * dx + dz * dz);
+              double score = -dist * 0.05;
+              if (h > 0.05 && dh > 0.001) score += (vx * dx + vz * dz) / (h * dh);
+              if (score > bestScore) { bestScore = score; attacker = e; }
+          }
+  
+          boolean has = attacker != null;
+          double ux = 0, uz = 0, dist = 0;
+          int state = KBSample.WALK;
+          int kb = 0;
+          String name = "?";
+          if (has) {
+              double dx = me.posX - attacker.posX, dz = me.posZ - attacker.posZ;
+              double dh = Math.sqrt(dx * dx + dz * dz);
+              if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
+              else if (h > 0.001) { ux = vx / h; uz = vz / h; }
+              Integer bits = sprintBits.get(attacker.getEntityId());
+              if (bits == null) state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
+              else if (bits == 0x7) state = KBSample.SPRINT;
+              else if (bits == 0) state = KBSample.WALK;
+              else state = KBSample.AMBIGUOUS;
+              try { kb = EnchantmentHelper.getKnockbackModifier(attacker); } catch (Throwable ignored) { }
+              name = attacker.getName();
+              dist = me.getDistanceToEntity(attacker);
+          }
+  
+          KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
+                  me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
+                  has, state, kb, ux, uz, dist, name);
+  
+          samples.add(s);
+          while (samples.size() > MAX_SAMPLES) samples.remove(0);
+          last = s;
+          profile = KBEstimator.calculate(samples);
+  
+          String tag = !has ? "no attacker" : (state == KBSample.AMBIGUOUS ? "W-TAP?" : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
+          int col = !has ? Theme.DIM : (state == KBSample.AMBIGUOUS ? Theme.DIM : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
+          Hud.push("Hit #" + s.id + "  H " + KBProfile.f(h, 4) + "  V " + KBProfile.f(vy, 4) + "  " + tag, col);
+  
+          if (goal > 0) {
+              sessionHits++;
+              if (sessionHits >= goal) {
+                  recording = false;
+                  goal = 0;
+                  printResults();
+              }
+          }
+      }
+  
+      public void chat(String msg) {
+          EntityPlayerSP p = Minecraft.getMinecraft().thePlayer;
+          if (p != null) p.addChatMessage(new ChatComponentText(msg));
+      }
+  
+      public void printResults() {
+          KBProfile p = profile;
+          String b = Theme.S + "b", g = Theme.S + "7", w = Theme.S + "f";
+          chat(b + "=========== KB PROFILE ===========");
+          chat(g + "HORIZONTAL: " + w + p.valueText(KBProfile.I_H) + g + "   EXTRA-H: " + w + p.valueText(KBProfile.I_EH));
+          chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V) + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
+          chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F) + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
+          chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue + g + " (override " + p.damageTicksOverride + ")");
+          chat(Theme.S + "aOpen the analyzer with [Right Shift] or /kb");
+      }
+  
+      public synchronized File export() throws IOException {
+          File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+          if (!dir.exists() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
+          String ts = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
+          File yml = new File(dir, "knockback-" + ts + ".yml");
+          Files.write(yml.toPath(), (profile.toYaml() + "\n").getBytes(StandardCharsets.UTF_8));
+  
+          StringBuilder sb = new StringBuilder();
+          sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,attacker,sprintState,attackerKb,distance,ux,uz\n");
+          for (KBSample k : samples) {
+              sb.append(k.id).append(',').append(k.tick).append(',')
+                .append(KBProfile.f(k.vx, 5)).append(',').append(KBProfile.f(k.vy, 5)).append(',')
+                .append(KBProfile.f(k.vz, 5)).append(',').append(KBProfile.f(k.h, 5)).append(',')
+                .append(KBProfile.f(k.px, 5)).append(',').append(KBProfile.f(k.py, 5)).append(',')
+                .append(KBProfile.f(k.pz, 5)).append(',').append(KBProfile.f(k.pH, 5)).append(',')
+                .append(k.victimSprint).append(',').append(k.victimGround).append(',')
+                .append(k.attacker.replace(',', '_')).append(',').append(k.sprintState).append(',')
+                .append(k.attackerKb).append(',').append(KBProfile.f(k.distance, 3)).append(',')
+                .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append('\n');
+          }
+          File csv = new File(dir, "knockback-" + ts + "-samples.csv");
+          Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
+          return yml;
+      }
+  }
+        │               ├── kb
+        │               │   ├── KBEstimator.java
+  package com.oryvex.kbclient.kb;
+  
+  import java.util.ArrayList;
+  import java.util.Collections;
+  import java.util.List;
+  
+  /**
+   * Solver for the Carbon / Spigot knockback model.
+   *
+   *   horizontal:  v_new = v_old / FRICTION + dir * (HORIZONTAL [+ EXTRA-HORIZONTAL if attacker sprints])
+   *   vertical:    y_new = y_old / FRICTION + VERTICAL   [+ EXTRA-VERTICAL if attacker sprints]  -> clamped to Y-LIMIT
+   *
+   * (A) FRICTION: coarse + fine grid search on the within-group residual variance,
+   * (B) plateau detection for Y-LIMIT / H-LIMIT, (C) robust medians per group,
+   * (D) hit-gap analysis for DAMAGE-TICKS. Hits whose attacker sprint state was
+   * changing (W-tap) are excluded as ambiguous.
+   */
+  public final class KBEstimator {
+      private KBEstimator() {}
+  
+      private static double conf(double n) { return 1.0 - Math.exp(-n / 3.0); }
+      private static double r4(double v) { return Math.rint(v * 10000.0) / 10000.0; }
+  
+      private static double median(List<Double> v) {
+          if (v.isEmpty()) return 0;
+          List<Double> c = new ArrayList<Double>(v);
+          Collections.sort(c);
+          int n = c.size();
+          return (n % 2 == 1) ? c.get(n / 2) : (c.get(n / 2 - 1) + c.get(n / 2)) / 2.0;
+      }
+  
+      private static double max(List<Double> v) {
+          double m = -Double.MAX_VALUE;
+          for (double d : v) m = Math.max(m, d);
+          return m;
+      }
+  
+      private static double std(List<Double> v) {
+          if (v.size() < 2) return 0;
+          double m = 0;
+          for (double d : v) m += d;
+          m /= v.size();
+          double s = 0;
+          for (double d : v) s += (d - m) * (d - m);
+          return Math.sqrt(s / (v.size() - 1));
+      }
+  
+      private static double spread(List<Double> v) {
+          if (v.isEmpty()) return 0;
+          double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+          for (double d : v) { lo = Math.min(lo, d); hi = Math.max(hi, d); }
+          return hi - lo;
+      }
+  
+      private static double cost(List<KBSample> fit, double f) {
+          double inv = 1.0 / f;
+          double[] sa = new double[2], sa2 = new double[2], sy = new double[2], sy2 = new double[2];
+          int[] na = new int[2], ny = new int[2];
+          double orth = 0;
+          for (KBSample k : fit) {
+              int g = k.attackerSprint ? 1 : 0;
+              double rx = k.vx - k.px * inv, rz = k.vz - k.pz * inv;
+              double along = rx * k.ux + rz * k.uz;
+              double ortho = -rx * k.uz + rz * k.ux;
+              orth += ortho * ortho;
+              sa[g] += along; sa2[g] += along * along; na[g]++;
+              double ry = k.vy - k.py * inv;
+              sy[g] += ry; sy2[g] += ry * ry; ny[g]++;
+          }
+          double c = orth;
+          for (int g = 0; g < 2; g++) {
+              if (na[g] > 0) c += sa2[g] - sa[g] * sa[g] / na[g];
+              if (ny[g] > 0) c += sy2[g] - sy[g] * sy[g] / ny[g];
+          }
+          return c / Math.max(1, fit.size());
+      }
+  
+      /** returns {base, extra, confBase, confExtra, spread, lowerBoundFlag} */
+      private static double[] solve(List<Double> w, List<Double> s, List<Double> wC, List<Double> sC, double defExtra) {
+          double base, extra, cB, cE, spr = 0, lb = 0;
+          if (!w.isEmpty()) {
+              base = median(w); cB = conf(w.size()); spr = std(w);
+              if (!wC.isEmpty() && max(wC) > base) { base = max(wC); lb = 1; }
+              if (!s.isEmpty()) { extra = median(s) - base; cE = conf(Math.min(w.size(), s.size())); }
+              else if (!sC.isEmpty()) { extra = max(sC) - base; cE = 0.25; lb = 1; }
+              else { extra = defExtra; cE = 0; }
+          } else if (!s.isEmpty()) {
+              extra = defExtra; base = median(s) - extra; cB = 0.25; cE = 0; spr = std(s);
+          } else if (!wC.isEmpty() || !sC.isEmpty()) {
+              extra = defExtra;
+              if (!wC.isEmpty()) base = max(wC); else base = max(sC) - extra;
+              cB = 0.2; cE = 0; lb = 1;
+          } else {
+              base = 0; extra = defExtra; cB = 0; cE = 0;
+          }
+          return new double[] { Math.max(0, base), Math.max(0, extra), cB, cE, spr, lb };
+      }
+  
+      public static KBProfile calculate(List<KBSample> all) {
+          KBProfile p = new KBProfile();
+          p.total = (all == null) ? 0 : all.size();
+          if (all == null || all.isEmpty()) {
+              p.notes.add("Waiting for knockback - get hit by another player.");
+              return p;
+          }
+  
+          int ench = 0, amb = 0;
+          List<KBSample> s = new ArrayList<KBSample>();
+          for (KBSample k : all) {
+              if (!k.hasAttacker) continue;
+              if (k.sprintState == KBSample.AMBIGUOUS) { amb++; continue; }
+              if (k.attackerKb > 0) { ench++; continue; }
+              if (k.h < 0.0005 && Math.abs(k.vy) < 0.0005) continue;
+              s.add(k);
+          }
+          int n = s.size();
+          p.used = n;
+          p.ambiguous = amb;
+          if (ench > 0) p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
+          if (amb > 0) p.notes.add("Ignored " + amb + " hit(s) where the attacker's sprint state was changing (W-tap).");
+          detectDamageTicks(all, p);
+          if (n == 0) {
+              p.notes.add("No usable hits yet (need a nearby attacking player).");
+              return p;
+          }
+          p.hasData = true;
+          for (KBSample k : s) { if (k.attackerSprint) p.sprint++; else p.walk++; }
+  
+          // ---- plateau detection
+          double yMax = -10, hMax = 0;
+          for (KBSample k : s) { yMax = Math.max(yMax, k.vy); hMax = Math.max(hMax, k.h); }
+          boolean[] hPl = new boolean[n], yPl = new boolean[n];
+          int hPlN = 0, yPlN = 0;
+          for (int i = 0; i < n; i++) {
+              KBSample k = s.get(i);
+              if (k.h >= hMax - 0.002) { hPl[i] = true; hPlN++; }
+              if (k.vy >= yMax - 0.0015) { yPl[i] = true; yPlN++; }
+          }
+          boolean hMulti = hPlN >= 2 && hPlN < n;
+          boolean yMulti = yPlN >= 2 && yPlN < n;
+  
+          // ---- (A) FRICTION
+          List<KBSample> fit = new ArrayList<KBSample>();
+          for (int i = 0; i < n; i++) {
+              if ((hMulti && hPl[i]) || (yMulti && yPl[i])) continue;
+              fit.add(s.get(i));
+          }
+          if (fit.size() < 4) fit = s;
+          int moving = 0;
+          for (KBSample k : fit) if (k.pH > 0.08) moving++;
+  
+          double F = 2.0;
+          if (moving >= 3) {
+              double best = Double.MAX_VALUE, bestF = 2.0;
+              for (double f = 1.0; f <= 6.0001; f += 0.02) {
+                  double c = cost(fit, f);
+                  if (c < best - 1e-12) { best = c; bestF = f; }
+              }
+              double lo = Math.max(1.0, bestF - 0.02), hi = Math.min(6.0, bestF + 0.02);
+              for (double f = lo; f <= hi + 1e-9; f += 0.001) {
+                  double c = cost(fit, f);
+                  if (c < best - 1e-12) { best = c; bestF = f; }
+              }
+              double c2 = cost(fit, 2.0);
+              boolean informative = cost(fit, 1.5) - best > 1e-5 && cost(fit, 3.0) - best > 1e-5;
+              if (informative && Math.abs(bestF - 2.0) <= 0.02) {
+                  F = 2.0;
+                  p.frictionMeasured = true;
+                  p.mark(KBProfile.I_F, conf(moving / 2.0));
+              } else if (best < c2 * 0.6 && c2 - best > 1e-5) {
+                  F = bestF;
+                  p.frictionMeasured = true;
+                  double cf = conf(moving / 2.0);
+                  if (F <= 1.03 || F >= 5.97) { cf *= 0.4; p.notes.add("FRICTION hit the search boundary - result is unreliable."); }
+                  p.mark(KBProfile.I_F, cf);
+              } else {
+                  p.mark(KBProfile.I_F, 0.35);
+                  p.notes.add("FRICTION matches the default 2.0 (no evidence of another value).");
+              }
+          } else {
+              p.mark(KBProfile.I_F, 0);
+              p.notes.add("FRICTION not measured - get hit while walking/strafing (pre-hit speed > 0.08).");
+          }
+          F = Math.round(F * 1000.0) / 1000.0;
+          p.friction = F;
+  
+          // ---- (B) which plateaus are genuinely clamped?
+          boolean hCapped = false, yCapped = false;
+          if (hMulti) {
+              List<Double> pa = new ArrayList<Double>();
+              for (int i = 0; i < n; i++) if (hPl[i]) { KBSample k = s.get(i); pa.add((k.px * k.ux + k.pz * k.uz) / F); }
+              hCapped = spread(pa) >= 0.03;
+          }
+          if (yMulti) {
+              List<Double> pa = new ArrayList<Double>();
+              for (int i = 0; i < n; i++) if (yPl[i]) pa.add(s.get(i).py / F);
+              yCapped = spread(pa) >= 0.03;
+          }
+  
+          // ---- (C) residual groups
+          List<Double> hw = new ArrayList<Double>(), hs = new ArrayList<Double>();
+          List<Double> hwC = new ArrayList<Double>(), hsC = new ArrayList<Double>();
+          List<Double> vw = new ArrayList<Double>(), vs = new ArrayList<Double>();
+          List<Double> vwC = new ArrayList<Double>(), vsC = new ArrayList<Double>();
+          double inv = 1.0 / F;
+          for (int i = 0; i < n; i++) {
+              KBSample k = s.get(i);
+              double rx = k.vx - k.px * inv, rz = k.vz - k.pz * inv;
+              double along = rx * k.ux + rz * k.uz;
+              double ry = k.vy - k.py * inv;
+              boolean hc = hCapped && hPl[i], yc = yCapped && yPl[i];
+              if (k.attackerSprint) { (hc ? hsC : hs).add(along); (yc ? vsC : vs).add(ry); }
+              else { (hc ? hwC : hw).add(along); (yc ? vwC : vw).add(ry); }
+          }
+  
+          double[] hr = solve(hw, hs, hwC, hsC, 0.5);
+          p.horizontal = r4(hr[0]); p.extraHorizontal = r4(hr[1]); p.hSpread = hr[4];
+          p.mark(KBProfile.I_H, hr[2]); p.mark(KBProfile.I_EH, hr[3]);
+          if (hr[5] > 0) p.notes.add("HORIZONTAL/EXTRA-HORIZONTAL are lower bounds (hits were clamped by H-LIMIT).");
+  
+          double[] vr = solve(vw, vs, vwC, vsC, 0.0);
+          p.vertical = r4(vr[0]); p.extraVertical = r4(vr[1]); p.vSpread = vr[4];
+          p.mark(KBProfile.I_V, vr[2]); p.mark(KBProfile.I_EV, vr[3]);
+          if (vr[5] > 0) p.notes.add("VERTICAL is a lower bound (clamped by Y-LIMIT). Get hit while FALLING (negative Y motion) to unclamp it.");
+  
+          if (p.walk == 0) p.notes.add("Need hits from a NON-sprinting attacker to separate HORIZONTAL from EXTRA-HORIZONTAL.");
+          if (p.sprint == 0) p.notes.add("Need hits from a SPRINTING attacker to measure EXTRA-HORIZONTAL / EXTRA-VERTICAL.");
+  
+          // ---- limits
+          p.yLimit = r4(yMax);
+          if (yCapped) p.mark(KBProfile.I_YL, conf(yPlN / 1.5));
+          else {
+              p.mark(KBProfile.I_YL, 0.25);
+              p.notes.add("Y-LIMIT is only the highest vertical knockback seen - get hit in mid-air at different heights to confirm the cap.");
+          }
+          p.hLimit = r4(hMax);
+          p.limitHorizontal = hCapped;
+          p.mark(KBProfile.I_LIMH, hCapped ? conf(hPlN / 1.5) : (moving >= 3 ? 0.55 : 0.15));
+          p.mark(KBProfile.I_HL, hCapped ? conf(hPlN / 1.5) : 0.15);
+          if (!hCapped) p.notes.add("H-LIMIT looks inactive (never clamped): shown value is the largest horizontal hit seen. Use /kb import for the exact file value.");
+  
+          // ---- DYNAMIC-LIMIT
+          int airHigh = 0;
+          boolean dyn = false;
+          for (KBSample k : all) {
+              if (!k.hasAttacker || k.victimGround) continue;
+              if (k.py >= p.yLimit - 0.06) {
+                  airHigh++;
+                  if (Math.abs(k.vy) < 0.0005 && k.h > 0.0005) dyn = true;
+              }
+          }
+          p.dynamicLimit = dyn;
+          p.mark(KBProfile.I_DYN, dyn ? 0.6 : (airHigh >= 2 ? 0.5 : 0.12));
+  
+          // ---- ONE-POINT-SEVEN
+          if (p.walk > 0 && p.sprint > 0) {
+              p.onePointSeven = p.extraHorizontal < 0.02 && p.extraVertical < 0.02;
+              p.mark(KBProfile.I_OPS, 0.35);
+          } else {
+              p.onePointSeven = false;
+              p.mark(KBProfile.I_OPS, 0.08);
+          }
+          return p;
+      }
+  
+      /** hits can land again once noDamageTicks <= VALUE/2, so shortest gap g gives VALUE = 2g (or 2g-1). */
+      private static void detectDamageTicks(List<KBSample> all, KBProfile p) {
+          List<Integer> iv = new ArrayList<Integer>();
+          KBSample prev = null;
+          for (KBSample k : all) {
+              if (!k.hasAttacker) continue;
+              if (prev != null && prev.attacker.equals(k.attacker)) {
+                  long d = k.tick - prev.tick;
+                  if (d >= 1 && d <= 60) iv.add((int) d);
+              }
+              prev = k;
+          }
+          p.damageTicksValue = 20;
+          p.damageTicksOverride = false;
+          if (iv.isEmpty()) {
+              p.mark(KBProfile.I_DTO, 0);
+              p.mark(KBProfile.I_DTV, 0);
+              p.notes.add("DAMAGE-TICKS unknown - have someone hit you rapidly.");
+              return;
+          }
+          Collections.sort(iv);
+          int m = iv.size() >= 4 ? iv.get(1) : iv.get(0);
+          if (m >= 10) {
+              p.mark(KBProfile.I_DTO, iv.size() >= 3 ? 0.45 : 0.2);
+              p.mark(KBProfile.I_DTV, 0);
+              p.notes.add("Hit gap " + m + " ticks = vanilla 20. DAMAGE-TICKS.VALUE is not observable while OVERRIDE is false - use /kb import.");
+          } else {
+              p.damageTicksValue = Math.max(2, m * 2);
+              p.damageTicksOverride = true;
+              double c = iv.size() >= 4 ? 0.75 : 0.45;
+              p.mark(KBProfile.I_DTO, c);
+              p.mark(KBProfile.I_DTV, c * 0.8);
+              p.notes.add("Shortest hit gap " + m + " ticks -> DAMAGE-TICKS.VALUE is " + (m * 2) + " or " + (m * 2 - 1) + ".");
+          }
+      }
+  }
+        │               │   ├── KBProfile.java
+  package com.oryvex.kbclient.kb;
+  
+  import java.math.BigDecimal;
+  import java.util.ArrayList;
+  import java.util.List;
+  import java.util.Locale;
+  
+  /** Carbon/Spigot knockback configuration with per-key confidence and source. */
+  public final class KBProfile {
+      public static final int I_OPS = 0, I_H = 1, I_V = 2, I_EH = 3, I_EV = 4, I_F = 5,
+              I_YL = 6, I_DTO = 7, I_DTV = 8, I_DYN = 9, I_LIMH = 10, I_HL = 11, COUNT = 12;
+      public static final int SRC_NONE = 0, SRC_EST = 1, SRC_MEAS = 2, SRC_IMP = 3;
+      public static final String[] SRC_TAG = { "DEF", "EST", "MEAS", "FILE" };
+  
+      /** flattened YAML paths, in file order */
+      public static final String[] KEYS = {
+          "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZONTAL", "EXTRA-VERTICAL",
+          "FRICTION", "Y-LIMIT", "DAMAGE-TICKS.OVERRIDE", "DAMAGE-TICKS.VALUE",
+          "DYNAMIC-LIMIT", "LIMIT-HORIZONTAL", "H-LIMIT"
+      };
+  
+      public boolean onePointSeven = false;
+      public double horizontal = 0.4;
+      public double vertical = 0.4;
+      public double extraHorizontal = 0.5;
+      public double extraVertical = 0.0;
+      public double friction = 2.0;
+      public double yLimit = 0.4;
+      public boolean damageTicksOverride = false;
+      public int damageTicksValue = 20;
+      public boolean dynamicLimit = false;
+      public boolean limitHorizontal = false;
+      public double hLimit = 0.45;
+  
+      /** 0..1 confidence and source per key */
+      public final double[] conf = new double[COUNT];
+      public final int[] src = new int[COUNT];
+  
+      public int total, used, walk, sprint, ambiguous;
+      public boolean hasData, frictionMeasured;
+      public double hSpread, vSpread;
+      public final List<String> notes = new ArrayList<String>();
+  
+      public void mark(int i, double c) {
+          conf[i] = c;
+          src[i] = c >= 0.6 ? SRC_MEAS : (c > 0.0 ? SRC_EST : SRC_NONE);
+      }
+  
+      public static String f(double v, int decimals) {
+          return String.format(Locale.ROOT, "%." + decimals + "f", v);
+      }
+  
+      /** shortest exact decimal text: 0.3618, 2.0, 0.439 */
+      public static String num(double v) {
+          if (Double.isNaN(v) || Double.isInfinite(v)) return "0.0";
+          String s = new BigDecimal(Double.toString(v)).toPlainString();
+          if (s.indexOf('.') < 0) s += ".0";
+          return s;
+      }
+  
+      public static boolean isBool(int i) {
+          return i == I_OPS || i == I_DTO || i == I_DYN || i == I_LIMH;
+      }
+  
+      public String valueText(int i) {
+          switch (i) {
+              case I_OPS: return String.valueOf(onePointSeven);
+              case I_H: return num(horizontal);
+              case I_V: return num(vertical);
+              case I_EH: return num(extraHorizontal);
+              case I_EV: return num(extraVertical);
+              case I_F: return num(friction);
+              case I_YL: return num(yLimit);
+              case I_DTO: return String.valueOf(damageTicksOverride);
+              case I_DTV: return String.valueOf(damageTicksValue);
+              case I_DYN: return String.valueOf(dynamicLimit);
+              case I_LIMH: return String.valueOf(limitHorizontal);
+              default: return num(hLimit);
+          }
+      }
+  
+      public double numeric(int i) {
+          switch (i) {
+              case I_OPS: return onePointSeven ? 1 : 0;
+              case I_H: return horizontal;
+              case I_V: return vertical;
+              case I_EH: return extraHorizontal;
+              case I_EV: return extraVertical;
+              case I_F: return friction;
+              case I_YL: return yLimit;
+              case I_DTO: return damageTicksOverride ? 1 : 0;
+              case I_DTV: return damageTicksValue;
+              case I_DYN: return dynamicLimit ? 1 : 0;
+              case I_LIMH: return limitHorizontal ? 1 : 0;
+              default: return hLimit;
+          }
+      }
+  
+      /** 0 = match, 1 = close, 2 = off, -1 = reference has no value for this key */
+      public int compare(KBProfile ref, int i) {
+          if (ref == null || ref.src[i] == SRC_NONE) return -1;
+          double d = Math.abs(numeric(i) - ref.numeric(i));
+          if (isBool(i) || i == I_DTV) return d == 0 ? 0 : 2;
+          if (d <= 0.00051) return 0;
+          return d <= 0.02 ? 1 : 2;
+      }
+  
+      // ---- exact text setters (used by the YAML parser) -------------------------
+      public static boolean parseBool(String v) {
+          String s = v.trim().toLowerCase(Locale.ROOT);
+          if (s.equals("true") || s.equals("yes") || s.equals("on")) return true;
+          if (s.equals("false") || s.equals("no") || s.equals("off")) return false;
+          throw new NumberFormatException(v);
+      }
+  
+      public static double parseD(String v) {
+          String s = v.trim();
+          if (s.indexOf(',') >= 0 && s.indexOf('.') < 0) s = s.replace(',', '.');
+          double d = Double.parseDouble(s);
+          if (Double.isNaN(d) || Double.isInfinite(d)) throw new NumberFormatException(v);
+          return d;
+      }
+  
+      public static int parseI(String v) {
+          String s = v.trim();
+          try {
+              return Integer.parseInt(s);
+          } catch (NumberFormatException e) {
+              double d = parseD(s);
+              if (d != Math.rint(d)) throw new NumberFormatException(v);
+              return (int) d;
+          }
+      }
+  
+      public void setFromText(int i, String v) {
+          switch (i) {
+              case I_OPS: onePointSeven = parseBool(v); break;
+              case I_H: horizontal = parseD(v); break;
+              case I_V: vertical = parseD(v); break;
+              case I_EH: extraHorizontal = parseD(v); break;
+              case I_EV: extraVertical = parseD(v); break;
+              case I_F: friction = parseD(v); break;
+              case I_YL: yLimit = parseD(v); break;
+              case I_DTO: damageTicksOverride = parseBool(v); break;
+              case I_DTV: damageTicksValue = parseI(v); break;
+              case I_DYN: dynamicLimit = parseBool(v); break;
+              case I_LIMH: limitHorizontal = parseBool(v); break;
+              default: hLimit = parseD(v); break;
+          }
+          conf[i] = 1.0;
+          src[i] = SRC_IMP;
+      }
+  
+      public String summary() {
+          return "H " + num(horizontal) + "  V " + num(vertical) + "  F " + num(friction);
+      }
+  
+      public String toYaml() {
+          StringBuilder sb = new StringBuilder();
+          sb.append("# Should we use 1.7 Knockback?\n");
+          sb.append("ONE-POINT-SEVEN: ").append(onePointSeven).append("\n\n");
+          sb.append("# Horizontal Multiplier\n");
+          sb.append("HORIZONTAL: ").append(num(horizontal)).append("\n\n");
+          sb.append("# Vertical Value\n");
+          sb.append("VERTICAL: ").append(num(vertical)).append("\n\n");
+          sb.append("# Add a certain value to horizontal/vertical before actual calculations\n");
+          sb.append("EXTRA-HORIZONTAL: ").append(num(extraHorizontal)).append("\n");
+          sb.append("EXTRA-VERTICAL: ").append(num(extraVertical)).append("\n\n");
+          sb.append("# Friction Value (Knockback is divided by this)\n");
+          sb.append("FRICTION: ").append(num(friction)).append("\n\n");
+          sb.append("# Y-Axis Limit for a player's velocity\n");
+          sb.append("Y-LIMIT: ").append(num(yLimit)).append("\n\n");
+          sb.append("DAMAGE-TICKS:\n");
+          sb.append("  # Override vanilla damage ticks with carbon's\n");
+          sb.append("  OVERRIDE: ").append(damageTicksOverride).append("\n");
+          sb.append("  # The delay between a player's ability to damage an entity\n");
+          sb.append("  VALUE: ").append(damageTicksValue).append("\n\n");
+          sb.append("# Should the vertical velocity be set to 0 after reaching limit?\n");
+          sb.append("DYNAMIC-LIMIT: ").append(dynamicLimit).append("\n\n");
+          sb.append("# Should we limit horizontal movement?\n");
+          sb.append("LIMIT-HORIZONTAL: ").append(limitHorizontal).append("\n\n");
+          sb.append("# X/Z-Axis Limit for a player's velocity\n");
+          sb.append("H-LIMIT: ").append(num(hLimit));
+          return sb.toString();
+      }
+  }
+        │               │   ├── KBSample.java
+  package com.oryvex.kbclient.kb;
+  
+  /** One knockback event (velocity packet) plus the context it happened in. */
+  public final class KBSample {
+      public static final int WALK = 0, SPRINT = 1, AMBIGUOUS = 2;
+  
+      public final int id;
+      public final long tick;
+      public final double vx, vy, vz, h;
+      public final double px, py, pz, pH;
+      public final boolean victimSprint, victimGround;
+      public final boolean hasAttacker;
+      public final int sprintState;
+      public final boolean attackerSprint;
+      public final int attackerKb;
+      public final double ux, uz;
+      public final double distance;
+      public final String attacker;
+  
+      public KBSample(int id, long tick, double vx, double vy, double vz,
+                      double px, double py, double pz,
+                      boolean victimSprint, boolean victimGround,
+                      boolean hasAttacker, int sprintState, int attackerKb,
+                      double ux, double uz, double distance, String attacker) {
+          this.id = id;
+          this.tick = tick;
+          this.vx = vx;
+          this.vy = vy;
+          this.vz = vz;
+          this.h = Math.sqrt(vx * vx + vz * vz);
+          this.px = px;
+          this.py = py;
+          this.pz = pz;
+          this.pH = Math.sqrt(px * px + pz * pz);
+          this.victimSprint = victimSprint;
+          this.victimGround = victimGround;
+          this.hasAttacker = hasAttacker;
+          this.sprintState = sprintState;
+          this.attackerSprint = sprintState == SPRINT;
+          this.attackerKb = attackerKb;
+          this.ux = ux;
+          this.uz = uz;
+          this.distance = distance;
+          this.attacker = attacker == null ? "?" : attacker;
+      }
+  }
+        │               │   └── KBYaml.java
+  package com.oryvex.kbclient.kb;
+  
+  import java.util.ArrayList;
+  import java.util.LinkedHashMap;
+  import java.util.List;
+  import java.util.Locale;
+  import java.util.Map;
+  
+  /**
+   * Exact reader for the Carbon knockback config.
+   * Handles: full-line and inline comments, nested sections (DAMAGE-TICKS -> OVERRIDE/VALUE),
+   * dotted keys, inline maps ({OVERRIDE: false, VALUE: 17}), quotes, booleans, decimals, ints.
+   * Every one of the 12 keys is looked up; anything missing or unparsable is reported, never guessed.
+   */
+  public final class KBYaml {
+      private KBYaml() {}
+  
+      public static final String SAMPLE =
+          "# Should we use 1.7 Knockback?\n"
+        + "ONE-POINT-SEVEN: false\n\n"
+        + "# Horizontal Multiplier\n"
+        + "HORIZONTAL: 0.3618\n\n"
+        + "# Vertical Value\n"
+        + "VERTICAL: 0.4861\n\n"
+        + "# Add a certain value to horizontal/vertical before actual calculations\n"
+        + "EXTRA-HORIZONTAL: 0.5553\n"
+        + "EXTRA-VERTICAL: 0.0\n\n"
+        + "# Friction Value (Knockback is divided by this)\n"
+        + "FRICTION: 2.0\n\n"
+        + "# Y-Axis Limit for a player's velocity\n"
+        + "Y-LIMIT: 0.439\n\n"
+        + "DAMAGE-TICKS:\n"
+        + "  # Override vanilla damage ticks with carbon's\n"
+        + "  OVERRIDE: false\n"
+        + "  # The delay between a player's ability to damage an entity\n"
+        + "  VALUE: 17\n\n"
+        + "# Should the vertical velocity be set to 0 after reaching limit?\n"
+        + "DYNAMIC-LIMIT: false\n\n"
+        + "# Should we limit horizontal movement?\n"
+        + "LIMIT-HORIZONTAL: false\n\n"
+        + "# X/Z-Axis Limit for a player's velocity\n"
+        + "H-LIMIT: 0.897\n";
+  
+      public static final class Result {
+          public final Map<String, String> raw = new LinkedHashMap<String, String>();
+          public final List<String> missing = new ArrayList<String>();
+          public final List<String> errors = new ArrayList<String>();
+          public final List<String> unknown = new ArrayList<String>();
+          public KBProfile profile = new KBProfile();
+          public int parsed;
+  
+          public boolean complete() { return missing.isEmpty() && errors.isEmpty(); }
+  
+          public String summary() {
+              StringBuilder sb = new StringBuilder();
+              sb.append(parsed).append('/').append(KBProfile.COUNT).append(" keys parsed");
+              if (!missing.isEmpty()) sb.append(", missing ").append(missing);
+              if (!errors.isEmpty()) sb.append(", errors ").append(errors);
+              return sb.toString();
+          }
+      }
+  
+      public static Result parse(String text) {
+          Result r = new Result();
+          if (text == null) text = "";
+          if (text.length() > 0 && text.charAt(0) == '\uFEFF') text = text.substring(1);
+          String[] lines = text.split("\r\n|\r|\n", -1);
+  
+          List<Integer> indents = new ArrayList<Integer>();
+          List<String> names = new ArrayList<String>();
+  
+          for (int ln = 0; ln < lines.length; ln++) {
+              String line = stripComment(lines[ln]);
+              if (line.trim().isEmpty()) continue;
+              int indent = 0;
+              for (int i = 0; i < line.length(); i++) {
+                  char c = line.charAt(i);
+                  if (c == ' ') indent++;
+                  else if (c == '\t') indent += 2;
+                  else break;
+              }
+              String body = line.trim();
+              if (body.equals("---") || body.equals("...")) continue;
+              if (body.startsWith("- ")) { r.errors.add("line " + (ln + 1) + ": lists are not supported"); continue; }
+              int colon = indexOfColon(body);
+              if (colon <= 0) { r.errors.add("line " + (ln + 1) + ": expected 'KEY: value'"); continue; }
+  
+              String key = norm(body.substring(0, colon));
+              String val = body.substring(colon + 1).trim();
+  
+              while (!indents.isEmpty() && indents.get(indents.size() - 1) >= indent) {
+                  indents.remove(indents.size() - 1);
+                  names.remove(names.size() - 1);
+              }
+              StringBuilder path = new StringBuilder();
+              for (String n : names) path.append(n).append('.');
+              String full = path + key;
+  
+              if (val.isEmpty()) { indents.add(indent); names.add(key); continue; }
+              if (val.startsWith("{") && val.endsWith("}")) {
+                  String inner = val.substring(1, val.length() - 1);
+                  for (String part : inner.split(",")) {
+                      int c = indexOfColon(part);
+                      if (c > 0) r.raw.put(full + "." + norm(part.substring(0, c)), unquote(part.substring(c + 1).trim()));
+                  }
+                  continue;
+              }
+              r.raw.put(full, unquote(val));
+          }
+  
+          KBProfile p = r.profile;
+          for (int i = 0; i < KBProfile.COUNT; i++) {
+              String v = r.raw.get(KBProfile.KEYS[i]);
+              if (v == null) { r.missing.add(KBProfile.KEYS[i]); continue; }
+              try {
+                  p.setFromText(i, v);
+                  r.parsed++;
+              } catch (NumberFormatException e) {
+                  r.errors.add(KBProfile.KEYS[i] + ": cannot parse '" + v + "'");
+              }
+          }
+          for (String k : r.raw.keySet()) {
+              boolean known = false;
+              for (String kk : KBProfile.KEYS) if (kk.equals(k)) { known = true; break; }
+              if (!known) r.unknown.add(k);
+          }
+          p.hasData = r.parsed > 0;
+          return r;
+      }
+  
+      private static String stripComment(String line) {
+          char q = 0;
+          for (int i = 0; i < line.length(); i++) {
+              char c = line.charAt(i);
+              if (q != 0) { if (c == q) q = 0; }
+              else if (c == '"' || c == '\'') q = c;
+              else if (c == '#' && (i == 0 || Character.isWhitespace(line.charAt(i - 1)))) return line.substring(0, i);
+          }
+          return line;
+      }
+  
+      private static int indexOfColon(String s) {
+          char q = 0;
+          for (int i = 0; i < s.length(); i++) {
+              char c = s.charAt(i);
+              if (q != 0) { if (c == q) q = 0; }
+              else if (c == '"' || c == '\'') q = c;
+              else if (c == ':') return i;
+          }
+          return -1;
+      }
+  
+      private static String unquote(String s) {
+          s = s.trim();
+          if (s.length() >= 2) {
+              char a = s.charAt(0), b = s.charAt(s.length() - 1);
+              if (a == b && (a == '"' || a == '\'')) return s.substring(1, s.length() - 1);
+          }
+          return s;
+      }
+  
+      private static String norm(String k) {
+          return unquote(k.trim()).toUpperCase(Locale.ROOT).replace('_', '-');
+      }
+  }
+        │               └── ui
+        │                   ├── Draw.java
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.FontRenderer;
+  import net.minecraft.client.gui.Gui;
+  import net.minecraft.client.renderer.GlStateManager;
+  
+  /** Small immediate-mode drawing toolkit (rounded panels, bars, text, gear, particles). */
+  public final class Draw {
+      private Draw() {}
+  
+      public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
+  
+      public static int lerp(int a, int b, float t) {
+          t = clamp(t);
+          int aa = (a >>> 24) & 255, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+          int ba = (b >>> 24) & 255, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+          int ra = (int) (aa + (ba - aa) * t);
+          int rr = (int) (ar + (br - ar) * t);
+          int rg = (int) (ag + (bg - ag) * t);
+          int rb = (int) (ab + (bb - ab) * t);
+          return (ra << 24) | (rr << 16) | (rg << 8) | rb;
+      }
+  
+      public static int alpha(int color, float a) {
+          int al = (int) (clamp(a) * 255f);
+          return (al << 24) | (color & 0xFFFFFF);
+      }
+  
+      /** scale the existing alpha of a colour */
+      public static int fade(int color, float a) {
+          int al = (int) (((color >>> 24) & 255) * clamp(a));
+          return (al << 24) | (color & 0xFFFFFF);
+      }
+  
+      public static int confColor(double c) {
+          float f = (float) Math.max(0, Math.min(1, c));
+          return f < 0.5f ? lerp(Theme.BAD, Theme.WARN, f * 2f) : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
+      }
+  
+      public static void blend() {
+          GlStateManager.enableBlend();
+          GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+          GlStateManager.color(1f, 1f, 1f, 1f);
+      }
+  
+      public static void rect(int x, int y, int w, int h, int color) {
+          Gui.drawRect(x, y, x + w, y + h, color);
+      }
+  
+      public static void vgradient(int w, int h, int top, int bottom) {
+          for (int y = 0; y < h; y += 3) {
+              Gui.drawRect(0, y, w, Math.min(h, y + 3), lerp(top, bottom, y / (float) h));
+          }
+      }
+  
+      public static void roundRect(int x, int y, int w, int h, int r, int color) {
+          if (w <= 0 || h <= 0) return;
+          r = Math.min(r, Math.min(w, h) / 2);
+          if (r <= 0) { Gui.drawRect(x, y, x + w, y + h, color); return; }
+          Gui.drawRect(x, y + r, x + w, y + h - r, color);
+          for (int i = 0; i < r; i++) {
+              double dy = r - i - 0.5;
+              int inset = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
+              Gui.drawRect(x + inset, y + i, x + w - inset, y + i + 1, color);
+              Gui.drawRect(x + inset, y + h - i - 1, x + w - inset, y + h - i, color);
+          }
+      }
+  
+      public static void panel(int x, int y, int w, int h, int r, int fill, int border) {
+          roundRect(x, y, w, h, r, border);
+          roundRect(x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill);
+      }
+  
+      public static void bar(int x, int y, int w, int h, double frac, int bg, int fg) {
+          roundRect(x, y, w, h, h / 2, bg);
+          int fw = (int) (w * Math.max(0, Math.min(1, frac)));
+          if (fw > 0) roundRect(x, y, fw, h, h / 2, fg);
+      }
+  
+      public static void dashedH(int x, int y, int w, int color) {
+          for (int i = 0; i < w; i += 6) Gui.drawRect(x + i, y, x + Math.min(w, i + 3), y + 1, color);
+      }
+  
+      /** pixel-art gear: 4 rotated bars + octagon body + hole */
+      public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
+          int R = Math.max(3, Math.round(r));
+          int t = Math.max(2, Math.round(r * 0.4f));
+          int b = Math.max(2, Math.round(r * 0.68f));
+          int hr = Math.max(1, Math.round(r * 0.3f));
+          GlStateManager.pushMatrix();
+          GlStateManager.translate(cx, cy, 0f);
+          GlStateManager.rotate(angle, 0f, 0f, 1f);
+          for (int i = 0; i < 4; i++) {
+              GlStateManager.pushMatrix();
+              GlStateManager.rotate(i * 45f, 0f, 0f, 1f);
+              Gui.drawRect(-R, -t / 2, R, t - t / 2, color);
+              GlStateManager.popMatrix();
+          }
+          Gui.drawRect(-b, -b, b, b, color);
+          GlStateManager.pushMatrix();
+          GlStateManager.rotate(45f, 0f, 0f, 1f);
+          Gui.drawRect(-b, -b, b, b, color);
+          GlStateManager.popMatrix();
+          Gui.drawRect(-hr, -hr, hr, hr, hole);
+          GlStateManager.popMatrix();
+      }
+  
+      // ---- text -------------------------------------------------------------
+      public static FontRenderer font() { return Minecraft.getMinecraft().fontRendererObj; }
+  
+      public static int width(String s, float scale) { return (int) (font().getStringWidth(s) * scale); }
+  
+      public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
+          // the vanilla font renderer draws near-zero alpha as fully opaque, so skip it
+          if (((color >>> 24) & 255) <= 4) return;
+          GlStateManager.pushMatrix();
+          GlStateManager.scale(scale, scale, 1f);
+          font().drawString(s, x / scale, y / scale, color, shadow);
+          GlStateManager.popMatrix();
+      }
+  
+      public static void centered(String s, float cx, float y, int color, float scale, boolean shadow) {
+          text(s, cx - font().getStringWidth(s) * scale / 2f, y, color, scale, shadow);
+      }
+  
+      public static void right(String s, float rx, float y, int color, float scale, boolean shadow) {
+          text(s, rx - font().getStringWidth(s) * scale, y, color, scale, shadow);
+      }
+  
+      // ---- ambient particles -------------------------------------------------
+      private static float hash(int n) {
+          double v = Math.sin(n * 12.9898) * 43758.5453;
+          return (float) (v - Math.floor(v));
+      }
+  
+      private static float mod(float a, float m) {
+          float r = a % m;
+          return r < 0 ? r + m : r;
+      }
+  
+      public static void particles(int w, int h, int count, int rgb, float maxAlpha) {
+          float t = (System.currentTimeMillis() % 1000000L) / 1000f;
+          for (int i = 0; i < count; i++) {
+              float r1 = hash(i * 3 + 1), r2 = hash(i * 3 + 2), r3 = hash(i * 3 + 3);
+              float sp = 4f + r3 * 14f;
+              float x = mod(r1 * w + t * sp * 0.6f, w);
+              float y = mod(r2 * h - t * sp, h);
+              float tw = 0.5f + 0.5f * (float) Math.sin(t * (0.6f + r3 * 1.5f) + i);
+              int a = (int) (maxAlpha * 255f * tw * (0.4f + 0.6f * r3));
+              int sz = r3 > 0.8f ? 2 : 1;
+              Gui.drawRect((int) x, (int) y, (int) x + sz, (int) y + sz, (a << 24) | (rgb & 0xFFFFFF));
+          }
+      }
+  }
+        │                   ├── Fade.java
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.gui.Gui;
+  
+  /** Shared fade timing + full-screen fade overlays. */
+  public final class Fade {
+      private Fade() {}
+  
+      /** overlay for vanilla screens (fade-in when a screen opens) */
+      public static final Fader screen = new Fader();
+      /** overlay over the game world (join world, closing a screen) */
+      public static final Fader world = new Fader();
+  
+      public static long ms() {
+          switch (Settings.fade) {
+              case 0: return 0L;
+              case 1: return 140L;
+              case 2: return 260L;
+              default: return 420L;
+          }
+      }
+  
+      public static float ease(float t) {
+          t = Draw.clamp(t);
+          return t * t * (3f - 2f * t);
+      }
+  
+      public static final class Fader {
+          private long start;
+          private long dur;
+          private float from;
+  
+          public void trigger(float from) { trigger(from, ms()); }
+  
+          public void trigger(float from, long ms) {
+              this.from = from;
+              this.dur = ms;
+              this.start = System.currentTimeMillis();
+          }
+  
+          public float alpha() {
+              if (dur <= 0) return 0f;
+              float t = (System.currentTimeMillis() - start) / (float) dur;
+              if (t >= 1f || t < 0f) return 0f;
+              return from * (1f - ease(t));
+          }
+  
+          public void draw(int w, int h) {
+              float a = alpha();
+              if (a > 0.004f) Gui.drawRect(0, 0, w, h, ((int) (a * 255f)) << 24);
+          }
+      }
+  }
+        │                   ├── FadeScreen.java
+  package com.oryvex.kbclient.ui;
+  
+  import java.io.IOException;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.Gui;
+  import net.minecraft.client.gui.GuiScreen;
+  import org.lwjgl.input.Keyboard;
+  
+  /** Base class for all KB Client screens: fades in on open, fades out on close. */
+  public abstract class FadeScreen extends GuiScreen {
+      private final long openedAt = System.currentTimeMillis();
+      private boolean closing;
+      private long closeAt;
+      private long closeDur;
+      private Runnable after;
+  
+      public boolean isClosing() { return closing; }
+  
+      public void closeTo(final GuiScreen next) {
+          closeThen(new Runnable() {
+              @Override
+              public void run() { Minecraft.getMinecraft().displayGuiScreen(next); }
+          });
+      }
+  
+      public void closeThen(Runnable r) {
+          if (closing) return;
+          long ms = Fade.ms();
+          if (ms <= 0) { r.run(); return; }
+          closing = true;
+          closeAt = System.currentTimeMillis();
+          closeDur = ms;
+          after = r;
+      }
+  
+      @Override
+      public void updateScreen() {
+          super.updateScreen();
+          if (closing && after != null && System.currentTimeMillis() - closeAt >= closeDur) {
+              Runnable r = after;
+              after = null;
+              r.run();
+          }
+      }
+  
+      /** call as the LAST step of drawScreen */
+      protected final void drawFade() {
+          long ms = Fade.ms();
+          if (ms <= 0) return;
+          long now = System.currentTimeMillis();
+          float a = 1f - Fade.ease((now - openedAt) / (float) ms);
+          if (closing) a = Math.max(a, Fade.ease((now - closeAt) / (float) closeDur));
+          if (a > 0.004f) Gui.drawRect(0, 0, this.width, this.height, ((int) (a * 255f)) << 24);
+      }
+  
+      protected void drawBackdrop(int particleCount) {
+          if (this.mc != null && this.mc.theWorld != null) {
+              this.drawGradientRect(0, 0, this.width, this.height, 0xD0070A11, 0xE0111A2B);
+          } else {
+              this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
+          }
+          if (Settings.particles && particleCount > 0) Draw.particles(this.width, this.height, particleCount, 0x22D3EE, 0.25f);
+      }
+  
+      @Override
+      protected void mouseClicked(int x, int y, int b) throws IOException {
+          if (closing) return;
+          super.mouseClicked(x, y, b);
+      }
+  
+      @Override
+      protected final void keyTyped(char c, int key) throws IOException {
+          if (closing) return;
+          onKey(c, key);
+      }
+  
+      protected void onKey(char c, int key) throws IOException {
+          if (key == Keyboard.KEY_ESCAPE) closeTo(null);
+      }
+  }
+        │                   ├── GuiAnalyzer.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBSample;
+  import com.oryvex.kbclient.kb.KBYaml;
+  import java.io.File;
+  import java.io.IOException;
+  import java.util.ArrayList;
+  import java.util.List;
+  import java.util.Locale;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiScreen;
+  import org.lwjgl.input.Keyboard;
+  import org.lwjgl.input.Mouse;
+  
+  public class GuiAnalyzer extends FadeScreen {
+      private static int lastTab = 0;
+      private static final int NT = 5;
+      private static final String[] TAB_NAMES = { "Overview", "Samples", "Graph", "YAML", "Compare" };
+      private static final String[] SHORT = {
+          "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZ", "EXTRA-VERT", "FRICTION",
+          "Y-LIMIT", "DT OVERRIDE", "DT VALUE", "DYNAMIC-LIMIT", "LIMIT-HORIZ", "H-LIMIT"
+      };
+  
+      public static void openTab(int t) { lastTab = Math.max(0, Math.min(NT - 1, t)); }
+  
+      private final KBTracker tracker;
+      private final GuiScreen parent;
+      private KBProfile profile;
+      private KBProfile reference;
+      private List<KBSample> samples = new ArrayList<KBSample>();
+      private int tab;
+      private int scroll;
+      private int px, pw, y0, y1;
+      private final UiButton[] tabs = new UiButton[NT];
+      private UiButton pauseBtn;
+      private String flash = "";
+      private boolean flashGood = true;
+      private long flashUntil;
+  
+      public GuiAnalyzer(KBTracker tracker, GuiScreen parent) {
+          this.tracker = tracker;
+          this.parent = parent;
+          this.tab = lastTab;
+          refresh();
+      }
+  
+      private void refresh() {
+          profile = tracker.getProfile();
+          reference = tracker.getReference();
+          samples = tracker.snapshot();
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+          pw = Math.min(this.width - 16, 460);
+          px = (this.width - pw) / 2;
+          y0 = 68;
+          y1 = this.height - 34;
+  
+          int tw = Math.min(72, (pw - 16) / NT);
+          for (int i = 0; i < NT; i++) {
+              tabs[i] = new UiButton(10 + i, px + i * (tw + 4), 46, tw, 16, TAB_NAMES[i]).style(UiButton.TAB).delay(i * 40L);
+              tabs[i].selected = (i == tab);
+              this.buttonList.add(tabs[i]);
+          }
+  
+          String[] labels = { "Import", "Copy YAML", "Export", "Reset", "Pause", "Close" };
+          int bw = Math.min(76, (pw - 20) / 6);
+          int total = 6 * bw + 5 * 4;
+          int bx = (this.width - total) / 2;
+          for (int i = 0; i < 6; i++) {
+              UiButton b = new UiButton(100 + i, bx + i * (bw + 4), this.height - 26, bw, 18, labels[i]).delay(120 + i * 40L);
+              if (i == 0) b.style = UiButton.PRIMARY;
+              if (i == 3) b.style = UiButton.DANGER;
+              if (i == 4) pauseBtn = b;
+              this.buttonList.add(b);
+          }
+      }
+  
+      @Override
+      public void updateScreen() {
+          super.updateScreen();
+          refresh();
+          if (pauseBtn != null) pauseBtn.displayString = tracker.isRecording() ? "Pause" : "Resume";
+      }
+  
+      @Override
+      public boolean doesGuiPauseGame() { return false; }
+  
+      private void setTab(int t) {
+          tab = t;
+          lastTab = t;
+          scroll = 0;
+          for (int i = 0; i < NT; i++) if (tabs[i] != null) tabs[i].selected = (i == t);
+      }
+  
+      private void toast(String s, boolean good) {
+          flash = s;
+          flashGood = good;
+          flashUntil = System.currentTimeMillis() + 3200;
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          if (b.id >= 10 && b.id < 10 + NT) { setTab(b.id - 10); return; }
+          switch (b.id) {
+              case 100: {
+                  KBYaml.Result r = tracker.importYaml(GuiScreen.getClipboardString());
+                  refresh();
+                  toast(r.parsed > 0 ? r.summary() : "Clipboard has no knockback YAML - copy a config first", r.complete());
+                  if (r.parsed > 0) setTab(4);
+                  break;
+              }
+              case 101:
+                  setClipboardString(profile.toYaml());
+                  toast("Detected YAML copied to clipboard", true);
+                  break;
+              case 102:
+                  try {
+                      File f = tracker.export();
+                      toast("Saved " + f.getName(), true);
+                  } catch (Exception e) {
+                      toast("Export failed: " + e.getMessage(), false);
+                  }
+                  break;
+              case 103:
+                  tracker.reset();
+                  refresh();
+                  toast("Samples cleared", true);
+                  break;
+              case 104:
+                  tracker.setRecording(!tracker.isRecording());
+                  break;
+              case 105:
+                  closeTo(parent);
+                  break;
+              default:
+                  break;
+          }
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          if (key == Keyboard.KEY_ESCAPE) { closeTo(parent); return; }
+          if (key == Keyboard.KEY_RIGHT) setTab((tab + 1) % NT);
+          else if (key == Keyboard.KEY_LEFT) setTab((tab + NT - 1) % NT);
+          else if (key >= Keyboard.KEY_1 && key < Keyboard.KEY_1 + NT) setTab(key - Keyboard.KEY_1);
+          else if (key == Keyboard.KEY_UP) scroll = Math.max(0, scroll - 1);
+          else if (key == Keyboard.KEY_DOWN) scroll++;
+      }
+  
+      @Override
+      public void handleMouseInput() throws IOException {
+          super.handleMouseInput();
+          int d = Mouse.getEventDWheel();
+          if (d != 0) {
+              scroll += d > 0 ? -2 : 2;
+              if (scroll < 0) scroll = 0;
+          }
+      }
+  
+      private static int srcColor(int s) {
+          switch (s) {
+              case KBProfile.SRC_EST: return Theme.WARN;
+              case KBProfile.SRC_MEAS: return Theme.GOOD;
+              case KBProfile.SRC_IMP: return Theme.ACCENT2;
+              default: return Theme.DIM;
+          }
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          drawBackdrop(34);
+  
+          Draw.text("KNOCKBACK ANALYZER", px, 11, Theme.TEXT, 1.4f, true);
+          Draw.text("Carbon / Spigot profile - detector + exact YAML import", px, 28, Theme.MUTED, 0.75f, false);
+  
+          boolean rec = tracker.isRecording();
+          String st = (rec ? "LIVE" : "PAUSED") + "   " + profile.used + "/" + profile.total + " samples";
+          int chipW = Draw.width(st, 0.85f) + 24;
+          int chipX = px + pw - chipW;
+          Draw.panel(chipX, 11, chipW, 16, 8, Theme.PANEL, Theme.BORDER);
+          Draw.roundRect(chipX + 8, 17, 5, 5, 2, rec ? Theme.GOOD : Theme.WARN);
+          Draw.text(st, chipX + 18, 15, Theme.SOFT, 0.85f, false);
+          if (System.currentTimeMillis() < flashUntil) {
+              Draw.right(flash, px + pw, 32, flashGood ? Theme.GOOD : Theme.WARN, 0.75f, false);
+          } else {
+              Draw.right(tracker.getServer(), px + pw, 32, Theme.DIM, 0.75f, false);
+          }
+  
+          switch (tab) {
+              case 0: drawOverview(); break;
+              case 1: drawSamples(); break;
+              case 2: drawGraph(); break;
+              case 3: drawYaml(); break;
+              default: drawCompare(); break;
+          }
+  
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  
+      // ---- overview ----------------------------------------------------------
+      private void drawOverview() {
+          KBProfile p = profile;
+          int cols = 4, rows = 3, gap = 4;
+          int cw = (pw - gap * (cols - 1)) / cols;
+          int tipH = 30;
+          int ch = Math.max(28, Math.min(40, (y1 - y0 - tipH - gap * rows) / rows));
+  
+          for (int i = 0; i < KBProfile.COUNT; i++) {
+              int x = px + (i % cols) * (cw + gap);
+              int y = y0 + (i / cols) * (ch + gap);
+              boolean none = p.src[i] == KBProfile.SRC_NONE;
+              int cc = none ? Theme.DIM : Draw.confColor(p.conf[i]);
+              Draw.panel(x, y, cw, ch, 4, Theme.PANEL, Theme.BORDER);
+              Draw.roundRect(x + 1, y + 5, 2, ch - 10, 1, cc);
+              Draw.text(SHORT[i], x + 8, y + 5, Theme.MUTED, 0.68f, false);
+              Draw.right(KBProfile.SRC_TAG[p.src[i]], x + cw - 6, y + 5, srcColor(p.src[i]), 0.62f, false);
+              float vs = ch >= 38 ? 1.3f : 1f;
+              Draw.text(p.valueText(i), x + 8, y + 14 + (ch >= 38 ? 1 : 0), none ? Theme.MUTED : Theme.TEXT, vs, true);
+              Draw.bar(x + 8, y + ch - 6, cw - 16, 2, p.conf[i], Theme.PANEL3, cc);
+          }
+  
+          int ty = y0 + rows * (ch + gap);
+          int th = Math.min(tipH, y1 - ty);
+          if (th >= 18) {
+              Draw.panel(px, ty, pw, th, 4, Theme.PANEL, Theme.BORDER);
+              Draw.roundRect(px + 6, ty + 6, 24, 10, 3, Theme.ACCENT_DK);
+              Draw.centered("TIP", px + 18, ty + 8, Theme.TEXT, 0.75f, false);
+              String tip;
+              if (p.notes.isEmpty()) tip = "Looking good - keep collecting varied hits to raise confidence.";
+              else tip = p.notes.get((int) ((System.currentTimeMillis() / 4000L) % p.notes.size()));
+              List<String> lines = fontRendererObj.listFormattedStringToWidth(tip, pw - 50);
+              for (int i = 0; i < lines.size() && i < 2; i++) {
+                  Draw.text(lines.get(i), px + 36, ty + 5 + i * 10, Theme.SOFT, 1f, false);
+              }
+          }
+      }
+  
+      // ---- samples -----------------------------------------------------------
+      private void drawSamples() {
+          Draw.panel(px, y0, pw, y1 - y0, 5, Theme.PANEL, Theme.BORDER);
+          int[] cx = { 8, 34, 88, 142, 196, 230, 264, 304 };
+          String[] hd = { "#", "H", "V", "PRE-H", "ATK", "GND", "DIST", "ATTACKER" };
+          int hy = y0 + 6;
+          for (int i = 0; i < hd.length; i++) Draw.text(hd[i], px + cx[i], hy, Theme.ACCENT, 0.8f, false);
+          Draw.rect(px + 6, hy + 11, pw - 12, 1, Theme.BORDER);
+  
+          int n = samples.size();
+          if (n == 0) {
+              Draw.centered("No samples yet - get hit by another player.", px + pw / 2f, y0 + (y1 - y0) / 2f - 4, Theme.MUTED, 1f, false);
+              return;
+          }
+          int rowH = 10;
+          int rows = Math.max(1, (y1 - (hy + 15) - 4) / rowH);
+          scroll = Math.max(0, Math.min(scroll, Math.max(0, n - rows)));
+          for (int r = 0; r < rows; r++) {
+              int idx = n - 1 - (scroll + r);
+              if (idx < 0) break;
+              KBSample k = samples.get(idx);
+              int ry = hy + 15 + r * rowH;
+              if (r % 2 == 0) Draw.rect(px + 4, ry - 1, pw - 8, rowH, 0x14FFFFFF);
+              Draw.text(String.valueOf(k.id), px + cx[0], ry, Theme.MUTED, 0.85f, false);
+              Draw.text(KBProfile.f(k.h, 4), px + cx[1], ry, Theme.TEXT, 0.85f, false);
+              Draw.text(KBProfile.f(k.vy, 4), px + cx[2], ry, Theme.TEXT, 0.85f, false);
+              Draw.text(KBProfile.f(k.pH, 3), px + cx[3], ry, Theme.SOFT, 0.85f, false);
+              String atk = !k.hasAttacker ? "--" : (k.sprintState == KBSample.AMBIGUOUS ? "???" : (k.attackerSprint ? "SPR" : "WLK"));
+              int atkCol = k.sprintState == KBSample.AMBIGUOUS ? Theme.DIM : (k.attackerSprint ? Theme.WARN : Theme.GOOD);
+              Draw.text(atk, px + cx[4], ry, atkCol, 0.85f, false);
+              Draw.text(k.victimGround ? "gnd" : "air", px + cx[5], ry, k.victimGround ? Theme.SOFT : Theme.ACCENT2, 0.85f, false);
+              Draw.text(KBProfile.f(k.distance, 1), px + cx[6], ry, Theme.SOFT, 0.85f, false);
+              String nm = fontRendererObj.trimStringToWidth(k.attacker, Math.max(10, pw - cx[7] - 10));
+              Draw.text(nm, px + cx[7], ry, Theme.MUTED, 0.85f, false);
+          }
+          if (n > rows) {
+              int bh = y1 - y0 - 8;
+              int th = Math.max(10, bh * rows / n);
+              int ty = y0 + 4 + (int) ((bh - th) * (scroll / (double) Math.max(1, n - rows)));
+              Draw.roundRect(px + pw - 5, ty, 2, th, 1, Theme.BORDER_HI);
+          }
+      }
+  
+      // ---- graph -------------------------------------------------------------
+      private void drawGraph() {
+          Draw.panel(px, y0, pw, y1 - y0, 5, Theme.PANEL, Theme.BORDER);
+          Draw.roundRect(px + 10, y0 + 8, 6, 6, 2, Theme.ACCENT);
+          Draw.text("Horizontal", px + 20, y0 + 7, Theme.SOFT, 0.8f, false);
+          Draw.roundRect(px + 72, y0 + 8, 6, 6, 2, Theme.ACCENT2);
+          Draw.text("Vertical", px + 82, y0 + 7, Theme.SOFT, 0.8f, false);
+          Draw.dashedH(px + 126, y0 + 11, 10, Theme.WARN);
+          Draw.text("fitted HORIZONTAL / Y-LIMIT", px + 140, y0 + 7, Theme.MUTED, 0.8f, false);
+  
+          int cx0 = px + 30, cx1 = px + pw - 10;
+          int cy0 = y0 + 22, cy1 = y1 - 12;
+          int chartW = cx1 - cx0, chartH = cy1 - cy0;
+          if (chartH < 20 || chartW < 40) return;
+  
+          int n = samples.size();
+          double max = 0.6;
+          for (KBSample k : samples) { max = Math.max(max, Math.max(k.h, Math.abs(k.vy))); }
+          max = Math.ceil(max * 10.0) / 10.0;
+  
+          for (int g = 0; g <= 4; g++) {
+              int gy = cy1 - (int) (chartH * g / 4.0);
+              Draw.rect(cx0, gy, chartW, 1, g == 0 ? Theme.BORDER_HI : Theme.BORDER);
+              Draw.right(KBProfile.f(max * g / 4.0, 2), cx0 - 4, gy - 4, Theme.DIM, 0.7f, false);
+          }
+          if (n == 0) {
+              Draw.centered("No samples yet", (cx0 + cx1) / 2f, (cy0 + cy1) / 2f, Theme.MUTED, 1f, false);
+              return;
+          }
+          int show = Math.min(n, Math.max(1, chartW / 7));
+          double slot = chartW / (double) show;
+          int barW = Math.max(1, (int) ((slot - 2) / 2));
+          for (int i = 0; i < show; i++) {
+              KBSample k = samples.get(n - show + i);
+              int bx = cx0 + (int) (i * slot) + 1;
+              int hh = (int) (chartH * Math.min(1.0, k.h / max));
+              int vh = (int) (chartH * Math.min(1.0, Math.abs(k.vy) / max));
+              if (hh > 0) Draw.roundRect(bx, cy1 - hh, barW, hh, 1, k.attackerSprint ? Draw.lerp(Theme.ACCENT, Theme.WARN, 0.5f) : Theme.ACCENT);
+              if (vh > 0) Draw.roundRect(bx + barW, cy1 - vh, barW, vh, 1, Theme.ACCENT2);
+          }
+          if (profile.hasData) {
+              int hy = cy1 - (int) (chartH * Math.min(1.0, profile.horizontal / max));
+              int yy = cy1 - (int) (chartH * Math.min(1.0, profile.yLimit / max));
+              Draw.dashedH(cx0, hy, chartW, Theme.WARN);
+              Draw.dashedH(cx0, yy, chartW, Theme.ACCENT2);
+          }
+      }
+  
+      // ---- yaml --------------------------------------------------------------
+      private void drawYaml() {
+          Draw.panel(px, y0, pw, y1 - y0, 5, Theme.PANEL, Theme.BORDER);
+          String[] lines = profile.toYaml().split("\n");
+          int rowH = 9;
+          int rows = Math.max(1, (y1 - y0 - 12) / rowH);
+          scroll = Math.max(0, Math.min(scroll, Math.max(0, lines.length - rows)));
+          for (int r = 0; r < rows; r++) {
+              int idx = scroll + r;
+              if (idx >= lines.length) break;
+              String ln = lines[idx];
+              int y = y0 + 7 + r * rowH;
+              int indent = 0;
+              while (indent < ln.length() && ln.charAt(indent) == ' ') indent++;
+              int x = px + 10 + indent * 3;
+              String body = ln.substring(indent);
+              if (body.startsWith("#")) {
+                  Draw.text(body, x, y, Theme.DIM, 0.85f, false);
+              } else {
+                  int c = body.indexOf(':');
+                  if (c > 0) {
+                      String key = body.substring(0, c + 1);
+                      String val = body.substring(c + 1);
+                      Draw.text(key, x, y, Theme.ACCENT, 0.85f, false);
+                      String vt = val.trim();
+                      int vc = (vt.equals("true") || vt.equals("false")) ? Theme.ACCENT2 : Theme.TEXT;
+                      Draw.text(val, x + Draw.width(key, 0.85f), y, vc, 0.85f, false);
+                  }
+              }
+          }
+      }
+  
+      // ---- compare (detected vs imported reference) ---------------------------
+      private void drawCompare() {
+          Draw.panel(px, y0, pw, y1 - y0, 5, Theme.PANEL, Theme.BORDER);
+          if (reference == null) {
+              float cy = y0 + (y1 - y0) / 2f - 14;
+              Draw.centered("No reference config loaded", px + pw / 2f, cy, Theme.SOFT, 1f, true);
+              Draw.centered("Copy a Carbon knockback YAML, then press Import", px + pw / 2f, cy + 14, Theme.MUTED, 0.85f, false);
+              Draw.centered("or use /kb import  |  /kb import file.yml  |  /kb sample", px + pw / 2f, cy + 26, Theme.DIM, 0.8f, false);
+              return;
+          }
+          int[] cx = { 8, 150, 226, 302, 372 };
+          String[] hd = { "KEY", "DETECTED", "REFERENCE", "DELTA", "STATUS" };
+          int hy = y0 + 6;
+          for (int i = 0; i < hd.length; i++) Draw.text(hd[i], px + cx[i], hy, Theme.ACCENT, 0.8f, false);
+          Draw.rect(px + 6, hy + 11, pw - 12, 1, Theme.BORDER);
+  
+          int rowH = Math.max(9, Math.min(13, (y1 - y0 - 44) / KBProfile.COUNT));
+          int match = 0, close = 0, off = 0;
+          for (int i = 0; i < KBProfile.COUNT; i++) {
+              int y = hy + 16 + i * rowH;
+              if (i % 2 == 0) Draw.rect(px + 4, y - 2, pw - 8, rowH, 0x14FFFFFF);
+              int cmp = profile.compare(reference, i);
+              boolean hasDet = profile.src[i] != KBProfile.SRC_NONE;
+              Draw.text(KBProfile.KEYS[i], px + cx[0], y, Theme.SOFT, 0.8f, false);
+              Draw.text(hasDet ? profile.valueText(i) : profile.valueText(i) + " (def)", px + cx[1], y, hasDet ? Theme.TEXT : Theme.DIM, 0.8f, false);
+              Draw.text(reference.src[i] == KBProfile.SRC_NONE ? "--" : reference.valueText(i), px + cx[2], y, Theme.ACCENT2, 0.8f, false);
+              String delta = "-";
+              if (cmp >= 0 && !KBProfile.isBool(i)) delta = String.format(Locale.ROOT, "%+.4f", profile.numeric(i) - reference.numeric(i));
+              Draw.text(delta, px + cx[3], y, Theme.MUTED, 0.8f, false);
+              String status;
+              int sc;
+              if (cmp == 0) { status = "MATCH"; sc = Theme.GOOD; match++; }
+              else if (cmp == 1) { status = "CLOSE"; sc = Theme.WARN; close++; }
+              else if (cmp == 2) { status = "OFF"; sc = Theme.BAD; off++; }
+              else { status = "NO REF"; sc = Theme.DIM; }
+              Draw.text(status, px + cx[4], y, sc, 0.8f, false);
+          }
+          int fy = y1 - 22;
+          Draw.rect(px + 6, fy - 4, pw - 12, 1, Theme.BORDER);
+          Draw.text(match + " match   " + close + " close   " + off + " off", px + 8, fy, Theme.SOFT, 0.85f, false);
+          String imp = tracker.getLastImport();
+          if (imp != null && !imp.isEmpty()) {
+              Draw.text(fontRendererObj.trimStringToWidth(imp, (int) ((pw - 16) / 0.75f)), px + 8, fy + 10, Theme.MUTED, 0.75f, false);
+          }
+      }
+  }
+        │                   ├── GuiKbOptions.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import java.io.IOException;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiOptions;
+  import net.minecraft.client.gui.GuiScreen;
+  
+  /** Custom options screen for KB Client. */
+  public class GuiKbOptions extends FadeScreen {
+      private final KBTracker tracker;
+      private final GuiScreen parent;
+      private UiButton bHud, bPart, bToast, bLoad, bFade;
+      private int cardX, cardY, cardW, cardH;
+  
+      public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
+          this.tracker = tracker;
+          this.parent = parent;
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+          int bw = 216, bh = 20, gap = 6, cx = this.width / 2;
+          int y = Math.max(58, this.height / 2 - 78);
+          cardW = bw + 28;
+          cardX = cx - cardW / 2;
+          cardY = y - 42;
+          cardH = 7 * (bh + gap) + 62;
+  
+          bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+          bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
+          bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
+          bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
+          bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
+          this.buttonList.add(bHud);
+          this.buttonList.add(bPart);
+          this.buttonList.add(bToast);
+          this.buttonList.add(bLoad);
+          this.buttonList.add(bFade);
+          this.buttonList.add(new UiButton(6, cx - bw / 2, y + 5 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
+          this.buttonList.add(new UiButton(7, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+          sync();
+      }
+  
+      private void sync() {
+          bHud.on = Settings.hud;
+          bPart.on = Settings.particles;
+          bToast.on = Settings.toasts;
+          bLoad.on = Settings.customLoading;
+          bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          switch (b.id) {
+              case 1: Settings.hud = !Settings.hud; break;
+              case 2: Settings.particles = !Settings.particles; break;
+              case 3: Settings.toasts = !Settings.toasts; break;
+              case 4: Settings.customLoading = !Settings.customLoading; break;
+              case 5: Settings.fade = (Settings.fade + 1) % 4; break;
+              case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
+              case 7: Settings.save(); closeTo(parent); return;
+              default: break;
+          }
+          Settings.save();
+          sync();
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) { Settings.save(); closeTo(parent); }
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          drawBackdrop(30);
+          Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
+          Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);
+          Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  }
+        │                   ├── GuiModernMenu.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import java.awt.Color;
+  import java.io.IOException;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiMultiplayer;
+  import net.minecraft.client.gui.GuiSelectWorld;
+  
+  public class GuiModernMenu extends FadeScreen {
+      private final KBTracker tracker;
+      private int panelX, panelY, panelW, panelH, titleY;
+  
+      public GuiModernMenu(KBTracker tracker) {
+          this.tracker = tracker;
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+          int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
+          int rows = 4;
+          int total = rows * bh + (rows - 1) * gap;
+          int top = this.height / 2 - total / 2 + 26;
+          panelW = bw + 28;
+          panelH = total + 28;
+          panelX = cx - panelW / 2;
+          panelY = top - 14;
+          titleY = Math.max(8, panelY - 72);
+  
+          int half = (bw - gap) / 2;
+          this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
+          this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
+          this.buttonList.add(new UiButton(3, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(260));
+          this.buttonList.add(new UiButton(4, cx - bw / 2, top + 3 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(330));
+          this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 3 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(400));
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          switch (b.id) {
+              case 1: closeTo(new GuiSelectWorld(this)); break;
+              case 2: closeTo(new GuiMultiplayer(this)); break;
+              case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+              case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+              case 5:
+                  closeThen(new Runnable() {
+                      @Override
+                      public void run() { mc.shutdown(); }
+                  });
+                  break;
+              default: break;
+          }
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          // main menu cannot be closed with ESC
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
+          if (Settings.particles) {
+              Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
+              Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+          }
+  
+          int cx = this.width / 2;
+          float t = (System.currentTimeMillis() % 100000L) / 1000f;
+  
+          String title = "ORYVEX";
+          float sc = 4f;
+          float tx = cx - fontRendererObj.getStringWidth(title) * sc / 2f;
+          for (int i = 0; i < title.length(); i++) {
+              String ch = title.substring(i, i + 1);
+              float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+              int col = Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000;
+              Draw.text(ch, tx, titleY, col, sc, true);
+              tx += fontRendererObj.getStringWidth(ch) * sc;
+          }
+          Draw.centered("K N O C K B A C K   C L I E N T", cx, titleY + 38, Theme.MUTED, 0.9f, false);
+          Draw.rect(cx - 30, titleY + 52, 60, 1, Theme.ACCENT_DK);
+  
+          Draw.panel(panelX, panelY, panelW, panelH, 8, Theme.GLASS, Theme.BORDER);
+  
+          KBProfile p = tracker.getProfile();
+          if (p.hasData) {
+              String s = "Last profile   " + p.summary() + "   (" + p.used + " hits)";
+              int w = Draw.width(s, 0.85f) + 20;
+              int py = panelY + panelH + 10;
+              Draw.panel(cx - w / 2, py, w, 15, 7, Theme.PANEL, Theme.BORDER);
+              Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
+          }
+  
+          Draw.text("KB Client 3.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
+          Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
+  
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  }
+        │                   ├── Hud.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import com.oryvex.kbclient.kb.KBProfile;
+  import com.oryvex.kbclient.kb.KBSample;
+  import java.util.ArrayList;
+  import java.util.List;
+  import net.minecraft.client.Minecraft;
+  
+  /** In-game overlay: status card (fades in/out) + hit toasts. */
+  public final class Hud {
+      private Hud() {}
+  
+      private static final class Toast {
+          final String text;
+          final int color;
+          final long born;
+          Toast(String t, int c) { text = t; color = c; born = System.currentTimeMillis(); }
+      }
+  
+      private static final List<Toast> toasts = new ArrayList<Toast>();
+      private static float alpha = 0f;
+      private static long lastNs = System.nanoTime();
+  
+      public static void push(String text, int color) {
+          if (!Settings.toasts) return;
+          toasts.add(new Toast(text, color));
+          while (toasts.size() > 4) toasts.remove(0);
+      }
+  
+      public static void render(Minecraft mc, KBTracker t) {
+          long ns = System.nanoTime();
+          float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
+          lastNs = ns;
+          alpha += ((Settings.hud ? 1f : 0f) - alpha) * Math.min(1f, dt * 8f);
+          if (alpha < 0.03f) return;
+          float a = alpha;
+  
+          KBProfile pr = t.getProfile();
+          KBSample last = t.getLast();
+          boolean goal = t.getGoal() > 0;
+          int x = 6, y = 6, w = 146, h = goal ? 52 : 46;
+  
+          Draw.blend();
+          Draw.panel(x, y, w, h, 4, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
+          Draw.roundRect(x + 1, y + 1, 2, h - 2, 1, Draw.fade(t.isRecording() ? Theme.ACCENT : Theme.DIM, a));
+  
+          Draw.text("KB CLIENT", x + 8, y + 5, Draw.fade(Theme.ACCENT, a), 0.8f, false);
+          Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 5,
+                  Draw.fade(t.isRecording() ? Theme.GOOD : Theme.WARN, a), 0.8f, false);
+          if (last != null) {
+              Draw.text("H " + KBProfile.f(last.h, 4) + "  V " + KBProfile.f(last.vy, 4), x + 8, y + 16, Draw.fade(Theme.TEXT, a), 0.9f, false);
+          } else {
+              Draw.text("Waiting for hits...", x + 8, y + 16, Draw.fade(Theme.MUTED, a), 0.9f, false);
+          }
+          Draw.text(pr.used + " used / " + pr.total + " samples", x + 8, y + 27, Draw.fade(Theme.MUTED, a), 0.75f, false);
+  
+          // 12 confidence pips, one per parameter
+          for (int i = 0; i < KBProfile.COUNT; i++) {
+              int c = pr.src[i] == KBProfile.SRC_NONE ? Theme.PANEL3 : Draw.confColor(pr.conf[i]);
+              Draw.rect(x + 8 + i * 11, y + 38, 9, 2, Draw.fade(c, a));
+          }
+          if (goal) {
+              Draw.bar(x + 8, y + 44, w - 16, 3, t.getSessionHits() / (double) t.getGoal(), Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.ACCENT, a));
+          }
+  
+          long now = System.currentTimeMillis();
+          for (int i = toasts.size() - 1; i >= 0; i--) if (now - toasts.get(i).born > 3600) toasts.remove(i);
+          int ty = y + h + 4;
+          for (int i = toasts.size() - 1; i >= 0; i--) {
+              Toast to = toasts.get(i);
+              long age = now - to.born;
+              float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * a;
+              float slide = age < 160 ? (1f - age / 160f) * 10f : 0f;
+              int tw = Draw.width(to.text, 0.85f) + 12;
+              Draw.blend();
+              Draw.roundRect(x - (int) slide, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
+              int al = (int) (255 * fade);
+              if (al > 4) Draw.text(to.text, x + 6 - slide, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+              ty += 14;
+          }
+          Draw.blend();
+      }
+  }
+        │                   ├── KBLoading.java
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.Gui;
+  import net.minecraft.client.LoadingScreenRenderer;
+  import net.minecraft.client.gui.ScaledResolution;
+  import net.minecraft.client.renderer.GlStateManager;
+  import net.minecraft.client.shader.Framebuffer;
+  
+  /** Replaces Minecraft's loading renderer (world load / save / chunk generation). */
+  public class KBLoading extends LoadingScreenRenderer {
+      private final Minecraft mcRef;
+      private String title = "";
+      private String sub = "";
+      private int progress = -1;
+      private long startedAt;
+      private long lastFrame;
+      private Framebuffer fb;
+  
+      public KBLoading(Minecraft mc) {
+          super(mc);
+          this.mcRef = mc;
+      }
+  
+      private void begin(String t) {
+          long now = System.currentTimeMillis();
+          if (now - lastFrame > 1500L) startedAt = now;
+          title = t == null ? "" : t;
+          sub = "";
+          progress = -1;
+      }
+  
+      @Override
+      public void resetProgressAndMessage(String message) {
+          if (!Settings.customLoading) { super.resetProgressAndMessage(message); return; }
+          begin(message);
+          frame();
+      }
+  
+      @Override
+      public void displaySavingString(String message) {
+          if (!Settings.customLoading) { super.displaySavingString(message); return; }
+          begin(message);
+          frame();
+      }
+  
+      @Override
+      public void displayLoadingString(String message) {
+          if (!Settings.customLoading) { super.displayLoadingString(message); return; }
+          if (System.currentTimeMillis() - lastFrame > 1500L) begin("");
+          sub = message == null ? "" : message;
+          progress = -1;
+          // the integrated server start-up loop only calls us every ~200 ms: animate in between
+          long end = System.currentTimeMillis() + 120L;
+          do { frame(); } while (System.currentTimeMillis() < end);
+      }
+  
+      @Override
+      public void setLoadingProgress(int p) {
+          if (!Settings.customLoading) { super.setLoadingProgress(p); return; }
+          progress = p;
+          if (System.currentTimeMillis() - lastFrame >= 30L) frame();
+      }
+  
+      @Override
+      public void setDoneWorking() {
+          if (!Settings.customLoading) super.setDoneWorking();
+      }
+  
+      private void frame() {
+          try {
+              Minecraft mc = mcRef;
+              ScaledResolution sr = new ScaledResolution(mc);
+              int k = sr.getScaleFactor(), w = sr.getScaledWidth(), h = sr.getScaledHeight();
+              if (fb == null || fb.framebufferWidth != w * k || fb.framebufferHeight != h * k) {
+                  if (fb != null) fb.deleteFramebuffer();
+                  fb = new Framebuffer(w * k, h * k, true);
+              }
+              fb.bindFramebuffer(false);
+              GlStateManager.matrixMode(5889);
+              GlStateManager.loadIdentity();
+              GlStateManager.ortho(0.0D, sr.getScaledWidth_double(), sr.getScaledHeight_double(), 0.0D, 100.0D, 300.0D);
+              GlStateManager.matrixMode(5888);
+              GlStateManager.loadIdentity();
+              GlStateManager.translate(0.0F, 0.0F, -200.0F);
+              GlStateManager.clear(256);
+              GlStateManager.disableLighting();
+              GlStateManager.disableFog();
+              GlStateManager.enableTexture2D();
+  
+              LoadingArt.draw(w, h, title, sub, progress);
+  
+              long ms = Fade.ms();
+              if (ms > 0) {
+                  float a = 1f - Fade.ease((System.currentTimeMillis() - startedAt) / (float) ms);
+                  if (a > 0.004f) Gui.drawRect(0, 0, w, h, ((int) (a * 255f)) << 24);
+              }
+  
+              fb.unbindFramebuffer();
+              fb.framebufferRender(w * k, h * k);
+              GlStateManager.enableAlpha();
+              GlStateManager.alphaFunc(516, 0.1F);
+              mc.updateDisplay();
+              lastFrame = System.currentTimeMillis();
+          } catch (Throwable ignored) { }
+      }
+  }
+        │                   ├── LoadingArt.java
+  package com.oryvex.kbclient.ui;
+  
+  import java.awt.Color;
+  
+  /** The custom loading screen artwork (used by the loading renderer and the terrain overlay). */
+  public final class LoadingArt {
+      private LoadingArt() {}
+  
+      private static final String[] TIPS = {
+          "Press Right Shift in-game to open the Knockback Analyzer.",
+          "Get hit by a walking AND a sprinting player to separate HORIZONTAL from EXTRA-HORIZONTAL.",
+          "Get hit while falling to measure VERTICAL when Y-LIMIT clamps it.",
+          "Use /kb import to compare a Carbon YAML against your detected profile.",
+          "Every value in the analyzer carries a source tag: MEAS, EST, DEF or FILE."
+      };
+  
+      /** pct < 0 = indeterminate */
+      public static void draw(int w, int h, String title, String sub, int pct) {
+          Draw.blend();
+          Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
+          if (Settings.particles) {
+              Draw.particles(w, h, 60, 0x22D3EE, 0.35f);
+              Draw.particles(w, h, 20, 0xA78BFA, 0.30f);
+          }
+          float t = (System.currentTimeMillis() % 100000L) / 1000f;
+          int cx = w / 2, cy = h / 2;
+  
+          // logo
+          String logo = "ORYVEX";
+          float sc = 3f;
+          float tx = cx - Draw.font().getStringWidth(logo) * sc / 2f;
+          int ly = cy - 70;
+          for (int i = 0; i < logo.length(); i++) {
+              String ch = logo.substring(i, i + 1);
+              float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
+              Draw.text(ch, tx, ly, Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000, sc, true);
+              tx += Draw.font().getStringWidth(ch) * sc;
+          }
+          Draw.centered("K N O C K B A C K   C L I E N T", cx, ly + 28, Theme.MUTED, 0.8f, false);
+  
+          // orbiting comet spinner
+          int sy = cy + 2;
+          Draw.roundRect(cx - 16, sy - 16, 32, 32, 16, Draw.alpha(0x22D3EE, 0.06f));
+          for (int i = 0; i < 12; i++) {
+              double ang = t * 3.4 - i * 0.5;
+              int dx = (int) Math.round(Math.cos(ang) * 13);
+              int dy = (int) Math.round(Math.sin(ang) * 13);
+              float a = 1f - i / 12f;
+              int sz = i < 3 ? 3 : 2;
+              Draw.rect(cx + dx - sz / 2, sy + dy - sz / 2, sz, sz, Draw.alpha(i % 2 == 0 ? 0x22D3EE : 0xA78BFA, a));
+          }
+  
+          // text + bar
+          String ttl = (title == null || title.isEmpty()) ? "Loading" : title;
+          Draw.centered(ttl, cx, cy + 26, Theme.TEXT, 1f, true);
+          if (sub != null && !sub.isEmpty()) Draw.centered(sub, cx, cy + 38, Theme.MUTED, 0.85f, false);
+  
+          int bw = 180, bx = cx - bw / 2, by = cy + 54;
+          Draw.roundRect(bx, by, bw, 4, 2, Theme.PANEL3);
+          if (pct >= 0) {
+              Draw.roundRect(bx, by, Math.max(2, bw * Math.min(100, pct) / 100), 4, 2, Theme.ACCENT);
+              Draw.centered(pct + "%", cx, by + 8, Theme.SOFT, 0.8f, false);
+          } else {
+              float p = (t * 0.9f) % 1f;
+              int seg = 56;
+              int sx = bx + (int) ((bw + seg) * p) - seg;
+              int x0 = Math.max(bx, sx), x1 = Math.min(bx + bw, sx + seg);
+              if (x1 > x0) Draw.roundRect(x0, by, x1 - x0, 4, 2, Theme.ACCENT);
+          }
+  
+          // tip
+          String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
+          Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
+          Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
+      }
+  }
+        │                   ├── Settings.java
+  package com.oryvex.kbclient.ui;
+  
+  import java.io.File;
+  import java.io.FileInputStream;
+  import java.io.FileOutputStream;
+  import java.util.Properties;
+  import net.minecraft.client.Minecraft;
+  
+  /** Persistent client preferences (.minecraft/kbclient/settings.properties). */
+  public final class Settings {
+      private Settings() {}
+  
+      public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
+  
+      public static boolean hud = true;
+      public static boolean particles = true;
+      public static boolean toasts = true;
+      public static boolean customLoading = true;
+      public static int fade = 2;
+  
+      private static File file() {
+          File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+          if (!dir.exists()) dir.mkdirs();
+          return new File(dir, "settings.properties");
+      }
+  
+      public static void load() {
+          try {
+              File f = file();
+              if (!f.exists()) return;
+              Properties p = new Properties();
+              FileInputStream in = new FileInputStream(f);
+              try { p.load(in); } finally { in.close(); }
+              hud = Boolean.parseBoolean(p.getProperty("hud", "true"));
+              particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
+              toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
+              customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
+              fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
+          } catch (Throwable ignored) { }
+      }
+  
+      public static void save() {
+          try {
+              Properties p = new Properties();
+              p.setProperty("hud", String.valueOf(hud));
+              p.setProperty("particles", String.valueOf(particles));
+              p.setProperty("toasts", String.valueOf(toasts));
+              p.setProperty("customLoading", String.valueOf(customLoading));
+              p.setProperty("fade", String.valueOf(fade));
+              FileOutputStream out = new FileOutputStream(file());
+              try { p.store(out, "KB Client settings"); } finally { out.close(); }
+          } catch (Throwable ignored) { }
+      }
+  }
+        │                   ├── Theme.java
+  package com.oryvex.kbclient.ui;
+  
+  public final class Theme {
+      private Theme() {}
+  
+      public static final int BG0 = 0xFF070A11;
+      public static final int BG1 = 0xFF111A2B;
+      public static final int PANEL = 0xFF121A29;
+      public static final int PANEL2 = 0xFF182235;
+      public static final int PANEL3 = 0xFF22304A;
+      public static final int BORDER = 0xFF25324B;
+      public static final int BORDER_HI = 0xFF3B5078;
+      public static final int GLASS = 0xF00C121D;
+  
+      public static final int ACCENT = 0xFF22D3EE;
+      public static final int ACCENT_DK = 0xFF0E7490;
+      public static final int ACCENT2 = 0xFFA78BFA;
+  
+      public static final int GOOD = 0xFF34D399;
+      public static final int WARN = 0xFFFBBF24;
+      public static final int BAD = 0xFFF87171;
+  
+      public static final int TEXT = 0xFFF3F4F6;
+      public static final int SOFT = 0xFFCBD5E1;
+      public static final int MUTED = 0xFF8B97AD;
+      public static final int DIM = 0xFF5B6679;
+  
+      public static final String S = "\u00a7";
+  }
+        │                   └── UiButton.java
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.GuiButton;
+  
+  /** Flat rounded button: hover animation, staggered entrance, toggle switch, animated gear icon. */
+  public class UiButton extends GuiButton {
+      public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4;
+      public static final int ICON_NONE = 0, ICON_GEAR = 1;
+  
+      public int style = NORMAL;
+      public int icon = ICON_NONE;
+      public boolean selected;
+      public boolean on;
+      /** entrance delay in ms */
+      public long delay;
+  
+      private float hover, knob, spin;
+      private final long born = System.currentTimeMillis();
+      private long last = System.nanoTime();
+  
+      public UiButton(int id, int x, int y, int w, int h, String text) {
+          super(id, x, y, w, h, text);
+      }
+  
+      public UiButton style(int s) { this.style = s; return this; }
+      public UiButton icon(int i) { this.icon = i; return this; }
+      public UiButton delay(long d) { this.delay = d; return this; }
+  
+      @Override
+      public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+          if (!this.visible) return;
+          this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition
+                  && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+  
+          long nowN = System.nanoTime();
+          float dt = Math.min(0.1f, (nowN - last) / 1.0e9f);
+          last = nowN;
+          hover += (((this.hovered && this.enabled) ? 1f : 0f) - hover) * Math.min(1f, dt * 14f);
+          knob += ((on ? 1f : 0f) - knob) * Math.min(1f, dt * 16f);
+          spin = (spin + dt * (40f + 380f * hover)) % 360f;
+  
+          float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
+          if (ap <= 0.01f) return;
+  
+          int x = xPosition, y = yPosition + (int) ((1f - ap) * 8f), w = width, h = height;
+          int fill, border, text;
+          switch (style) {
+              case PRIMARY:
+                  fill = Draw.lerp(Theme.ACCENT_DK, 0xFF0891B2, hover);
+                  border = Draw.lerp(0xFF0891B2, Theme.ACCENT, hover);
+                  text = Theme.TEXT;
+                  break;
+              case DANGER:
+                  fill = Draw.lerp(0xFF2A1218, 0xFF5B1A22, hover);
+                  border = Draw.lerp(0xFF4A1D25, Theme.BAD, hover);
+                  text = Draw.lerp(0xFFFCA5A5, Theme.TEXT, hover);
+                  break;
+              case TAB:
+                  fill = selected ? Theme.PANEL2 : Draw.lerp(Theme.BG1, Theme.PANEL, hover);
+                  border = selected ? Theme.BORDER_HI : Draw.lerp(Theme.BG1, Theme.BORDER, hover);
+                  text = selected ? Theme.ACCENT : Draw.lerp(Theme.MUTED, Theme.TEXT, hover);
+                  break;
+              default:
+                  fill = Draw.lerp(Theme.PANEL2, Theme.PANEL3, hover);
+                  border = Draw.lerp(Theme.BORDER, Theme.ACCENT, hover);
+                  text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
+          }
+          if (!enabled) { fill = Theme.PANEL; border = Theme.BORDER; text = Theme.DIM; }
+  
+          Draw.blend();
+          Draw.panel(x, y, w, h, 4, Draw.fade(fill, ap), Draw.fade(border, ap));
+          if (style == TAB && selected) Draw.roundRect(x + 6, y + h - 2, w - 12, 2, 1, Draw.fade(Theme.ACCENT, ap));
+  
+          int tc = Draw.fade(text, ap);
+          if (style == TOGGLE) {
+              Draw.text(displayString, x + 8, y + (h - 8) / 2f, tc, 1f, false);
+              int sw = 24, sh = 10, sx = x + w - 8 - sw, sy = y + (h - sh) / 2;
+              Draw.roundRect(sx, sy, sw, sh, 5, Draw.fade(Draw.lerp(Theme.PANEL3, Theme.ACCENT_DK, knob), ap));
+              int kx = sx + 1 + (int) ((sw - sh) * knob);
+              Draw.roundRect(kx, sy + 1, sh - 2, sh - 2, 4, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, knob), ap));
+          } else if (icon == ICON_GEAR) {
+              int tw = Draw.width(displayString, 1f);
+              float startX = x + (w - (tw + 18)) / 2f;
+              float cy = y + h / 2f;
+              Draw.gear(startX + 6f, cy, 5.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
+              Draw.text(displayString, startX + 18f, y + (h - 8) / 2f, tc, 1f, true);
+          } else {
+              Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);
+          }
+      }
+  }
+        └── resources
+            └── mcmod.info
+  [
+  {
+    "modid": "kbclient",
+    "name": "KB Client",
+    "description": "Modern-UI client with a live Carbon/Spigot knockback profile detector.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": ["Developer"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+  ]

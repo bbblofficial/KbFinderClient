@@ -74,6 +74,9 @@ public class KBClientMod {
 
     @EventHandler
     public void init(FMLInitializationEvent e) {
+        com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+        net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new KBCommand());
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");

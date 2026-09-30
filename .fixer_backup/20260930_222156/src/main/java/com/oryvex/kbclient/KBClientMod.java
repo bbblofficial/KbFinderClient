@@ -57,6 +57,7 @@ public class KBClientMod {
     private Channel hookedChannel;
     private boolean pendingOpen;
     private Object lastWorld;
+    private boolean loadingInstalled;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
@@ -82,9 +83,11 @@ public class KBClientMod {
 
     /** swap Minecraft's loading renderer (world load/save) for the custom one */
     private void installLoading() {
+        if (loadingInstalled) return;
         Minecraft mc = Minecraft.getMinecraft();
         try {
             ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+            loadingInstalled = true;
             logger.info("[KBClient] custom loading screen installed");
         } catch (Throwable t) {
             logger.error("[KBClient] could not install loading screen: " + t);

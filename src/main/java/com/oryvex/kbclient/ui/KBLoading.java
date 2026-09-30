@@ -23,29 +23,36 @@ public class KBLoading extends LoadingScreenRenderer {
     }
 
     private void begin(String t) {
+        com.oryvex.kbclient.GlSafe.push(); try {
         long now = System.currentTimeMillis();
         if (now - lastFrame > 1500L) startedAt = now;
         title = t == null ? "" : t;
         sub = "";
         progress = -1;
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 
     @Override
     public void resetProgressAndMessage(String message) {
+        com.oryvex.kbclient.GlSafe.push(); try {
         if (!Settings.customLoading) { super.resetProgressAndMessage(message); return; }
         begin(message);
         frame();
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 
     @Override
     public void displaySavingString(String message) {
+        com.oryvex.kbclient.GlSafe.push(); try {
         if (!Settings.customLoading) { super.displaySavingString(message); return; }
         begin(message);
         frame();
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 
     @Override
     public void displayLoadingString(String message) {
+        com.oryvex.kbclient.GlSafe.push(); try {
         if (!Settings.customLoading) { super.displayLoadingString(message); return; }
         if (System.currentTimeMillis() - lastFrame > 1500L) begin("");
         sub = message == null ? "" : message;
@@ -53,13 +60,16 @@ public class KBLoading extends LoadingScreenRenderer {
         // the integrated server start-up loop only calls us every ~200 ms: animate in between
         long end = System.currentTimeMillis() + 120L;
         do { frame(); } while (System.currentTimeMillis() < end);
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 
     @Override
     public void setLoadingProgress(int p) {
+        com.oryvex.kbclient.GlSafe.push(); try {
         if (!Settings.customLoading) { super.setLoadingProgress(p); return; }
         progress = p;
         if (System.currentTimeMillis() - lastFrame >= 30L) frame();
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 
     @Override
@@ -68,6 +78,7 @@ public class KBLoading extends LoadingScreenRenderer {
     }
 
     private void frame() {
+        com.oryvex.kbclient.GlSafe.push(); try {
         try {
             Minecraft mc = mcRef;
             ScaledResolution sr = new ScaledResolution(mc);
@@ -103,5 +114,6 @@ public class KBLoading extends LoadingScreenRenderer {
             mc.updateDisplay();
             lastFrame = System.currentTimeMillis();
         } catch (Throwable ignored) { }
+    } finally { com.oryvex.kbclient.GlSafe.pop(); }
     }
 }
