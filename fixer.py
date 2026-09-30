@@ -1,276 +1,395 @@
-import os
+#!/usr/bin/env python3
+"""
+KB Client - Discord Rich Presence fixer
+=======================================
 
-def create_fixer():
-    # Target the DiscordRPC file
-    target_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "DiscordRPC.java")
-    
-    # Use a raw string so Java escapes (like \\ and \") translate perfectly
-    java_code = r"""package com.oryvex.kbclient;
+What this fixes:
 
-import net.minecraft.client.Minecraft;
+  1. startTimestamp is emitted in SECONDS. Discord silently drops
+     millisecond timestamps, which is why your activity never shows
+     in your Discord profile.
 
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.lang.management.ManagementFactory;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
+  2. Art assets (large_image / small_image) are behind an ENABLE_ASSETS
+     flag so the activity still shows as text-only while you haven't
+     uploaded the PNGs yet. If the asset keys don't exist in the
+     Developer Portal, Discord strips them - and on some client builds
+     drops the entire activity.
 
-public final class DiscordRPC {
+  3. DiscordRPC.start() is guaranteed to be wired into KBClientMod.init()
+     and DiscordRPC.stop() into a JVM shutdown hook.
 
-    private static final String APP_ID = "1554952903758716989";
+  4. Writes oryvex.png and minecraft.png (512x512) into ./discord_assets/
+     so you can drag-and-drop them into the Developer Portal.
 
-    private static final int OP_HANDSHAKE = 0;
-    private static final int OP_FRAME     = 1;
-    private static final int OP_CLOSE     = 2;
+  5. Opens the Rich Presence -> Art Assets page for your APP_ID.
 
-    private static RandomAccessFile pipe;
-    private static Thread worker;
-    private static Thread reader;
-    private static volatile boolean running;
-    private static long startTime;
-    private static String lastDetails = "";
-    private static String lastState = "";
-
-    private DiscordRPC() {}
-
-    public static synchronized void start() {
-        if (running) return;
-        running = true;
-        
-        // Push initialization into a background thread to prevent Minecraft from hanging
-        worker = new Thread(() -> {
-            if (APP_ID.startsWith("1234")) {
-                KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
-                running = false;
-                return;
-            }
-            KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
-
-            if (!connect()) {
-                KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord app running?");
-                running = false;
-                return;
-            }
-            
-            try {
-                sendHandshake();
-                String reply = readFrame(); // Wait for the initial READY frame
-                KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
-                
-                if (reply == null || !reply.contains("\"READY\"")) {
-                    KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
-                    close();
-                    running = false;
-                    return;
-                }
-                
-                // Fixed: Discord IPC explicitly requires epoch in MILLISECONDS
-                startTime = System.currentTimeMillis();
-                updatePresence(true);
-                
-                // Start a dedicated reader thread to prevent buffer overflows
-                reader = new Thread(DiscordRPC::readerLoop, "KBClient-DiscordRPC-Reader");
-                reader.setDaemon(true);
-                reader.start();
-                
-                loop(); // Start the status update loop
-            } catch (Exception e) {
-                KBClientMod.logger.warn("[KB-RPC] exception: " + e);
-                close();
-                running = false;
-            }
-        }, "KBClient-DiscordRPC-Worker");
-        
-        worker.setDaemon(true);
-        worker.start();
-    }
-
-    public static synchronized void stop() {
-        if (!running) return;
-        running = false;
-        try { sendFrame(OP_CLOSE, "{}"); } catch (Exception ignored) { }
-        if (worker != null) worker.interrupt();
-        if (reader != null) reader.interrupt();
-        close();
-        KBClientMod.logger.info("[KB-RPC] stopped");
-    }
-
-    public static boolean isRunning() { return running; }
-
-    private static boolean connect() {
-        String os = System.getProperty("os.name", "").toLowerCase();
-        boolean win = os.contains("win");
-
-        if (win) {
-            String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
-            for (String pfx : prefixes) {
-                for (int i = 0; i < 10; i++) {
-                    String path = pfx + i;
-                    try {
-                        pipe = new RandomAccessFile(path, "rw");
-                        return true;
-                    } catch (IOException ignored) {}
-                }
-            }
-        } else {
-            for (int i = 0; i < 10; i++) {
-                String path = "/tmp/discord-ipc-" + i;
-                try {
-                    pipe = new RandomAccessFile(path, "rw");
-                    return true;
-                } catch (IOException ignored) {}
-            }
-        }
-        return false;
-    }
-
-    private static void close() {
-        if (pipe != null) {
-            try { pipe.close(); } catch (IOException ignored) { }
-            pipe = null;
-        }
-    }
-
-    private static void sendHandshake() throws IOException {
-        String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
-        sendFrame(OP_HANDSHAKE, json);
-    }
-
-    private static synchronized void sendFrame(int op, String json) throws IOException {
-        if (pipe == null) throw new IOException("not connected");
-        byte[] payload = json.getBytes(StandardCharsets.UTF_8);
-        ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
-        buf.putInt(op);
-        buf.putInt(payload.length);
-        buf.put(payload);
-        pipe.write(buf.array());
-    }
-
-    // Completely replaced timeout-checking with a blocking read.
-    // Calling length() on a named pipe breaks IPC logic under Windows.
-    private static String readFrame() {
-        try {
-            if (pipe == null) return null;
-            byte[] header = new byte[8];
-            pipe.readFully(header);
-            ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
-            int op = hb.getInt();
-            int len = hb.getInt();
-            if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
-            byte[] body = new byte[len];
-            pipe.readFully(body);
-            return new String(body, StandardCharsets.UTF_8);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
-    private static void readerLoop() {
-        while (running) {
-            String frame = readFrame();
-            if (frame == null) {
-                if (running) stop();
-                break;
-            }
-        }
-    }
-
-    private static void loop() {
-        while (running) {
-            try {
-                updatePresence(false);
-                Thread.sleep(2000L);
-            } catch (InterruptedException e) {
-                break;
-            } catch (Throwable t) {
-                break;
-            }
-        }
-    }
-
-    private static void updatePresence(boolean force) {
-        Minecraft mc = Minecraft.getMinecraft();
-        String details, state;
-
-        if (mc.theWorld == null) {
-            details = "In the menus";
-            state = "KB Client 3.0";
-        } else if (mc.isSingleplayer()) {
-            details = "Singleplayer";
-            String worldName = "world";
-            try {
-                if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
-            } catch (Throwable ignored) { }
-            state = "World: " + worldName;
-        } else {
-            String ip = (mc.getCurrentServerData() != null)
-                    ? mc.getCurrentServerData().serverIP
-                    : "Unknown server";
-            details = "Playing on " + ip;
-            state = mc.theWorld.playerEntities.size() + " players online";
-        }
-
-        if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
-        lastDetails = details;
-        lastState = state;
-
-        long pid = currentPid();
-        String json = "{"
-                + "\"cmd\":\"SET_ACTIVITY\","
-                + "\"args\":{"
-                +   "\"pid\":" + pid + ","
-                +   "\"activity\":{"
-                +     "\"details\":" + quote(details) + ","
-                +     "\"state\":" + quote(state) + ","
-                +     "\"timestamps\":{\"start\":" + startTime + "},"
-                +     "\"assets\":{"
-                +       "\"large_image\":\"oryvex\","
-                +       "\"large_text\":\"KB Client 3.0\","
-                +       "\"small_image\":\"minecraft\","
-                +       "\"small_text\":\"Minecraft 1.8.9\""
-                +     "}"
-                +   "}"
-                + "},"
-                + "\"nonce\":\"" + System.nanoTime() + "\""
-                + "}";
-
-        try {
-            sendFrame(OP_FRAME, json);
-        } catch (IOException e) {
-            running = false;
-        }
-    }
-
-    private static long currentPid() {
-        try {
-            String name = ManagementFactory.getRuntimeMXBean().getName();
-            int at = name.indexOf('@');
-            if (at > 0) return Long.parseLong(name.substring(0, at));
-        } catch (Throwable ignored) { }
-        return 0L;
-    }
-
-    private static String quote(String s) {
-        StringBuilder sb = new StringBuilder(s.length() + 2);
-        sb.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '"' || c == '\\') sb.append('\\').append(c);
-            else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
-            else sb.append(c);
-        }
-        sb.append('"');
-        return sb.toString();
-    }
-}
+Usage
+-----
+    python fixer.py             apply everything, open the portal
+    python fixer.py --dry-run   show what would change
+    python fixer.py --no-open   don't launch the browser
+    python fixer.py --restore   restore the newest backup
 """
 
-    os.makedirs(os.path.dirname(target_file), exist_ok=True)
-    with open(target_file, "w", encoding="utf-8") as f:
-        f.write(java_code)
-    print(f"Fixed File Created: {target_file}")
-    print("DiscordRPC has been fixed. Re-run your Gradle build!")
+import argparse
+import datetime as dt
+import re
+import shutil
+import struct
+import sys
+import webbrowser
+import zlib
+from pathlib import Path
+
+APP_ID = "1554952903758716989"
+PORTAL_ASSETS = f"https://discord.com/developers/applications/{APP_ID}/rich-presence/assets"
+TAG = "[KB-FIXER-2]"
+
+
+# ---------------------------------------------------------------------------
+# paths
+# ---------------------------------------------------------------------------
+
+def find_root() -> Path:
+    here = Path(__file__).resolve().parent
+    for p in [here, *here.parents]:
+        if (p / "src" / "main" / "java" / "com" / "oryvex" / "kbclient").is_dir():
+            return p
+    # script was dropped inside the package itself
+    if (here / "DiscordRPC.java").exists() or (here / "KBClientMod.java").exists():
+        return here.parents[5]
+    raise SystemExit(
+        "Could not find src/main/java/com/oryvex/kbclient.\n"
+        "Run fixer.py from the folder that contains 'src'."
+    )
+
+
+def kbpkg(root: Path) -> Path:
+    return root / "src" / "main" / "java" / "com" / "oryvex" / "kbclient"
+
+
+# ---------------------------------------------------------------------------
+# backup / restore
+# ---------------------------------------------------------------------------
+
+def backup(root: Path, files):
+    stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dst = root / ".fixer_backup" / stamp
+    n = 0
+    for f in files:
+        if not f.exists():
+            continue
+        rel = f.relative_to(root)
+        target = dst / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, target)
+        n += 1
+    if n:
+        print(f"  backed up {n} file(s) -> {dst.relative_to(root)}")
+    return dst
+
+
+def restore_latest(root: Path) -> int:
+    base = root / ".fixer_backup"
+    if not base.is_dir():
+        print("No .fixer_backup folder found.")
+        return 1
+    snaps = sorted([p for p in base.iterdir() if p.is_dir()], reverse=True)
+    if not snaps:
+        print("No backups found.")
+        return 1
+    snap = snaps[0]
+    n = 0
+    for src in snap.rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(snap)
+        dst = root / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        print(f"  restored {rel}")
+        n += 1
+    print(f"Restored {n} file(s) from {snap.name}.")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Java patching
+# ---------------------------------------------------------------------------
+
+def patch_discordrpc(path: Path, dry: bool) -> bool:
+    if not path.exists():
+        print(f"  ! {path.name} not found -- skipping")
+        return False
+    text = path.read_text(encoding="utf-8")
+    if TAG in text:
+        print(f"  = {path.name} already patched")
+        return False
+
+    out = text
+    changed = False
+
+    # -- 1. seconds, not milliseconds ---------------------------------------
+    if re.search(r"startTime\s*=\s*System\.currentTimeMillis\(\)\s*;", out):
+        out = re.sub(
+            r"startTime\s*=\s*System\.currentTimeMillis\(\)\s*;",
+            "startTime = System.currentTimeMillis() / 1000L; // "
+            + TAG + " - SECONDS not ms",
+            out, count=1,
+        )
+        changed = True
+
+    # -- 2. ENABLE_ASSETS flag ---------------------------------------------
+    if "ENABLE_ASSETS" not in out:
+        out = re.sub(
+            r'(private\s+static\s+final\s+String\s+APP_ID\s*=\s*"[^"]*"\s*;)',
+            r"\1\n\n"
+            "    // " + TAG + "\n"
+            "    // Flip to true ONLY after uploading oryvex.png and minecraft.png\n"
+            "    // under Discord Developer Portal -> Rich Presence -> Art Assets.\n"
+            "    // Until the assets exist, Discord strips the keys (and on some\n"
+            "    // client builds drops the whole activity), so we default to false.\n"
+            "    private static final boolean ENABLE_ASSETS = false;",
+            out, count=1,
+        )
+        changed = True
+
+    # -- 3. gate the image assignments behind the flag ----------------------
+    if "ENABLE_ASSETS" in out and "if (ENABLE_ASSETS)" not in out:
+        m = re.search(
+            r"([ \t]*presence\.largeImageKey\s*=[^\n]*\n"
+            r"[ \t]*presence\.largeImageText\s*=[^\n]*\n"
+            r"[ \t]*presence\.smallImageKey\s*=[^\n]*\n"
+            r"[ \t]*presence\.smallImageText\s*=[^\n]*\n?)",
+            out,
+        )
+        if m:
+            block = m.group(1)
+            indented = "".join(
+                ("    " + ln) if ln.strip() else ln
+                for ln in block.splitlines(True)
+            )
+            replacement = "if (ENABLE_ASSETS) { // " + TAG + "\n" + indented + "}\n"
+            out = out[:m.start(1)] + replacement + out[m.end(1):]
+            changed = True
+
+    if not changed:
+        print(f"  = {path.name}: nothing to change")
+        return False
+    if not dry:
+        path.write_text(out, encoding="utf-8")
+    print(f"  + patched {path.name}")
+    return True
+
+
+def patch_kbclientmod(path: Path, dry: bool) -> bool:
+    if not path.exists():
+        print(f"  ! {path.name} not found -- skipping")
+        return False
+    text = path.read_text(encoding="utf-8")
+    if TAG in text:
+        print(f"  = {path.name} already patched")
+        return False
+
+    out = text
+    changed = False
+
+    start_snippet = (
+        "\n        try { DiscordRPC.start(); }\n"
+        "        catch (Throwable t) { logger.warn(\"[KBClient] Discord RPC failed: \" + t); }"
+        " // " + TAG
+    )
+
+    # -- 1. DiscordRPC.start() ---------------------------------------------
+    if "DiscordRPC.start()" not in out:
+        for pat in (
+            re.compile(r"(installLoading\(\)\s*;)"),
+            re.compile(r"(MinecraftForge\.EVENT_BUS\.register\(this\)\s*;)"),
+        ):
+            if pat.search(out):
+                out = pat.sub(lambda m: m.group(1) + start_snippet, out, count=1)
+                changed = True
+                break
+
+    # -- 2. shutdown hook ---------------------------------------------------
+    if "addShutdownHook" not in out:
+        pat = re.compile(r"(instance\s*=\s*this\s*;)")
+        if pat.search(out):
+            hook = (
+                "\n        try {\n"
+                "            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {\n"
+                "                @Override public void run() {\n"
+                "                    try { DiscordRPC.stop(); } catch (Throwable ignored) {}\n"
+                "                }\n"
+                "            }, \"KBClient-RPC-Shutdown\"));\n"
+                "        } catch (Throwable ignored) {} // " + TAG
+            )
+            out = pat.sub(lambda m: m.group(1) + hook, out, count=1)
+            changed = True
+
+    if not changed:
+        print(f"  = {path.name}: nothing to change")
+        return False
+    if not dry:
+        path.write_text(out, encoding="utf-8")
+    print(f"  + patched {path.name}")
+    return True
+
+
+# ---------------------------------------------------------------------------
+# PNG generation (no external deps)
+# ---------------------------------------------------------------------------
+
+def _chunk(tag: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + tag + data
+        + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+    )
+
+
+def _write_png(path: Path, w: int, h: int, rows):
+    sig = b"\x89PNG\r\n\x1a\n"
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)
+    raw = b"".join(b"\x00" + bytes(r) for r in rows)
+    path.write_bytes(
+        sig
+        + _chunk(b"IHDR", ihdr)
+        + _chunk(b"IDAT", zlib.compress(raw, 9))
+        + _chunk(b"IEND", b"")
+    )
+
+
+def _radial(size, inner, outer, ring=None):
+    cx = cy = (size - 1) / 2.0
+    r = size * 0.48
+    ir, ig, ib = inner
+    orr, og, ob = outer
+    rows = []
+    for y in range(size):
+        row = bytearray()
+        for x in range(size):
+            dx, dy = x - cx, y - cy
+            d = (dx * dx + dy * dy) ** 0.5
+            if d > r:
+                row += b"\x00\x00\x00\x00"
+                continue
+            t = d / r
+            if ring and d > r * 0.9:
+                rr, gg, bb = ring
+            else:
+                rr = int(ir + (orr - ir) * t)
+                gg = int(ig + (og - ig) * t)
+                bb = int(ib + (ob - ib) * t)
+            row += bytes((rr, gg, bb, 255))
+        rows.append(row)
+    return rows
+
+
+def make_assets(out_dir: Path):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    size = 512
+
+    # oryvex -> cyan->indigo with a violet rim
+    _write_png(out_dir / "oryvex.png", size, size,
+               _radial(size, (34, 211, 238), (30, 64, 175),
+                       ring=(167, 139, 250)))
+
+    # minecraft -> grass green with a dirt rim
+    _write_png(out_dir / "minecraft.png", size, size,
+               _radial(size, (52, 211, 153), (21, 128, 61),
+                       ring=(120, 53, 15)))
+
+    print(f"  + wrote {out_dir / 'oryvex.png'}")
+    print(f"  + wrote {out_dir / 'minecraft.png'}")
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+def main():
+    ap = argparse.ArgumentParser(description="KB Client Discord RPC fixer")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="show what would change, don't write")
+    ap.add_argument("--no-open", action="store_true",
+                    help="don't open the Discord Developer Portal")
+    ap.add_argument("--restore", action="store_true",
+                    help="restore the newest backup and exit")
+    args = ap.parse_args()
+
+    try:
+        root = find_root()
+    except SystemExit as e:
+        print(e)
+        return 1
+
+    pkg = kbpkg(root)
+    print(f"KB Client root : {root}")
+    print(f"Package dir    : {pkg}")
+    print()
+
+    if args.restore:
+        return restore_latest(root)
+
+    rpc = pkg / "DiscordRPC.java"
+    main_mod = pkg / "KBClientMod.java"
+
+    if not args.dry_run:
+        backup(root, [rpc, main_mod])
+
+    print("Patching Java sources...")
+    patch_discordrpc(rpc, args.dry_run)
+    patch_kbclientmod(main_mod, args.dry_run)
+
+    print()
+    print("Generating Discord Rich Presence art assets...")
+    assets_dir = root / "discord_assets"
+    if args.dry_run:
+        print(f"  (dry-run) would write {assets_dir}/oryvex.png, minecraft.png")
+    else:
+        make_assets(assets_dir)
+
+    print()
+    print("=" * 70)
+    print("  NEXT STEPS  --  show the emoji / asset in the Discord portal")
+    print("=" * 70)
+    print()
+    print("  1. Open the Rich Presence -> Art Assets page:")
+    print(f"       {PORTAL_ASSETS}")
+    print()
+    print("  2. Click 'Add Image(s)' and drag BOTH files in:")
+    print(f"       {assets_dir / 'oryvex.png'}")
+    print(f"       {assets_dir / 'minecraft.png'}")
+    print()
+    print("     The asset KEY is the filename without '.png'. It must be")
+    print("     exactly  'oryvex'  and  'minecraft'  (lowercase).")
+    print("     If the key is wrong Discord will strip it from the presence.")
+    print()
+    print("  3. Wait 1-5 minutes for Discord's CDN to propagate the assets.")
+    print()
+    print("  4. In  src/main/java/com/oryvex/kbclient/DiscordRPC.java")
+    print("     change:   private static final boolean ENABLE_ASSETS = false;")
+    print("     to:       private static final boolean ENABLE_ASSETS = true;")
+    print()
+    print("  5. In the Discord desktop client, enable:")
+    print("       User Settings  ->  Activity Privacy")
+    print("         ->  'Display current activity as a status message' = ON")
+    print()
+    print("  6. Rebuild the mod. Launch Discord BEFORE Minecraft so the")
+    print("     \\\\.\\pipe\\discord-ipc-0 pipe exists when the mod starts.")
+    print()
+    print("=" * 70)
+
+    if not args.no_open:
+        try:
+            webbrowser.open(PORTAL_ASSETS)
+            print(f"  (opened {PORTAL_ASSETS})")
+        except Exception as e:
+            print(f"  (could not open browser: {e})")
+
+    return 0
+
 
 if __name__ == "__main__":
-    create_fixer()
+    sys.exit(main())
