@@ -16,7 +16,7 @@ public final class LoadingArt {
 
     /** pct < 0 = indeterminate */
     public static void draw(int w, int h, String title, String sub, int pct) {
-        com.oryvex.kbclient.GlSafe.push(); try {
+        
         Draw.blend();
         Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
         if (Settings.particles) {
@@ -73,6 +73,6 @@ public final class LoadingArt {
         String tip = "TIP  " + TIPS[(int) ((System.currentTimeMillis() / 4500L) % TIPS.length)];
         Draw.centered(tip, cx, h - 22, Theme.DIM, 0.8f, false);
         Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
-    } finally { com.oryvex.kbclient.GlSafe.pop(); }
+    
     }
 }

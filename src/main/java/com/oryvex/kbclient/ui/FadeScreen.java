@@ -8,13 +8,26 @@ import org.lwjgl.input.Keyboard;
 
 /** Base class for all KB Client screens: fades in on open, fades out on close. */
 public abstract class FadeScreen extends GuiScreen {
-    private final long openedAt = System.currentTimeMillis();
+    private long openedAt = System.currentTimeMillis();
     private boolean closing;
     private long closeAt;
     private long closeDur;
     private Runnable after;
+    private boolean finished;
 
     public boolean isClosing() { return closing; }
+
+    /** Called every time this screen is displayed (also when a parent screen is re-opened via Back). */
+    @Override
+    public void setWorldAndResolution(Minecraft mc, int width, int height) {
+        if (finished) {          // was closed earlier -> start fresh (no black overlay, input enabled)
+            closing = false;
+            finished = false;
+            after = null;
+            openedAt = System.currentTimeMillis();
+        }
+        super.setWorldAndResolution(mc, width, height);
+    }
 
     public void closeTo(final GuiScreen next) {
         closeThen(new Runnable() {
@@ -39,6 +52,7 @@ public abstract class FadeScreen extends GuiScreen {
         if (closing && after != null && System.currentTimeMillis() - closeAt >= closeDur) {
             Runnable r = after;
             after = null;
+            finished = true;
             r.run();
         }
     }
