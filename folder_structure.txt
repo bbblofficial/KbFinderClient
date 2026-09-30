@@ -1,14 +1,14 @@
 C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 
 ├── .fixer_backup
-│   └── 20260930_222156
-│       └── src
-│           └── main
-│               └── java
-│                   └── com
-│                       └── oryvex
-│                           └── kbclient
-│                               ├── KBClientMod.java
+│   ├── 20260930_222156
+│   │   └── src
+│   │       └── main
+│   │           └── java
+│   │               └── com
+│   │                   └── oryvex
+│   │                       └── kbclient
+│   │                           ├── KBClientMod.java
   package com.oryvex.kbclient;
   
   import com.oryvex.kbclient.ui.Fade;
@@ -220,7 +220,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           }
       }
   }
-│                               ├── KBCommand.java
+│   │                           ├── KBCommand.java
   package com.oryvex.kbclient;
   
   import com.oryvex.kbclient.kb.KBProfile;
@@ -325,7 +325,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           return null;
       }
   }
-│                               ├── KBTracker.java
+│   │                           ├── KBTracker.java
   package com.oryvex.kbclient;
   
   import com.oryvex.kbclient.kb.KBEstimator;
@@ -546,8 +546,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           return yml;
       }
   }
-│                               ├── kb
-│                               │   ├── KBEstimator.java
+│   │                           ├── kb
+│   │                           │   ├── KBEstimator.java
   package com.oryvex.kbclient.kb;
   
   import java.util.ArrayList;
@@ -849,7 +849,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           }
       }
   }
-│                               │   ├── KBProfile.java
+│   │                           │   ├── KBProfile.java
   package com.oryvex.kbclient.kb;
   
   import java.math.BigDecimal;
@@ -1036,7 +1036,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           return sb.toString();
       }
   }
-│                               │   ├── KBSample.java
+│   │                           │   ├── KBSample.java
   package com.oryvex.kbclient.kb;
   
   /** One knockback event (velocity packet) plus the context it happened in. */
@@ -1083,7 +1083,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           this.attacker = attacker == null ? "?" : attacker;
       }
   }
-│                               │   └── KBYaml.java
+│   │                           │   └── KBYaml.java
   package com.oryvex.kbclient.kb;
   
   import java.util.ArrayList;
@@ -1249,8 +1249,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           return unquote(k.trim()).toUpperCase(Locale.ROOT).replace('_', '-');
       }
   }
-│                               └── ui
-│                                   ├── Draw.java
+│   │                           └── ui
+│   │                               ├── Draw.java
   package com.oryvex.kbclient.ui;
   
   import net.minecraft.client.Minecraft;
@@ -1406,7 +1406,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           }
       }
   }
-│                                   ├── Fade.java
+│   │                               ├── Fade.java
   package com.oryvex.kbclient.ui;
   
   import net.minecraft.client.gui.Gui;
@@ -1460,7 +1460,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           }
       }
   }
-│                                   ├── FadeScreen.java
+│   │                               ├── FadeScreen.java
   package com.oryvex.kbclient.ui;
   
   import java.io.IOException;
@@ -1541,7 +1541,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           if (key == Keyboard.KEY_ESCAPE) closeTo(null);
       }
   }
-│                                   ├── GuiAnalyzer.java
+│   │                               ├── GuiAnalyzer.java
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
@@ -1954,7 +1954,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           }
       }
   }
-│                                   ├── GuiKbOptions.java
+│   │                               ├── GuiKbOptions.java
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
@@ -2039,7 +2039,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           drawFade();
       }
   }
-│                                   ├── GuiModernMenu.java
+│   │                               ├── GuiModernMenu.java
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
@@ -2143,7 +2143,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           drawFade();
       }
   }
-│                                   ├── Hud.java
+│   │                               ├── Hud.java
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
@@ -2228,7 +2228,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           Draw.blend();
       }
   }
-│                                   ├── KBLoading.java
+│   │                               ├── KBLoading.java
   package com.oryvex.kbclient.ui;
   
   import net.minecraft.client.Minecraft;
@@ -2336,7 +2336,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } catch (Throwable ignored) { }
       }
   }
-│                                   ├── LoadingArt.java
+│   │                               ├── LoadingArt.java
   package com.oryvex.kbclient.ui;
   
   import java.awt.Color;
@@ -2413,7 +2413,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
       }
   }
-│                                   ├── Settings.java
+│   │                               ├── Settings.java
   package com.oryvex.kbclient.ui;
   
   import java.io.File;
@@ -2468,7 +2468,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } catch (Throwable ignored) { }
       }
   }
-│                                   ├── Theme.java
+│   │                               ├── Theme.java
   package com.oryvex.kbclient.ui;
   
   public final class Theme {
@@ -2498,7 +2498,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
       public static final String S = "\u00a7";
   }
-│                                   └── UiButton.java
+│   │                               └── UiButton.java
   package com.oryvex.kbclient.ui;
   
   import net.minecraft.client.Minecraft;
@@ -2589,6 +2589,514 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           } else {
               Draw.centered(displayString, x + w / 2f, y + (h - 8) / 2f, tc, 1f, style != TAB);
           }
+      }
+  }
+│   ├── 20260930_235635
+│   │   └── src
+│   │       └── main
+│   │           └── java
+│   │               └── com
+│   │                   └── oryvex
+│   │                       └── kbclient
+│   │                           ├── KBClientMod.java
+  package com.oryvex.kbclient;
+  
+  import com.oryvex.kbclient.ui.Fade;
+  import com.oryvex.kbclient.ui.FadeScreen;
+  import com.oryvex.kbclient.ui.GuiAnalyzer;
+  import com.oryvex.kbclient.ui.GuiModernMenu;
+  import com.oryvex.kbclient.ui.Hud;
+  import com.oryvex.kbclient.ui.KBLoading;
+  import com.oryvex.kbclient.ui.LoadingArt;
+  import com.oryvex.kbclient.ui.Settings;
+  import com.oryvex.kbclient.ui.UiButton;
+  import io.netty.channel.Channel;
+  import io.netty.channel.ChannelDuplexHandler;
+  import io.netty.channel.ChannelHandlerContext;
+  import io.netty.channel.ChannelPipeline;
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.entity.EntityPlayerSP;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiChat;
+  import net.minecraft.client.gui.GuiDownloadTerrain;
+  import net.minecraft.client.gui.GuiIngameMenu;
+  import net.minecraft.client.gui.GuiMainMenu;
+  import net.minecraft.client.gui.GuiScreen;
+  import net.minecraft.client.gui.inventory.GuiContainer;
+  import net.minecraft.client.settings.KeyBinding;
+  import net.minecraft.network.NetworkManager;
+  import net.minecraft.network.play.server.S12PacketEntityVelocity;
+  import net.minecraftforge.client.ClientCommandHandler;
+  import net.minecraftforge.client.event.GuiOpenEvent;
+  import net.minecraftforge.client.event.GuiScreenEvent;
+  import net.minecraftforge.client.event.RenderGameOverlayEvent;
+  import net.minecraftforge.common.MinecraftForge;
+  import net.minecraftforge.fml.client.registry.ClientRegistry;
+  import net.minecraftforge.fml.common.Mod;
+  import net.minecraftforge.fml.common.Mod.EventHandler;
+  import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+  import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+  import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+  import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+  import net.minecraftforge.fml.common.gameevent.TickEvent;
+  import org.apache.logging.log4j.Logger;
+  import org.lwjgl.input.Keyboard;
+  
+  @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+       acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+  public class KBClientMod {
+      public static final String MODID = "kbclient";
+      public static final String NAME = "KB Client";
+      public static final String VERSION = "3.0.0";
+      private static final String HOOK = "kb_client_handler";
+  
+      private static KBClientMod instance;
+      public static Logger logger;
+  
+      private final KBTracker tracker = new KBTracker();
+      private KeyBinding openKey;
+      private Channel hookedChannel;
+      private boolean pendingOpen;
+      private Object lastWorld;
+      private boolean loadingInstalled;
+  
+      public static KBClientMod getInstance() { return instance; }
+      public KBTracker getTracker() { return tracker; }
+  
+      /** Opened on the next tick, because chat closes itself right after running a command. */
+      public void requestOpenAnalyzer() { pendingOpen = true; }
+  
+      @EventHandler
+      public void preInit(FMLPreInitializationEvent e) {
+          logger = e.getModLog();
+          instance = this;
+          Settings.load();
+      }
+  
+      @EventHandler
+      public void init(FMLInitializationEvent e) {
+          com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+          net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+          net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+          MinecraftForge.EVENT_BUS.register(this);
+          ClientCommandHandler.instance.registerCommand(new KBCommand());
+          openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+          ClientRegistry.registerKeyBinding(openKey);
+          installLoading();
+      }
+  
+      /** swap Minecraft's loading renderer (world load/save) for the custom one */
+      private void installLoading() {
+          if (loadingInstalled) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          try {
+              ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+              loadingInstalled = true;
+              logger.info("[KBClient] custom loading screen installed");
+          } catch (Throwable t) {
+              logger.error("[KBClient] could not install loading screen: " + t);
+          }
+      }
+  
+      // ---- screens + fades -----------------------------------------------------
+      @SubscribeEvent
+      public void onGuiOpen(GuiOpenEvent e) {
+          Minecraft mc = Minecraft.getMinecraft();
+          if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+  
+          if (e.gui == null) {
+              // back to the game: soft world fade (not after chat)
+              if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                  Fade.world.trigger(0.45f);
+              }
+          } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+              Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+          }
+      }
+  
+      /** fade-in for every vanilla screen + custom artwork over the terrain-download screen */
+      @SubscribeEvent
+      public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+          GuiScreen g = e.gui;
+          if (g == null || g instanceof FadeScreen) return;
+          if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
+              LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+          }
+          Fade.screen.draw(g.width, g.height);
+      }
+  
+      /** restyle the pause menu's Options button */
+      @SubscribeEvent
+      public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+          if (!(e.gui instanceof GuiIngameMenu)) return;
+          for (int i = 0; i < e.buttonList.size(); i++) {
+              GuiButton b = e.buttonList.get(i);
+              if (b.id == 0) {
+                  UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                  u.icon = UiButton.ICON_GEAR;
+                  e.buttonList.set(i, u);
+              }
+          }
+      }
+  
+      @SubscribeEvent
+      public void onOverlay(RenderGameOverlayEvent.Post e) {
+          if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          if (mc.thePlayer == null) return;
+          if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+          Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+      }
+  
+      @SubscribeEvent
+      public void onTick(TickEvent.ClientTickEvent e) {
+          if (e.phase != TickEvent.Phase.END) return;
+          Minecraft mc = Minecraft.getMinecraft();
+          tracker.tick();
+  
+          if (mc.theWorld != lastWorld) {
+              lastWorld = mc.theWorld;
+              if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+          }
+  
+          while (openKey.isPressed()) {
+              if (mc.currentScreen == null) pendingOpen = true;
+          }
+          if (pendingOpen && mc.currentScreen == null) {
+              pendingOpen = false;
+              mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+          }
+  
+          if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+              NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+              if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+          }
+      }
+  
+      private void inject(Minecraft mc, Channel ch) {
+          hookedChannel = ch;
+          try {
+              ChannelPipeline pl = ch.pipeline();
+              if (pl.get(HOOK) != null) pl.remove(HOOK);
+              if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+              else pl.addLast(HOOK, new VelocityHook());
+  
+              String name = mc.isSingleplayer() ? "Singleplayer"
+                      : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+              tracker.onConnect(name);
+              logger.info("[KBClient] velocity hook installed on " + name);
+          } catch (Throwable t) {
+              logger.error("[KBClient] hook failed: " + t);
+          }
+      }
+  
+      /** Sits before the vanilla handler, queues a main-thread task that runs BEFORE the packet is applied. */
+      private static class VelocityHook extends ChannelDuplexHandler {
+          @Override
+          public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+              if (msg instanceof S12PacketEntityVelocity) {
+                  S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                  final int id = v.getEntityID();
+                  final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                  final Minecraft mc = Minecraft.getMinecraft();
+                  mc.addScheduledTask(new Runnable() {
+                      @Override
+                      public void run() {
+                          EntityPlayerSP p = mc.thePlayer;
+                          if (p != null && p.getEntityId() == id) {
+                              KBClientMod.getInstance().getTracker().capture(x, y, z);
+                          }
+                      }
+                  });
+              }
+              super.channelRead(ctx, msg);
+          }
+      }
+  }
+│   │                           └── ui
+│   │                               ├── GuiKbOptions.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import java.io.IOException;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiOptions;
+  import net.minecraft.client.gui.GuiScreen;
+  
+  /** Custom options screen for KB Client. */
+  public class GuiKbOptions extends FadeScreen {
+      private final KBTracker tracker;
+      private final GuiScreen parent;
+      private UiButton bHud, bPart, bToast, bLoad, bFade, bRpc;
+      private int cardX, cardY, cardW, cardH;
+  
+      public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
+          this.tracker = tracker;
+          this.parent = parent;
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+          int bw = 216, bh = 20, gap = 6, cx = this.width / 2;
+          int y = Math.max(58, this.height / 2 - 78);
+          cardW = bw + 28;
+          cardX = cx - cardW / 2;
+          cardY = y - 42;
+          cardH = 8 * (bh + gap) + 62;
+  
+          bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+          bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
+          bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
+          bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
+          bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
+          bRpc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(290);
+          this.buttonList.add(bHud);
+          this.buttonList.add(bPart);
+          this.buttonList.add(bToast);
+          this.buttonList.add(bLoad);
+          this.buttonList.add(bFade);
+          this.buttonList.add(bRpc);
+          this.buttonList.add(new UiButton(6, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
+          this.buttonList.add(new UiButton(7, cx - bw / 2, y + 7 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+          sync();
+      }
+  
+      private void sync() {
+          bHud.on = Settings.hud;
+          bPart.on = Settings.particles;
+          bToast.on = Settings.toasts;
+          bLoad.on = Settings.customLoading;
+          bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          switch (b.id) {
+              case 1: Settings.hud = !Settings.hud; break;
+              case 2: Settings.particles = !Settings.particles; break;
+              case 3: Settings.toasts = !Settings.toasts; break;
+              case 4: Settings.customLoading = !Settings.customLoading; break;
+              case 5: Settings.fade = (Settings.fade + 1) % 4; break;
+              case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
+              case 7: Settings.save(); closeTo(parent); return;
+              default: break;
+          }
+          Settings.save();
+          sync();
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) { Settings.save(); closeTo(parent); }
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          drawBackdrop(30);
+          Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
+          Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);
+          Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  }
+│   │                               └── Settings.java
+  package com.oryvex.kbclient.ui;
+  
+  import java.io.File;
+  import java.io.FileInputStream;
+  import java.io.FileOutputStream;
+  import java.util.Properties;
+  import net.minecraft.client.Minecraft;
+  
+  /** Persistent client preferences (.minecraft/kbclient/settings.properties). */
+  public final class Settings {
+      private Settings() {}
+  
+      public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
+  
+      public static boolean hud = true;
+      public static boolean particles = true;
+      public static boolean toasts = true;
+      public static boolean customLoading = true;
+      public static boolean discordRpc = true;
+      public static int fade = 2;
+  
+      private static File file() {
+          File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+          if (!dir.exists()) dir.mkdirs();
+          return new File(dir, "settings.properties");
+      }
+  
+      public static void load() {
+          try {
+              File f = file();
+              if (!f.exists()) return;
+              Properties p = new Properties();
+              FileInputStream in = new FileInputStream(f);
+              try { p.load(in); } finally { in.close(); }
+              hud = Boolean.parseBoolean(p.getProperty("hud", "true"));
+              particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
+              toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
+              customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
+              discordRpc = Boolean.parseBoolean(p.getProperty("discordRpc", "true"));
+              fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
+          } catch (Throwable ignored) { }
+      }
+  
+      public static void save() {
+          try {
+              Properties p = new Properties();
+              p.setProperty("hud", String.valueOf(hud));
+              p.setProperty("particles", String.valueOf(particles));
+              p.setProperty("toasts", String.valueOf(toasts));
+              p.setProperty("customLoading", String.valueOf(customLoading));
+              p.setProperty("fade", String.valueOf(fade));
+              FileOutputStream out = new FileOutputStream(file());
+              try { p.store(out, "KB Client settings"); } finally { out.close(); }
+          } catch (Throwable ignored) { }
+      }
+  }
+│   └── 20261001_000121
+│       └── src
+│           └── main
+│               └── java
+│                   └── com
+│                       └── oryvex
+│                           └── kbclient
+│                               └── DiscordRPC.java
+  package com.oryvex.kbclient;
+  
+  import club.minnced.discord.rpc.DiscordEventHandlers;
+  import club.minnced.discord.rpc.DiscordRPC;
+  import club.minnced.discord.rpc.DiscordRichPresence;
+  import net.minecraft.client.Minecraft;
+  
+  /**
+   * Discord Rich Presence for KB Client.
+   *
+   * Create a Discord Application at https://discord.com/developers/applications
+   * and put its Application ID into APP_ID below. Upload image assets named
+   * "oryvex" and "minecraft" in the Rich Presence -> Art Assets tab.
+   */
+  public final class DiscordRPC {
+      /** TODO: replace with your own Discord Application ID. */
+      private static final String APP_ID = "1554952903758716989";
+  
+      private static club.minnced.discord.rpc.DiscordRPC rpc;
+      private static DiscordRichPresence presence;
+      private static Thread worker;
+      private static volatile boolean running;
+      private static long startTime;
+      private static String lastDetails = "";
+      private static String lastState = "";
+  
+      private DiscordRPC() {}
+  
+      public static synchronized void start() {
+          if (running) return;
+          if (APP_ID.startsWith("1234")) {
+              KBClientMod.logger.warn("[KBClient] Discord RPC disabled: set your APP_ID in DiscordRPC.java");
+              return;
+          }
+          try {
+              rpc = club.minnced.discord.rpc.DiscordRPC.INSTANCE;
+  
+              DiscordEventHandlers handlers = new DiscordEventHandlers();
+              handlers.ready = user -> KBClientMod.logger.info("[KBClient] Discord RPC ready for " + user.username);
+              handlers.disconnected = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC disconnected: " + code + " " + msg);
+              handlers.errored = (code, msg) -> KBClientMod.logger.warn("[KBClient] Discord RPC error: " + code + " " + msg);
+  
+              rpc.Discord_Initialize(APP_ID, handlers, true, null);
+  
+              startTime = System.currentTimeMillis() / 1000L;
+              presence = new DiscordRichPresence();
+              presence.startTimestamp = startTime;
+              presence.largeImageKey = "oryvex";
+              presence.largeImageText = "KB Client 3.0";
+              presence.smallImageKey = "minecraft";
+              presence.smallImageText = "Minecraft 1.8.9";
+              presence.details = "In the menus";
+              presence.state = "Idle";
+              rpc.Discord_UpdatePresence(presence);
+  
+              running = true;
+              worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
+              worker.setDaemon(true);
+              worker.start();
+  
+              KBClientMod.logger.info("[KBClient] Discord RPC started");
+          } catch (Throwable t) {
+              KBClientMod.logger.error("[KBClient] Discord RPC init failed: " + t);
+          }
+      }
+  
+      private static void loop() {
+          while (running) {
+              try {
+                  rpc.Discord_RunCallbacks();
+                  updatePresence();
+                  Thread.sleep(2000L);
+              } catch (InterruptedException e) {
+                  break;
+              } catch (Throwable t) {
+                  KBClientMod.logger.warn("[KBClient] Discord RPC loop error: " + t);
+              }
+          }
+      }
+  
+      private static void updatePresence() {
+          Minecraft mc = Minecraft.getMinecraft();
+          String details;
+          String state;
+  
+          if (mc.theWorld == null) {
+              details = "In the menus";
+              state = "KB Client 3.0";
+          } else if (mc.isSingleplayer()) {
+              details = "Singleplayer";
+              String worldName = "world";
+              try {
+                  if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+              } catch (Throwable ignored) { }
+              state = "World: " + worldName;
+          } else {
+              String ip = (mc.getCurrentServerData() != null)
+                      ? mc.getCurrentServerData().serverIP
+                      : "Unknown server";
+              details = "Playing on " + ip;
+              int players = (mc.theWorld != null) ? mc.theWorld.playerEntities.size() : 0;
+              state = players + " players online";
+          }
+  
+          if (details.equals(lastDetails) && state.equals(lastState)) return;
+          lastDetails = details;
+          lastState = state;
+  
+          presence.details = details;
+          presence.state = state;
+          presence.startTimestamp = startTime;
+          rpc.Discord_UpdatePresence(presence);
+      }
+  
+      public static synchronized void stop() {
+          if (!running) return;
+          running = false;
+          try {
+              if (worker != null) worker.interrupt();
+              if (rpc != null) {
+                  rpc.Discord_ClearPresence();
+                  rpc.Discord_Shutdown();
+              }
+          } catch (Throwable ignored) { }
+          rpc = null;
+          presence = null;
+          KBClientMod.logger.info("[KBClient] Discord RPC stopped");
+      }
+  
+      public static boolean isRunning() {
+          return running;
       }
   }
 ├── .git
@@ -3513,6 +4021,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │   └── refs
 │   │       ├── heads
 │   │       │   └── main
@@ -3522,6 +4033,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793422 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794325 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794848 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800090 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800297 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800534 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │       └── remotes
 │   │           └── origin
 │   │               └── main
@@ -3531,6 +4045,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   e40eb29518aa6ad4f6438edd5f2f3cc44a8d00d4 037f00f76c704f0a15678598ab9146026a5b6a9c muvixo <godarshia20@gmail.com> 1790793441 +0330	update by push
   037f00f76c704f0a15678598ab9146026a5b6a9c d7651a59cf9e7e89b461536218df0bef5e5decf3 muvixo <godarshia20@gmail.com> 1790794340 +0330	update by push
   d7651a59cf9e7e89b461536218df0bef5e5decf3 59f92f3b5c421d91f3554fad31c9f6ff95755229 muvixo <godarshia20@gmail.com> 1790794874 +0330	update by push
+  59f92f3b5c421d91f3554fad31c9f6ff95755229 2cfefebcad489956f3f90411e6f71a5997470e52 muvixo <godarshia20@gmail.com> 1790800108 +0330	update by push
+  2cfefebcad489956f3f90411e6f71a5997470e52 58c71e3d743689a26639ed12ea4c3e95d581b51e muvixo <godarshia20@gmail.com> 1790800308 +0330	update by push
+  58c71e3d743689a26639ed12ea4c3e95d581b51e 6f3da9f65e7fd71cd411480982a87814032d46a5 muvixo <godarshia20@gmail.com> 1790800548 +0330	update by push
 │   ├── objects
 │   │   ├── 00
 │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
@@ -3550,6 +4067,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── a514169ebb3b7868cf60bfbf19c714b9bf3563
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   ├── 08
+│   │   │   └── c04b94e4a28238631ba3ef59cd1c4c84ade5d9
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 0d
 │   │   │   └── 15b1f5ce72821612867315fcc8d548006e57f7
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3558,6 +4078,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   │   └── e8d5c1b34bb6f29ad0727f43c377f52b62f175
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── 0f
+│   │   │   └── 27f7bea47f54d6f8a8bd169c8a7648c56338ab
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 10
+│   │   │   └── 7052a7daa36d7e8e83b0e035dac14c15670003
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 12
 │   │   │   ├── 5780a736bb886f89e3d0215a9c353151266777
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3566,6 +4092,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 13
 │   │   │   └── 5a3411652d2488203136be6a869af72cc71491
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 14
+│   │   │   └── bb303245e7a1a72f7c4c4eea3116732c964c06
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 18: invalid continuation byte]
 │   │   ├── 16
 │   │   │   └── e8ac695b13c75fd8492c41a035430c4e1731dd
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
@@ -3579,8 +4108,16 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── b2344069b7a615498586444f4364418c0bdf86
   [Error: 'utf-8' codec can't decode byte 0x83 in position 22: invalid start byte]
 │   │   ├── 1d
-│   │   │   └── 5b29fbd59593cbadef9e8c2f5129d1d4391584
+│   │   │   ├── 5b29fbd59593cbadef9e8c2f5129d1d4391584
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
+│   │   │   └── 7521bc5d22e37bd852c240683dff3b95f6506e
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 1e
+│   │   │   └── 06cca4abf0e085bb93de0d5fbe54102bbeb4a3
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 1f
+│   │   │   └── 6246cc6c33477750d13ebf39edf93b252db2f1
+  [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
 │   │   ├── 20
 │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
   [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
@@ -3601,8 +4138,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 2c
 │   │   │   ├── 513a25e4a3aa540b6a9d5a25db3207c92e2f0a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── 7efc58d85cbe88ba9bce61394dbd7e3239530e
+│   │   │   ├── 7efc58d85cbe88ba9bce61394dbd7e3239530e
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
+│   │   │   ├── d5454c07c3e605b7adcb091da290d536df2007
+  [Error: 'utf-8' codec can't decode byte 0x83 in position 23: invalid start byte]
+│   │   │   └── fefebcad489956f3f90411e6f71a5997470e52
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 2d
 │   │   │   └── 4d4748801848dcc75a9848873006e9ddbe410c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
@@ -3617,14 +4158,22 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 36
 │   │   │   └── 75066755f7e0651eacaffc4d64514c634eeca9
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── 37
+│   │   │   └── dea52672eb8fc6f161424872a53bd3224cb308
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 38
 │   │   │   └── 06c0d2ae5e2636870edadc995a0095ead6f33e
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
 │   │   ├── 3a
+│   │   │   ├── 4b805b167e90a68c637e35dd67ef60b3d53acf
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   │   ├── 76d497e8b4b0824cf23a16e6ab8cf04b4e8a8b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 7def659ddd6591e5c6e45b2f66737a36d5bc33
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── 3d
+│   │   │   └── ba2b12eb67f97ed7fcee5acea62eec91b955db
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── 3e
 │   │   │   ├── 42c216f2f7649d7634a6684a54306fbe9d6668
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
@@ -3640,6 +4189,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── 653004011bc43b8ed8274674da3278e8cc9c53
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 44
+│   │   │   └── aa8444b3433b02ac64bbff6d7ea88a49051de2
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 47
+│   │   │   └── 84aac6f30ed1d94d2cf3bc9067bcf22c7b0898
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 4a
 │   │   │   ├── 5685d01b8c843af1e9abb5616f90270e1b72c2
   [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
@@ -3651,8 +4206,21 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 825dc642cb6eb9a060e54bf8d69288fbee4904
   x+)JMU0`  
   ,
+│   │   ├── 4d
+│   │   │   └── 9197298ad4114bf217785781a1ba66b2f3c243
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 51
+│   │   │   ├── 20dfbf51c39c18aabbb8762320e58ab24d4802
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   │   └── 9e024b340872527da4e94e0a270bc15d8c3606
+  [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
+│   │   ├── 53
+│   │   │   └── c075b5960294e32a885fe57eaebd2e38bd421c
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 54
-│   │   │   └── 1b1f7114dfa9e2badba8a443a125b4d1575935
+│   │   │   ├── 1b1f7114dfa9e2badba8a443a125b4d1575935
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 95a74e9e21f9d856a86f70b6a44e859a45793b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 55
 │   │   │   ├── 50d922a7e2610813999bac19d5a0bbe08020b4
@@ -3664,6 +4232,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   │   └── 4a84d43f5898c8ec05cc39d3f975a8af7baa82
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 58
+│   │   │   └── c71e3d743689a26639ed12ea4c3e95d581b51e
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 59
 │   │   │   └── f92f3b5c421d91f3554fad31c9f6ff95755229
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -3686,6 +4257,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
 │   │   │   └── 97ed89f9c5b256a30504050f2dde3688ae9b1b
   [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+│   │   ├── 62
+│   │   │   └── f7678f53c17b0aa322ab143c93c2abce8480d8
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 63
 │   │   │   └── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
@@ -3709,6 +4283,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
 │   │   │   └── 949951d7f09a39cd9c075428c0301357d8d47c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── 6f
+│   │   │   └── 3da9f65e7fd71cd411480982a87814032d46a5
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 70
 │   │   │   └── c0cad6ea281205c468201a91f7c55cba8dbaba
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3716,8 +4293,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── 73
-│   │   │   └── b2a93bb3a0c48e4b296c63bd0c20242a9d945d
+│   │   │   ├── b2a93bb3a0c48e4b296c63bd0c20242a9d945d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── e2ff10f642d648e9bf1cd7d08da32bbddae8aa
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 74
 │   │   │   └── 3779efc677a34bcf4281b30df29bd7e36f30b5
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 8: invalid start byte]
@@ -3731,8 +4310,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 4a4f37d6ee710a1d39b0ac3adcf323c5b2d86d
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 79
-│   │   │   └── 7b13277848449d44eaacc8544f524607d72048
+│   │   │   ├── 7b13277848449d44eaacc8544f524607d72048
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── f86dc6b5fc60274ffc7a10813cfc0bcd5fd57e
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── 7a
 │   │   │   ├── 85d9ba6fb90a20aa290fd0c77c1d246144e691
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3747,6 +4328,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 82
 │   │   │   └── 27f9288444d07585642641180d78c3812f8a72
   [Error: 'utf-8' codec can't decode byte 0x8f in position 3: invalid start byte]
+│   │   ├── 83
+│   │   │   └── 9a51035db80e8ee4cd0c4ceeb8a5a0aa8173d9
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 85
 │   │   │   └── 0fe4546ce4a71ce3796baec76141fe404e3044
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -3754,15 +4338,21 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 48608cc89c53a26f76e26fca4347586f7c7d7a
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 8b
-│   │   │   └── b477084caa620cc37f9e89fa77a5da66182b39
+│   │   │   ├── b477084caa620cc37f9e89fa77a5da66182b39
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   └── b9cdbc82320cf09167a5ab67216388c8e1a6ff
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 8d
 │   │   │   ├── 7478ad3105a85c44536de9b92072f45467a0fe
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
+│   │   │   ├── 88ac2dadb68c2f10eb57f676e1087a120e878e
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   └── cfda1f5af38b6fa2ae605b4738d3a039459fc8
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 90
-│   │   │   └── 69f7482e8d6555efa38fbe7400fe3f74be1f94
+│   │   │   ├── 69f7482e8d6555efa38fbe7400fe3f74be1f94
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── e0f40edd53d06c5ecf55948f863cdf0b9788de
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 91
 │   │   │   └── 83b0db84f3b1854802f9f0cf62e4c657cdc0a3
@@ -3788,24 +4378,42 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 9e
 │   │   │   └── 76454055871144e8157d85c3327fe901f664a1
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   ├── a0
+│   │   │   └── 3fa07dbb4670a0ce9995f196a7bea841e87dd2
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
+│   │   ├── a1
+│   │   │   └── a99253e502137a30aac1d27d86174e09f17f44
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
 │   │   ├── a5
 │   │   │   └── 7006d8e68103a058715081299dc2d3519469bd
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── a7
-│   │   │   └── 7e139bf99c6b2bdd176da4eb331ff5bfe81d4e
+│   │   │   ├── 7e139bf99c6b2bdd176da4eb331ff5bfe81d4e
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   └── a7771d21e93a7117fd51c151e1ebcbc4e391a6
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── aa
 │   │   │   ├── ce7cdc67cba30d97b99a0b6c52922cff4c01ce
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── d3ff3f54d5d7163dc4ec90fbeaa2d2da5f76ab
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── ac
+│   │   │   └── f2a3b54aa05fbf24b6f692f5054f88d2bde8d2
+  [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   ├── b0
+│   │   │   ├── 43416bacf66acaf168c93e57fec3f5813147cf
+  [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
 │   │   │   └── 47ca6a1568d38e6b79a82f91fe839d636f9a25
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── b1
+│   │   │   └── bd233ec885d2e54532a5be75865a3632ab7c38
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b2
 │   │   │   └── 767594d80dca795b856665081702eb2f2193fd
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
 │   │   ├── b3
+│   │   │   ├── 7840b5c69bc2f00584c9df64a9de9da017112d
+  [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
 │   │   │   └── e8e7ffaf1a1a2da17bbbd9b74b06656c12897c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── c0
@@ -3813,9 +4421,16 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
 │   │   │   └── 3e3c6df878d742fefcfa2e50c2e5365bc055dd
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── c2
+│   │   │   ├── 4cbcdf373d640739145365e47653d731834387
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   │   └── b21227481c65a74624d97ac9424303b764ba23
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── c8
-│   │   │   └── eaeb6de870faa79acea43ae9dd77475ec150c1
+│   │   │   ├── eaeb6de870faa79acea43ae9dd77475ec150c1
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   │   └── f1fdb85d61e0c5263eedb6bca5f66a68095f70
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── ca
 │   │   │   ├── 8dabfbd618b87d2022539d2e07a25109740226
   [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
@@ -3825,22 +4440,33 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 94e95242de355f6b7774c7d3b9343b241ca572
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   ├── cc
+│   │   │   ├── 475133dd479e92cc3beb1f149fdcb43c1b2322
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── ce
-│   │   │   └── 10b2d3c805f5dd61e8d0d5bf57b1e12db43351
+│   │   │   ├── 10b2d3c805f5dd61e8d0d5bf57b1e12db43351
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
+│   │   │   └── ab6866d733f3b03e99aa0cbb7d23e8420211f1
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── d4
 │   │   │   ├── 0d2d64eacf5198fa811e4862762d5f6af5941e
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
 │   │   │   └── f5bbf99f45e7cc2cdded9978834375b9fd14b3
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 21: invalid continuation byte]
+│   │   ├── d5
+│   │   │   └── a21d5a626ad123993a9959d3723c1cfc9f65b9
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── d6
 │   │   │   └── fac41076412294ea7736bf369299aa352b09f6
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── d7
-│   │   │   └── 651a59cf9e7e89b461536218df0bef5e5decf3
+│   │   │   ├── 651a59cf9e7e89b461536218df0bef5e5decf3
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   ├── 75f0b5fa8cbb323167ebacff15795adc5b56d4
+  [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+│   │   │   └── c8b8408b64154e7f94dc5db8708d1e6156b2b8
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── d9
 │   │   │   ├── b9b6160d63bf359ce75f0b80a6a3724aee92e8
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3856,6 +4482,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   │   └── 6187653794f639173cce5edd013d32da5828c7
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   ├── de
+│   │   │   └── 0be1ea11c32dbc6af33212d0b995aa9f88f67b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── df
+│   │   │   └── 7549939f16ee31fdd1817be00cc952cd3eec6e
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── e2
+│   │   │   └── 79d8ed42432719de69026d373496ae65837fe9
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e4
 │   │   │   ├── 0eb29518aa6ad4f6438edd5f2f3cc44a8d00d4
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -3863,6 +4498,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── bac8b8f8454bd50a10f8ad2c3cd82c39a11ce1
   [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+│   │   ├── e5
+│   │   │   └── cccda6b780031dd28971eb77595436f86871df
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e6
 │   │   │   └── d9c23a3dfb093af9952dda56425efde19aab10
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -3870,10 +4508,14 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 74c483e362c9be05dc1c06fa676503245dcbcb
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e9
+│   │   │   ├── 063f4a29787210f25d1e9a2db17393e81e2897
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 2fa333ab2df1c4489b718799882c9c30d41a4b
   [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
 │   │   ├── eb
-│   │   │   └── 5f0f0b92494459cfd3703c794f2844617fa903
+│   │   │   ├── 5f0f0b92494459cfd3703c794f2844617fa903
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── c3a52411bb92076d32947b83c1c0aa42f114d1
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── ed
 │   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
@@ -3885,6 +4527,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
 │   │   ├── f2
 │   │   │   └── b81286cd1530494bde3e9bcf9595ee68cd1478
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   ├── f4
+│   │   │   └── ff6cd2ed5c71bcb9daed061a3b3fa2f6cf75b8
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── f6
 │   │   │   ├── 0bf0357a5ce3acbeee0e2efebedb79415c6a12
@@ -3900,18 +4545,25 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 06f54071c71eb018ddce81991a7db1f298ecf2
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── fd
+│   │   │   ├── 4446c93f6091387e0d5b253fab13bb410f2e2b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 6b486f30cbef8999a6cbdd534799f870a27612
   [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── ff
+│   │   │   ├── 46d504cda8dc00da4be1d727ccc7b33986eedd
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── b8becd24102b51aa87c8f7a02604cb588df056
+  [Error: 'utf-8' codec can't decode byte 0xeb in position 4: invalid continuation byte]
 │   │   ├── info
 │   │   └── pack
 │   └── refs
 │       ├── heads
 │       │   └── main
-  59f92f3b5c421d91f3554fad31c9f6ff95755229
+  6f3da9f65e7fd71cd411480982a87814032d46a5
 │       ├── remotes
 │       │   └── origin
 │       │       └── main
-  59f92f3b5c421d91f3554fad31c9f6ff95755229
+  6f3da9f65e7fd71cd411480982a87814032d46a5
 │       └── tags
 ├── .github
 │   └── workflows
@@ -4160,14 +4812,14 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   
   ├── .fixer_backup
-  │   └── 20260930_222156
-  │       └── src
-  │           └── main
-  │               └── java
-  │                   └── com
-  │                       └── oryvex
-  │                           └── kbclient
-  │                               ├── KBClientMod.java
+  │   ├── 20260930_222156
+  │   │   └── src
+  │   │       └── main
+  │   │           └── java
+  │   │               └── com
+  │   │                   └── oryvex
+  │   │                       └── kbclient
+  │   │                           ├── KBClientMod.java
     package com.oryvex.kbclient;
     
     import com.oryvex.kbclient.ui.Fade;
@@ -4379,7 +5031,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  │                               ├── KBCommand.java
+  │   │                           ├── KBCommand.java
     package com.oryvex.kbclient;
     
     import com.oryvex.kbclient.kb.KBProfile;
@@ -4484,7 +5136,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             return null;
         }
     }
-  │                               ├── KBTracker.java
+  │   │                           ├── KBTracker.java
     package com.oryvex.kbclient;
     
     import com.oryvex.kbclient.kb.KBEstimator;
@@ -4705,8 +5357,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             return yml;
         }
     }
-  │                               ├── kb
-  │                               │   ├── KBEstimator.java
+  │   │                           ├── kb
+  │   │                           │   ├── KBEstimator.java
     package com.oryvex.kbclient.kb;
     
     import java.util.ArrayList;
@@ -5008,7 +5660,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  │                               │   ├── KBProfile.java
+  │   │                           │   ├── KBProfile.java
     package com.oryvex.kbclient.kb;
     
     import java.math.BigDecimal;
@@ -5195,7 +5847,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             return sb.toString();
         }
     }
-  │                               │   ├── KBSample.java
+  │   │                           │   ├── KBSample.java
     package com.oryvex.kbclient.kb;
     
     /** One knockback event (velocity packet) plus the context it happened in. */
@@ -5242,7 +5894,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             this.attacker = attacker == null ? "?" : attacker;
         }
     }
-  │                               │   └── KBYaml.java
+  │   │                           │   └── KBYaml.java
     package com.oryvex.kbclient.kb;
     
     import java.util.ArrayList;
@@ -5408,8 +6060,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             return unquote(k.trim()).toUpperCase(Locale.ROOT).replace('_', '-');
         }
     }
-  │                               └── ui
-  │                                   ├── Draw.java
+  │   │                           └── ui
+  │   │                               ├── Draw.java
     package com.oryvex.kbclient.ui;
     
     import net.minecraft.client.Minecraft;
@@ -5565,7 +6217,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  │                                   ├── Fade.java
+  │   │                               ├── Fade.java
     package com.oryvex.kbclient.ui;
     
     import net.minecraft.client.gui.Gui;
@@ -5619,7 +6271,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  │                                   ├── FadeScreen.java
+  │   │                               ├── FadeScreen.java
     package com.oryvex.kbclient.ui;
     
     import java.io.IOException;
@@ -5700,7 +6352,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             if (key == Keyboard.KEY_ESCAPE) closeTo(null);
         }
     }
-  │                                   ├── GuiAnalyzer.java
+  │   │                               ├── GuiAnalyzer.java
     package com.oryvex.kbclient.ui;
     
     import com.oryvex.kbclient.KBTracker;
@@ -6113,7 +6765,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  │                                   ├── GuiKbOptions.java
+  │   │                               ├── GuiKbOptions.java
     package com.oryvex.kbclient.ui;
     
     import com.oryvex.kbclient.KBTracker;
@@ -6198,7 +6850,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             drawFade();
         }
     }
-  │                                   ├── GuiModernMenu.java
+  │   │                               ├── GuiModernMenu.java
     package com.oryvex.kbclient.ui;
     
     import com.oryvex.kbclient.KBTracker;
@@ -6302,7 +6954,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             drawFade();
         }
     }
-  │                                   ├── Hud.java
+  │   │                               ├── Hud.java
     package com.oryvex.kbclient.ui;
     
     import com.oryvex.kbclient.KBTracker;
@@ -6387,7 +7039,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             Draw.blend();
         }
     }
-  │                                   ├── KBLoading.java
+  │   │                               ├── KBLoading.java
     package com.oryvex.kbclient.ui;
     
     import net.minecraft.client.Minecraft;
@@ -6495,7 +7147,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             } catch (Throwable ignored) { }
         }
     }
-  │                                   ├── LoadingArt.java
+  │   │                               ├── LoadingArt.java
     package com.oryvex.kbclient.ui;
     
     import java.awt.Color;
@@ -6572,7 +7224,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             Draw.text("KB Client 3.0", 6, h - 12, Theme.DIM, 0.75f, false);
         }
     }
-  │                                   ├── Settings.java
+  │   │                               ├── Settings.java
     package com.oryvex.kbclient.ui;
     
     import java.io.File;
@@ -6627,7 +7279,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             } catch (Throwable ignored) { }
         }
     }
-  │                                   ├── Theme.java
+  │   │                               ├── Theme.java
     package com.oryvex.kbclient.ui;
     
     public final class Theme {
@@ -6657,7 +7309,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     
         public static final String S = "\u00a7";
     }
-  │                                   └── UiButton.java
+  │   │                               └── UiButton.java
     package com.oryvex.kbclient.ui;
     
     import net.minecraft.client.Minecraft;
@@ -6750,186 +7402,126 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
             }
         }
     }
-  ├── .git
-  │   ├── COMMIT_EDITMSG
-    Initial commit: Knockback Client Mod 1.8.9
-  │   ├── HEAD
-    ref: refs/heads/main
-  │   ├── config
-    [core]
-    	repositoryformatversion = 0
-    	filemode = false
-    	bare = false
-    	logallrefupdates = true
-    	symlinks = false
-    	ignorecase = true
-    [remote "origin"]
-    	url = https://github.com/bbblofficial/KbFinderClient.git
-    	fetch = +refs/heads/*:refs/remotes/origin/*
-    [branch "main"]
-    	remote = origin
-    	merge = refs/heads/main
-  │   ├── description
-    Unnamed repository; edit this file 'description' to name the repository.
-  │   ├── hooks
-  │   │   ├── applypatch-msg.sample
-    #!/bin/sh
-    #
-    # An example hook script to check the commit log message taken by
-    # applypatch from an e-mail message.
-    #
-    # The hook should exit with non-zero status after issuing an
-    # appropriate message if it wants to stop the commit.  The hook is
-    # allowed to edit the commit message file.
-    #
-    # To enable this hook, rename this file to "applypatch-msg".
+  │   ├── 20260930_235635
+  │   │   └── src
+  │   │       └── main
+  │   │           └── java
+  │   │               └── com
+  │   │                   └── oryvex
+  │   │                       └── kbclient
+  │   │                           ├── KBClientMod.java
+    package com.oryvex.kbclient;
     
-    . git-sh-setup
-    commitmsg="$(git rev-parse --git-path hooks/commit-msg)"
-    test -x "$commitmsg" && exec "$commitmsg" ${1+"$@"}
-    :
-  │   │   ├── commit-msg.sample
-    #!/bin/sh
-    #
-    # An example hook script to check the commit log message.
-    # Called by "git commit" with one argument, the name of the file
-    # that has the commit message.  The hook should exit with non-zero
-    # status after issuing an appropriate message if it wants to stop the
-    # commit.  The hook is allowed to edit the commit message file.
-    #
-    # To enable this hook, rename this file to "commit-msg".
+    import com.oryvex.kbclient.ui.Fade;
+    import com.oryvex.kbclient.ui.FadeScreen;
+    import com.oryvex.kbclient.ui.GuiAnalyzer;
+    import com.oryvex.kbclient.ui.GuiModernMenu;
+    import com.oryvex.kbclient.ui.Hud;
+    import com.oryvex.kbclient.ui.KBLoading;
+    import com.oryvex.kbclient.ui.LoadingArt;
+    import com.oryvex.kbclient.ui.Settings;
+    import com.oryvex.kbclient.ui.UiButton;
+    import io.netty.channel.Channel;
+    import io.netty.channel.ChannelDuplexHandler;
+    import io.netty.channel.ChannelHandlerContext;
+    import io.netty.channel.ChannelPipeline;
+    import net.minecraft.client.Minecraft;
+    import net.minecraft.client.entity.EntityPlayerSP;
+    import net.minecraft.client.gui.GuiButton;
+    import net.minecraft.client.gui.GuiChat;
+    import net.minecraft.client.gui.GuiDownloadTerrain;
+    import net.minecraft.client.gui.GuiIngameMenu;
+    import net.minecraft.client.gui.GuiMainMenu;
+    import net.minecraft.client.gui.GuiScreen;
+    import net.minecraft.client.gui.inventory.GuiContainer;
+    import net.minecraft.client.settings.KeyBinding;
+    import net.minecraft.network.NetworkManager;
+    import net.minecraft.network.play.server.S12PacketEntityVelocity;
+    import net.minecraftforge.client.ClientCommandHandler;
+    import net.minecraftforge.client.event.GuiOpenEvent;
+    import net.minecraftforge.client.event.GuiScreenEvent;
+    import net.minecraftforge.client.event.RenderGameOverlayEvent;
+    import net.minecraftforge.common.MinecraftForge;
+    import net.minecraftforge.fml.client.registry.ClientRegistry;
+    import net.minecraftforge.fml.common.Mod;
+    import net.minecraftforge.fml.common.Mod.EventHandler;
+    import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+    import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+    import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+    import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+    import net.minecraftforge.fml.common.gameevent.TickEvent;
+    import org.apache.logging.log4j.Logger;
+    import org.lwjgl.input.Keyboard;
     
-    # Uncomment the below to add a Signed-off-by line to the message.
-    # Doing this in a hook is a bad idea in general, but the prepare-commit-msg
-    # hook is more suited to it.
-    #
-    # SOB=$(git var GIT_AUTHOR_IDENT | sed -n 's/^\(.*>\).*$/Signed-off-by: \1/p')
-    # grep -qs "^$SOB" "$1" || echo "$SOB" >> "$1"
+    @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+         acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+    public class KBClientMod {
+        public static final String MODID = "kbclient";
+        public static final String NAME = "KB Client";
+        public static final String VERSION = "3.0.0";
+        private static final String HOOK = "kb_client_handler";
     
-    # This example catches duplicate Signed-off-by lines.
+        private static KBClientMod instance;
+        public static Logger logger;
     
-    test "" = "$(grep '^Signed-off-by: ' "$1" |
-    	 sort | uniq -c | sed -e '/^[ 	]*1[ 	]/d')" || {
-    	echo >&2 Duplicate Signed-off-by lines.
-    	exit 1
-    }
-  │   │   ├── fsmonitor-watchman.sample
-    #!/usr/bin/perl
+        private final KBTracker tracker = new KBTracker();
+        private KeyBinding openKey;
+        private Channel hookedChannel;
+        private boolean pendingOpen;
+        private Object lastWorld;
+        private boolean loadingInstalled;
     
-    use strict;
-    use warnings;
-    use IPC::Open2;
+        public static KBClientMod getInstance() { return instance; }
+        public KBTracker getTracker() { return tracker; }
     
-    # An example hook script to integrate Watchman
-    # (https://facebook.github.io/watchman/) with git to speed up detecting
-    # new and modified files.
-    #
-    # The hook is passed a version (currently 2) and last update token
-    # formatted as a string and outputs to stdout a new update token and
-    # all files that have been modified since the update token. Paths must
-    # be relative to the root of the working tree and separated by a single NUL.
-    #
-    # To enable this hook, rename this file to "query-watchman" and set
-    # 'git config core.fsmonitor .git/hooks/query-watchman'
-    #
-    my ($version, $last_update_token) = @ARGV;
+        /** Opened on the next tick, because chat closes itself right after running a command. */
+        public void requestOpenAnalyzer() { pendingOpen = true; }
     
-    # Uncomment for debugging
-    # print STDERR "$0 $version $last_update_token\n";
+        @EventHandler
+        public void preInit(FMLPreInitializationEvent e) {
+            logger = e.getModLog();
+            instance = this;
+            Settings.load();
+        }
     
-    # Check the hook interface version
-    if ($version ne 2) {
-    	die "Unsupported query-fsmonitor hook version '$version'.\n" .
-    	    "Falling back to scanning...\n";
-    }
+        @EventHandler
+        public void init(FMLInitializationEvent e) {
+            com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+            net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+            MinecraftForge.EVENT_BUS.register(this);
+            ClientCommandHandler.instance.registerCommand(new KBCommand());
+            openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+            ClientRegistry.registerKeyBinding(openKey);
+            installLoading();
+        }
     
-    my $git_work_tree = get_working_dir();
+        /** swap Minecraft's loading renderer (world load/save) for the custom one */
+        private void installLoading() {
+            if (loadingInstalled) return;
+            Minecraft mc = Minecraft.getMinecraft();
+            try {
+                ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+                loadingInstalled = true;
+                logger.info("[KBClient] custom loading screen installed");
+            } catch (Throwable t) {
+                logger.error("[KBClient] could not install loading screen: " + t);
+            }
+        }
     
-    my $retry = 1;
+        // ---- screens + fades -----------------------------------------------------
+        @SubscribeEvent
+        public void onGuiOpen(GuiOpenEvent e) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
     
-    my $json_pkg;
-    eval {
-    	require JSON::XS;
-    	$json_pkg = "JSON::XS";
-    	1;
-    } or do {
-    	require JSON::PP;
-    	$json_pkg = "JSON::PP";
-    };
-    
-    launch_watchman();
-    
-    sub launch_watchman {
-    	my $o = watchman_query();
-    	if (is_work_tree_watched($o)) {
-    		output_result($o->{clock}, @{$o->{files}});
-    	}
-    }
-    
-    sub output_result {
-    	my ($clockid, @files) = @_;
-    
-    	# Uncomment for debugging watchman output
-    	# open (my $fh, ">", ".git/watchman-output.out");
-    	# binmode $fh, ":utf8";
-    	# print $fh "$clockid\n@files\n";
-    	# close $fh;
-    
-    	binmode STDOUT, ":utf8";
-    	print $clockid;
-    	print "\0";
-    	local $, = "\0";
-    	print @files;
-    }
-    
-    sub watchman_clock {
-    	my $response = qx/watchman clock "$git_work_tree"/;
-    	die "Failed to get clock id on '$git_work_tree'.\n" .
-    		"Falling back to scanning...\n" if $? != 0;
-    
-    	return $json_pkg->new->utf8->decode($response);
-    }
-    
-    sub watchman_query {
-    	my $pid = open2(\*CHLD_OUT, \*CHLD_IN, 'watchman -j --no-pretty')
-    	or die "open2() failed: $!\n" .
-    	"Falling back to scanning...\n";
-    
-    	# In the query expression below we're asking for names of files that
-    	# changed since $last_update_token but not from the .git folder.
-    	#
-    	# To accomplish this, we're using the "since" generator to use the
-    	# recency index to select candidate nodes and "fields" to limit the
-    	# output to file names only. Then we're using the "expression" term to
-    	# further constrain the results.
-    	my $last_update_line = "";
-    	if (substr($last_update_token, 0, 1) eq "c") {
-    		$last_update_token = "\"$last_update_token\"";
-    		$last_update_line = qq[\n"since": $last_update_token,];
-    	}
-    	my $query = <<"	END";
-    		["query", "$git_work_tree", {$last_update_line
-    			"fields": ["name"],
-    			"expression": ["not", ["dirname", ".git"]]
-    		}]
-    	END
-    
-    	# Uncomment for debugging the watchman query
-    	# open (my $fh, ">", ".git/watchman-query.json");
-    	# print $fh $query;
-    	# close $fh;
-    
-    	print CHLD_IN $query;
-    	close CHLD_IN;
-    	my $response = do {local $/; <CHLD_OUT>};
-    
-    	# Uncomment for debugging the watch response
-    	# open ($fh, ">", ".git/watchman-response.json");
-    	# print $fh $response;
-    	# close $fh;
-    
-    	die "Watchman: command returned no output.\n" .
-    	"Falling back to scanning...\n" if $response eq "";
+            if (e.gui == null) {
+                // back to the game: soft world fade (not after chat)
+                if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                    Fade.world.trigger(0.45f);
+                }
+            } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+                Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
 ├── gradle
 │   └── wrapper
 │       └── gradle-wrapper.properties
@@ -6948,6 +7540,273 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
         │   └── com
         │       └── oryvex
         │           └── kbclient
+        │               ├── DiscordRPC.java
+  package com.oryvex.kbclient;
+  
+  import net.minecraft.client.Minecraft;
+  
+  import java.io.IOException;
+  import java.io.RandomAccessFile;
+  import java.lang.management.ManagementFactory;
+  import java.nio.ByteBuffer;
+  import java.nio.ByteOrder;
+  import java.nio.charset.StandardCharsets;
+  
+  /**
+   * Discord Rich Presence - diagnostic build.
+   * Logs every step so you can see exactly where it fails.
+   */
+  public final class DiscordRPC {
+  
+      /** TODO: replace with your own Discord Application ID. */
+      private static final String APP_ID = "1554952903758716989";
+  
+      private static final int OP_HANDSHAKE = 0;
+      private static final int OP_FRAME     = 1;
+      private static final int OP_CLOSE     = 2;
+  
+      private static RandomAccessFile pipe;
+      private static Thread worker;
+      private static volatile boolean running;
+      private static long startTime;
+      private static String lastDetails = "";
+      private static String lastState = "";
+  
+      private DiscordRPC() {}
+  
+      public static synchronized void start() {
+          if (running) return;
+          if (APP_ID.startsWith("1234")) {
+              KBClientMod.logger.warn("[KB-RPC] disabled: APP_ID is still the placeholder");
+              return;
+          }
+          KBClientMod.logger.info("[KB-RPC] starting with APP_ID=" + APP_ID);
+  
+          if (!connect()) {
+              KBClientMod.logger.warn("[KB-RPC] no Discord IPC socket found. Is the Discord desktop app running?");
+              return;
+          }
+          try {
+              sendHandshake();
+              String reply = readFrame(1000);
+              KBClientMod.logger.info("[KB-RPC] handshake reply: " + reply);
+              if (reply == null || !reply.contains("\"READY\"")) {
+                  KBClientMod.logger.warn("[KB-RPC] handshake failed, aborting");
+                  close();
+                  return;
+              }
+              startTime = System.currentTimeMillis() / 1000L;
+              updatePresence(true);
+          } catch (IOException e) {
+              KBClientMod.logger.warn("[KB-RPC] handshake exception: " + e);
+              close();
+              return;
+          }
+  
+          running = true;
+          worker = new Thread(DiscordRPC::loop, "KBClient-DiscordRPC");
+          worker.setDaemon(true);
+          worker.start();
+          KBClientMod.logger.info("[KB-RPC] running");
+      }
+  
+      public static synchronized void stop() {
+          if (!running) return;
+          running = false;
+          try { sendFrame(OP_CLOSE, "{}"); } catch (IOException ignored) { }
+          if (worker != null) worker.interrupt();
+          close();
+          KBClientMod.logger.info("[KB-RPC] stopped");
+      }
+  
+      public static boolean isRunning() { return running; }
+  
+      // ------------------------------------------------------------------
+      // socket
+      // ------------------------------------------------------------------
+      private static boolean connect() {
+          String os = System.getProperty("os.name", "").toLowerCase();
+          boolean win = os.contains("win");
+          KBClientMod.logger.info("[KB-RPC] OS=" + os + " (windows=" + win + ")");
+  
+          if (win) {
+              String[] prefixes = { "\\\\?\\pipe\\discord-ipc-", "\\\\.\\pipe\\discord-ipc-" };
+              for (String pfx : prefixes) {
+                  for (int i = 0; i < 10; i++) {
+                      String path = pfx + i;
+                      try {
+                          pipe = new RandomAccessFile(path, "rw");
+                          KBClientMod.logger.info("[KB-RPC] connected: " + path);
+                          return true;
+                      } catch (IOException e) {
+                          // keep quiet, try next
+                      }
+                  }
+              }
+          } else {
+              // Unix domain socket - Java 8 RandomAccessFile cannot open these
+              // on Linux/macOS. This branch is here only so the log makes sense.
+              for (int i = 0; i < 10; i++) {
+                  String path = "/tmp/discord-ipc-" + i;
+                  try {
+                      pipe = new RandomAccessFile(path, "rw");
+                      KBClientMod.logger.info("[KB-RPC] connected: " + path);
+                      return true;
+                  } catch (IOException e) {
+                      // try next
+                  }
+              }
+              KBClientMod.logger.warn("[KB-RPC] unix socket open failed. Java 8 on Linux/macOS");
+              KBClientMod.logger.warn("[KB-RPC] cannot connect to Discord IPC. Windows is required");
+              KBClientMod.logger.warn("[KB-RPC] for the dependency-free version. Add JNA later if needed.");
+          }
+          return false;
+      }
+  
+      private static void close() {
+          if (pipe != null) {
+              try { pipe.close(); } catch (IOException ignored) { }
+              pipe = null;
+          }
+      }
+  
+      private static void sendHandshake() throws IOException {
+          String json = "{\"v\":1,\"client_id\":\"" + APP_ID + "\"}";
+          KBClientMod.logger.info("[KB-RPC] -> handshake " + json);
+          sendFrame(OP_HANDSHAKE, json);
+      }
+  
+      private static synchronized void sendFrame(int op, String json) throws IOException {
+          if (pipe == null) throw new IOException("not connected");
+          byte[] payload = json.getBytes(StandardCharsets.UTF_8);
+          ByteBuffer buf = ByteBuffer.allocate(8 + payload.length).order(ByteOrder.LITTLE_ENDIAN);
+          buf.putInt(op);
+          buf.putInt(payload.length);
+          buf.put(payload);
+          pipe.write(buf.array());
+      }
+  
+      /** Read one frame with a soft timeout. Returns null on timeout. */
+      private static String readFrame(int timeoutMs) {
+          try {
+              long deadline = System.currentTimeMillis() + timeoutMs;
+              // RandomAccessFile doesn't support timeouts; do a quick availability check.
+              while (pipe.length() < 8) {
+                  if (System.currentTimeMillis() > deadline) return null;
+                  Thread.sleep(20);
+              }
+              byte[] header = new byte[8];
+              pipe.readFully(header);
+              ByteBuffer hb = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
+              int op = hb.getInt();
+              int len = hb.getInt();
+              if (len < 0 || len > (1 << 20)) throw new IOException("bad frame len " + len);
+              byte[] body = new byte[len];
+              pipe.readFully(body);
+              String json = new String(body, StandardCharsets.UTF_8);
+              KBClientMod.logger.info("[KB-RPC] <- op=" + op + " " + json);
+              return json;
+          } catch (Throwable t) {
+              KBClientMod.logger.warn("[KB-RPC] readFrame error: " + t);
+              return null;
+          }
+      }
+  
+      // ------------------------------------------------------------------
+      // presence loop
+      // ------------------------------------------------------------------
+      private static void loop() {
+          while (running) {
+              try {
+                  updatePresence(false);
+                  Thread.sleep(2000L);
+              } catch (InterruptedException e) {
+                  break;
+              } catch (Throwable t) {
+                  KBClientMod.logger.warn("[KB-RPC] loop error: " + t);
+                  break;
+              }
+          }
+      }
+  
+      private static void updatePresence(boolean force) {
+          Minecraft mc = Minecraft.getMinecraft();
+          String details, state;
+  
+          if (mc.theWorld == null) {
+              details = "In the menus";
+              state = "KB Client 3.0";
+          } else if (mc.isSingleplayer()) {
+              details = "Singleplayer";
+              String worldName = "world";
+              try {
+                  if (mc.getIntegratedServer() != null) worldName = mc.getIntegratedServer().getWorldName();
+              } catch (Throwable ignored) { }
+              state = "World: " + worldName;
+          } else {
+              String ip = (mc.getCurrentServerData() != null)
+                      ? mc.getCurrentServerData().serverIP
+                      : "Unknown server";
+              details = "Playing on " + ip;
+              state = mc.theWorld.playerEntities.size() + " players online";
+          }
+  
+          if (!force && details.equals(lastDetails) && state.equals(lastState)) return;
+          lastDetails = details;
+          lastState = state;
+  
+          long pid = currentPid();
+          String json = "{"
+                  + "\"cmd\":\"SET_ACTIVITY\","
+                  + "\"args\":{"
+                  +   "\"pid\":" + pid + ","
+                  +   "\"activity\":{"
+                  +     "\"details\":" + quote(details) + ","
+                  +     "\"state\":" + quote(state) + ","
+                  +     "\"timestamps\":{\"start\":" + startTime + "},"
+                  +     "\"assets\":{"
+                  +       "\"large_image\":\"oryvex\","
+                  +       "\"large_text\":\"KB Client 3.0\","
+                  +       "\"small_image\":\"minecraft\","
+                  +       "\"small_text\":\"Minecraft 1.8.9\""
+                  +     "}"
+                  +   "}"
+                  + "},"
+                  + "\"nonce\":\"" + System.nanoTime() + "\""
+                  + "}";
+  
+          try {
+              KBClientMod.logger.info("[KB-RPC] -> activity (pid=" + pid + ")");
+              sendFrame(OP_FRAME, json);
+              readFrame(800);
+          } catch (IOException e) {
+              KBClientMod.logger.warn("[KB-RPC] send failed: " + e);
+              running = false;
+          }
+      }
+  
+      private static long currentPid() {
+          try {
+              String name = ManagementFactory.getRuntimeMXBean().getName();
+              int at = name.indexOf('@');
+              if (at > 0) return Long.parseLong(name.substring(0, at));
+          } catch (Throwable ignored) { }
+          return 0L;
+      }
+  
+      private static String quote(String s) {
+          StringBuilder sb = new StringBuilder(s.length() + 2);
+          sb.append('"');
+          for (int i = 0; i < s.length(); i++) {
+              char c = s.charAt(i);
+              if (c == '"' || c == '\\') sb.append('\\').append(c);
+              else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+              else sb.append(c);
+          }
+          sb.append('"');
+          return sb.toString();
+      }
+  }
         │               ├── GlSafe.java
   package com.oryvex.kbclient;
   
@@ -7118,6 +7977,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
           ClientRegistry.registerKeyBinding(openKey);
           installLoading();
+          if (Settings.discordRpc) DiscordRPC.start();
+          Runtime.getRuntime().addShutdownHook(new Thread(DiscordRPC::stop, "KBClient-RPC-Shutdown"));
       }
   
       /** swap Minecraft's loading renderer (world load/save) for the custom one */
@@ -9009,7 +9870,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   public class GuiKbOptions extends FadeScreen {
       private final KBTracker tracker;
       private final GuiScreen parent;
-      private UiButton bHud, bPart, bToast, bLoad, bFade;
+      private UiButton bHud, bPart, bToast, bLoad, bFade, bRpc;
       private int cardX, cardY, cardW, cardH;
   
       public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
@@ -9025,20 +9886,22 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           cardW = bw + 28;
           cardX = cx - cardW / 2;
           cardY = y - 42;
-          cardH = 7 * (bh + gap) + 62;
+          cardH = 8 * (bh + gap) + 62;
   
           bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
           bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
           bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
           bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
           bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
+          bRpc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(290);
           this.buttonList.add(bHud);
           this.buttonList.add(bPart);
           this.buttonList.add(bToast);
           this.buttonList.add(bLoad);
           this.buttonList.add(bFade);
-          this.buttonList.add(new UiButton(6, cx - bw / 2, y + 5 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
-          this.buttonList.add(new UiButton(7, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+          this.buttonList.add(bRpc);
+          this.buttonList.add(new UiButton(6, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
+          this.buttonList.add(new UiButton(7, cx - bw / 2, y + 7 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
           sync();
       }
   
@@ -9047,6 +9910,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           bPart.on = Settings.particles;
           bToast.on = Settings.toasts;
           bLoad.on = Settings.customLoading;
+          if (bRpc != null) bRpc.on = Settings.discordRpc;
           bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
       }
   
@@ -9488,6 +10352,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       public static boolean particles = true;
       public static boolean toasts = true;
       public static boolean customLoading = true;
+      public static boolean discordRpc = true;
       public static int fade = 2;
   
       private static File file() {
@@ -9507,6 +10372,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               particles = Boolean.parseBoolean(p.getProperty("particles", "true"));
               toasts = Boolean.parseBoolean(p.getProperty("toasts", "true"));
               customLoading = Boolean.parseBoolean(p.getProperty("customLoading", "true"));
+              discordRpc = Boolean.parseBoolean(p.getProperty("discordRpc", "true"));
               fade = Math.max(0, Math.min(3, Integer.parseInt(p.getProperty("fade", "2"))));
           } catch (Throwable ignored) { }
       }
@@ -9518,6 +10384,7 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
               p.setProperty("particles", String.valueOf(particles));
               p.setProperty("toasts", String.valueOf(toasts));
               p.setProperty("customLoading", String.valueOf(customLoading));
+              p.setProperty("discordRpc", String.valueOf(discordRpc));
               p.setProperty("fade", String.valueOf(fade));
               FileOutputStream out = new FileOutputStream(file());
               try { p.store(out, "KB Client settings"); } finally { out.close(); }

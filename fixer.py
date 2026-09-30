@@ -1,4 +1,11 @@
-package com.oryvex.kbclient;
+import os
+
+def create_fixer():
+    # Target the DiscordRPC file
+    target_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "DiscordRPC.java")
+    
+    # Use a raw string so Java escapes (like \\ and \") translate perfectly
+    java_code = r"""package com.oryvex.kbclient;
 
 import net.minecraft.client.Minecraft;
 
@@ -257,3 +264,13 @@ public final class DiscordRPC {
         return sb.toString();
     }
 }
+"""
+
+    os.makedirs(os.path.dirname(target_file), exist_ok=True)
+    with open(target_file, "w", encoding="utf-8") as f:
+        f.write(java_code)
+    print(f"Fixed File Created: {target_file}")
+    print("DiscordRPC has been fixed. Re-run your Gradle build!")
+
+if __name__ == "__main__":
+    create_fixer()
