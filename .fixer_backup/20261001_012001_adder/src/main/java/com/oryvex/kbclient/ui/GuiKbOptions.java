@@ -78,7 +78,6 @@ public class GuiKbOptions extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-    if (bDisc != null) bDisc.displayString = "Discord RPC: " + com.oryvex.kbclient.DiscordRPC.statusText();
         drawBackdrop(30);
         Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
         Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);

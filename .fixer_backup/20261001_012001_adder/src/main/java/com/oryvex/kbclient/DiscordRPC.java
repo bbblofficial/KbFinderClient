@@ -2,31 +2,23 @@ package com.oryvex.kbclient;
 
 import com.oryvex.kbclient.ui.GuiAnalyzer;
 import com.oryvex.kbclient.ui.Settings;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 
 /**
- * Discord Rich Presence ("Playing KB Client").  Added by adder.py (v2).
+ * Discord Rich Presence ("Playing KB Client").  Added by adder.py.
  *
  * No external library: it speaks Discord's local IPC protocol directly over the
- * named pipe discord-ipc-N (Windows).  The Discord DESKTOP app must be running.
- * Art assets "oryvex" (large) and "minecraft" (small) must be uploaded in
+ * named pipe \\?\pipe\discord-ipc-N (Windows).  The Discord desktop app must be
+ * running.  Art assets "oryvex" (large) and "minecraft" (small) must be uploaded in
  * Developer Portal -> your application -> Rich Presence -> Art Assets.
- *
- * Diagnostics: see .minecraft/kbclient/discord-rpc.log and the status text on the
- * Options screen ("Discord RPC: Connected / Discord not found / Rejected").
  */
 public final class DiscordRPC {
     public static final String APP_ID = "1554952903758716989";
@@ -44,29 +36,19 @@ public final class DiscordRPC {
     private static volatile boolean active;
     private static volatile int generation;
     private static volatile Activity pending;
-    private static volatile String status = "Off";
     private static Thread worker;
     private static int ticks;
     private static String curKey = "menu";
     private static long curStart;
-    private static boolean logFresh = true;
 
     private DiscordRPC() {}
 
     // ---- public api ------------------------------------------------------------
-    /** Short text for the Options screen. */
-    public static String statusText() {
-        return active ? status : "Off";
-    }
-
     /** Starts the presence (if enabled in Options). Safe to call repeatedly. */
     public static synchronized void start() {
         if (!Settings.discordRpc || active) return;
-        log("starting - app id " + APP_ID + ", os=" + System.getProperty("os.name")
-                + ", java=" + System.getProperty("java.version") + ", pid=" + PID);
         if (!WINDOWS) {
-            status = "Windows only";
-            log("only supported on Windows, disabled");
+            log("Discord RPC: only supported on Windows, disabled");
             return;
         }
         try {
@@ -74,15 +56,12 @@ public final class DiscordRPC {
         } catch (InterruptedException ignored) { }
 
         active = true;
-        status = "Connecting...";
         final int gen = ++generation;
         curKey = "menu";
         curStart = System.currentTimeMillis() / 1000L;
         pending = new Activity("In the menus", "KB Client " + KBClientMod.VERSION, curStart);
 
-        worker = new Thread(new Runnable() {
-            public void run() { loop(gen); }
-        }, "KBClient-DiscordRPC");
+        worker = new Thread(() -> loop(gen), "KBClient-DiscordRPC");
         worker.setDaemon(true);
         worker.start();
     }
@@ -142,59 +121,42 @@ public final class DiscordRPC {
     private static void loop(int gen) {
         Pipe pipe = null;
         String sent = null;
-        String lastErr = null;
         long lastSend = 0L;
-        boolean firstAck = true;
+        boolean warned = false;
         try {
             while (generation == gen) {
                 try {
                     if (pipe == null) {
                         pipe = Pipe.open(APP_ID);
                         sent = null;
-                        lastErr = null;
-                        firstAck = true;
-                        status = "Connected";
-                        log("connected to Discord: " + pipe.ready);
+                        warned = false;
+                        log("Discord RPC connected");
                     }
                     Activity a = pending;
                     long now = System.currentTimeMillis();
                     if (a != null && !a.sig().equals(sent) && now - lastSend >= MIN_GAP_MS) {
-                        String resp = pipe.send(a.json());
+                        pipe.send(a.json());
                         sent = a.sig();
                         lastSend = now;
-                        if (resp.contains("\"evt\":\"ERROR\"") || resp.contains("\"evt\": \"ERROR\"")) {
-                            status = "Rejected (see log)";
-                            log("Discord rejected the presence: " + cut(resp, 400));
-                        } else {
-                            status = "Connected";
-                            if (firstAck) {
-                                firstAck = false;
-                                log("presence set OK: " + cut(resp, 300));
-                            }
-                        }
                     }
                     Thread.sleep(1000L);
                 } catch (IOException e) {
                     if (pipe != null) { pipe.close(); pipe = null; }
-                    String msg = String.valueOf(e.getMessage());
-                    status = msg.contains("rejected") ? "Rejected (see log)" : "Discord not found";
-                    if (!msg.equals(lastErr)) {
-                        log("not connected: " + msg + "  -> retrying every 10s");
-                        lastErr = msg;
+                    if (!warned) {
+                        log("Discord RPC: Discord not reachable (" + e + "), retrying every 10s");
+                        warned = true;
                     }
                     Thread.sleep(RETRY_MS);
                 }
             }
         } catch (InterruptedException ignored) {
         } catch (Throwable t) {
-            status = "Error (see log)";
-            log("worker stopped: " + t);
+            log("Discord RPC stopped: " + t);
         } finally {
             if (pipe != null) {
                 try { pipe.send(Activity.clearJson()); } catch (Throwable ignored) { }
                 pipe.close();
             }
-            log("stopped");
         }
     }
 
@@ -213,7 +175,6 @@ public final class DiscordRPC {
 
         String json() {
             return "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" + PID + ",\"activity\":{"
-                    + "\"type\":0,"
                     + "\"details\":\"" + esc(clip(details)) + "\","
                     + "\"state\":\"" + esc(clip(state)) + "\","
                     + "\"timestamps\":{\"start\":" + start + "},"
@@ -230,58 +191,48 @@ public final class DiscordRPC {
 
     // ---- Discord IPC (named pipe) ----------------------------------------------
     private static final class Pipe {
-        private static final String[] PREFIXES = { "\\\\?\\pipe\\", "\\\\.\\pipe\\" };
         private final RandomAccessFile file;
-        String ready = "";
 
         private Pipe(RandomAccessFile file) { this.file = file; }
 
         static Pipe open(String appId) throws IOException {
-            StringBuilder errs = new StringBuilder();
+            IOException last = null;
             for (int i = 0; i < 10; i++) {
-                for (int k = 0; k < PREFIXES.length; k++) {
-                    RandomAccessFile f;
-                    try {
-                        f = new RandomAccessFile(PREFIXES[k] + "discord-ipc-" + i, "rw");
-                    } catch (IOException e) {
-                        if (i == 0 && errs.length() < 300) errs.append("ipc-0 (").append(k).append("): ").append(e.getMessage()).append("; ");
-                        continue;
-                    }
-                    Pipe p = new Pipe(f);
+                try {
+                    Pipe p = new Pipe(new RandomAccessFile("\\\\?\\pipe\\discord-ipc-" + i, "rw"));
                     try {
                         p.handshake(appId);
                         return p;
                     } catch (IOException e) {
+                        last = e;
                         p.close();
-                        if (errs.length() < 600) errs.append("ipc-").append(i).append(": ").append(e.getMessage()).append("; ");
-                        if (String.valueOf(e.getMessage()).contains("rejected")) throw e;
                     }
+                } catch (IOException e) {
+                    last = e;
                 }
             }
-            throw new IOException(errs.length() > 0 ? errs.toString()
-                    : "no discord-ipc pipe found (is the Discord desktop app running?)");
+            throw last != null ? last : new IOException("no discord-ipc pipe found");
         }
 
         private void handshake(String appId) throws IOException {
             write(0, "{\"v\":1,\"client_id\":\"" + appId + "\"}");
             for (int i = 0; i < 4; i++) {
                 Frame f = read();
-                if (f.op == 3) { write(4, f.body); continue; }                          // ping -> pong
-                if (f.op == 2) throw new IOException("handshake rejected: " + f.body);    // close
-                ready = cut(f.body, 160);
-                return;                                                                   // READY
+                if (f.op == 3) { write(4, f.body); continue; }                       // ping -> pong
+                if (f.op == 2) throw new IOException("handshake rejected: " + f.body); // close
+                return;                                                                // READY
             }
         }
 
-        String send(String json) throws IOException {
+        void send(String json) throws IOException {
             write(1, json);
             for (int i = 0; i < 8; i++) {
                 Frame f = read();
                 if (f.op == 3) { write(4, f.body); continue; }
                 if (f.op == 2) throw new IOException("Discord closed the connection: " + f.body);
-                return f.body;
+                if (f.body.contains("\"evt\":\"ERROR\"")) log("Discord RPC rejected the presence: " + f.body);
+                return;
             }
-            return "";
         }
 
         private void write(int op, String json) throws IOException {
@@ -325,10 +276,6 @@ public final class DiscordRPC {
         return s.length() > 128 ? s.substring(0, 128) : s;
     }
 
-    private static String cut(String s, int n) {
-        return s == null ? "" : (s.length() > n ? s.substring(0, n) + "..." : s);
-    }
-
     private static String esc(String s) {
         StringBuilder b = new StringBuilder(s.length() + 8);
         for (int i = 0; i < s.length(); i++) {
@@ -356,21 +303,9 @@ public final class DiscordRPC {
         }
     }
 
-    /** Logs to the game log AND to .minecraft/kbclient/discord-rpc.log (overwritten each launch). */
-    private static synchronized void log(String s) {
+    private static void log(String s) {
         try {
-            if (KBClientMod.logger != null) KBClientMod.logger.info("[KBClient] Discord RPC: " + s);
-        } catch (Throwable ignored) { }
-        try {
-            File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
-            if (!dir.exists()) dir.mkdirs();
-            PrintWriter w = new PrintWriter(new FileWriter(new File(dir, "discord-rpc.log"), !logFresh));
-            logFresh = false;
-            try {
-                w.println(new SimpleDateFormat("HH:mm:ss").format(new Date()) + "  " + s);
-            } finally {
-                w.close();
-            }
+            if (KBClientMod.logger != null) KBClientMod.logger.info("[KBClient] " + s);
         } catch (Throwable ignored) { }
     }
 }

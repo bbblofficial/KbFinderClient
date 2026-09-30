@@ -7,6 +7,8 @@ Put this file in the project root (next to build.gradle) and run:
     python adder.py              apply all changes
     python adder.py --dry-run    show what would change, write nothing
     python adder.py --undo       restore the files from the last adder.py run
+    python adder.py --test       connect to Discord WITHOUT Minecraft and show a test
+                                 status for 60s (finds out if Discord / app id is OK)
 
 What it does
   * creates  src/main/java/com/oryvex/kbclient/DiscordRPC.java
@@ -22,10 +24,14 @@ Running it twice is safe: already-patched files are skipped.
 """
 
 import argparse
+import json
 import os
 import shutil
+import socket
+import struct
 import sys
 import time
+import uuid
 
 APP_ID = "1554952903758716989"
 
@@ -47,23 +53,31 @@ JAVA_RPC = r'''package com.oryvex.kbclient;
 
 import com.oryvex.kbclient.ui.GuiAnalyzer;
 import com.oryvex.kbclient.ui.Settings;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 
 /**
- * Discord Rich Presence ("Playing KB Client").  Added by adder.py.
+ * Discord Rich Presence ("Playing KB Client").  Added by adder.py (v2).
  *
  * No external library: it speaks Discord's local IPC protocol directly over the
- * named pipe \\?\pipe\discord-ipc-N (Windows).  The Discord desktop app must be
- * running.  Art assets "oryvex" (large) and "minecraft" (small) must be uploaded in
+ * named pipe discord-ipc-N (Windows).  The Discord DESKTOP app must be running.
+ * Art assets "oryvex" (large) and "minecraft" (small) must be uploaded in
  * Developer Portal -> your application -> Rich Presence -> Art Assets.
+ *
+ * Diagnostics: see .minecraft/kbclient/discord-rpc.log and the status text on the
+ * Options screen ("Discord RPC: Connected / Discord not found / Rejected").
  */
 public final class DiscordRPC {
     public static final String APP_ID = "@@APP_ID@@";
@@ -81,19 +95,29 @@ public final class DiscordRPC {
     private static volatile boolean active;
     private static volatile int generation;
     private static volatile Activity pending;
+    private static volatile String status = "Off";
     private static Thread worker;
     private static int ticks;
     private static String curKey = "menu";
     private static long curStart;
+    private static boolean logFresh = true;
 
     private DiscordRPC() {}
 
     // ---- public api ------------------------------------------------------------
+    /** Short text for the Options screen. */
+    public static String statusText() {
+        return active ? status : "Off";
+    }
+
     /** Starts the presence (if enabled in Options). Safe to call repeatedly. */
     public static synchronized void start() {
         if (!Settings.discordRpc || active) return;
+        log("starting - app id " + APP_ID + ", os=" + System.getProperty("os.name")
+                + ", java=" + System.getProperty("java.version") + ", pid=" + PID);
         if (!WINDOWS) {
-            log("Discord RPC: only supported on Windows, disabled");
+            status = "Windows only";
+            log("only supported on Windows, disabled");
             return;
         }
         try {
@@ -101,12 +125,15 @@ public final class DiscordRPC {
         } catch (InterruptedException ignored) { }
 
         active = true;
+        status = "Connecting...";
         final int gen = ++generation;
         curKey = "menu";
         curStart = System.currentTimeMillis() / 1000L;
         pending = new Activity("In the menus", "KB Client " + KBClientMod.VERSION, curStart);
 
-        worker = new Thread(() -> loop(gen), "KBClient-DiscordRPC");
+        worker = new Thread(new Runnable() {
+            public void run() { loop(gen); }
+        }, "KBClient-DiscordRPC");
         worker.setDaemon(true);
         worker.start();
     }
@@ -166,42 +193,59 @@ public final class DiscordRPC {
     private static void loop(int gen) {
         Pipe pipe = null;
         String sent = null;
+        String lastErr = null;
         long lastSend = 0L;
-        boolean warned = false;
+        boolean firstAck = true;
         try {
             while (generation == gen) {
                 try {
                     if (pipe == null) {
                         pipe = Pipe.open(APP_ID);
                         sent = null;
-                        warned = false;
-                        log("Discord RPC connected");
+                        lastErr = null;
+                        firstAck = true;
+                        status = "Connected";
+                        log("connected to Discord: " + pipe.ready);
                     }
                     Activity a = pending;
                     long now = System.currentTimeMillis();
                     if (a != null && !a.sig().equals(sent) && now - lastSend >= MIN_GAP_MS) {
-                        pipe.send(a.json());
+                        String resp = pipe.send(a.json());
                         sent = a.sig();
                         lastSend = now;
+                        if (resp.contains("\"evt\":\"ERROR\"") || resp.contains("\"evt\": \"ERROR\"")) {
+                            status = "Rejected (see log)";
+                            log("Discord rejected the presence: " + cut(resp, 400));
+                        } else {
+                            status = "Connected";
+                            if (firstAck) {
+                                firstAck = false;
+                                log("presence set OK: " + cut(resp, 300));
+                            }
+                        }
                     }
                     Thread.sleep(1000L);
                 } catch (IOException e) {
                     if (pipe != null) { pipe.close(); pipe = null; }
-                    if (!warned) {
-                        log("Discord RPC: Discord not reachable (" + e + "), retrying every 10s");
-                        warned = true;
+                    String msg = String.valueOf(e.getMessage());
+                    status = msg.contains("rejected") ? "Rejected (see log)" : "Discord not found";
+                    if (!msg.equals(lastErr)) {
+                        log("not connected: " + msg + "  -> retrying every 10s");
+                        lastErr = msg;
                     }
                     Thread.sleep(RETRY_MS);
                 }
             }
         } catch (InterruptedException ignored) {
         } catch (Throwable t) {
-            log("Discord RPC stopped: " + t);
+            status = "Error (see log)";
+            log("worker stopped: " + t);
         } finally {
             if (pipe != null) {
                 try { pipe.send(Activity.clearJson()); } catch (Throwable ignored) { }
                 pipe.close();
             }
+            log("stopped");
         }
     }
 
@@ -220,6 +264,7 @@ public final class DiscordRPC {
 
         String json() {
             return "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" + PID + ",\"activity\":{"
+                    + "\"type\":0,"
                     + "\"details\":\"" + esc(clip(details)) + "\","
                     + "\"state\":\"" + esc(clip(state)) + "\","
                     + "\"timestamps\":{\"start\":" + start + "},"
@@ -236,48 +281,58 @@ public final class DiscordRPC {
 
     // ---- Discord IPC (named pipe) ----------------------------------------------
     private static final class Pipe {
+        private static final String[] PREFIXES = { "\\\\?\\pipe\\", "\\\\.\\pipe\\" };
         private final RandomAccessFile file;
+        String ready = "";
 
         private Pipe(RandomAccessFile file) { this.file = file; }
 
         static Pipe open(String appId) throws IOException {
-            IOException last = null;
+            StringBuilder errs = new StringBuilder();
             for (int i = 0; i < 10; i++) {
-                try {
-                    Pipe p = new Pipe(new RandomAccessFile("\\\\?\\pipe\\discord-ipc-" + i, "rw"));
+                for (int k = 0; k < PREFIXES.length; k++) {
+                    RandomAccessFile f;
+                    try {
+                        f = new RandomAccessFile(PREFIXES[k] + "discord-ipc-" + i, "rw");
+                    } catch (IOException e) {
+                        if (i == 0 && errs.length() < 300) errs.append("ipc-0 (").append(k).append("): ").append(e.getMessage()).append("; ");
+                        continue;
+                    }
+                    Pipe p = new Pipe(f);
                     try {
                         p.handshake(appId);
                         return p;
                     } catch (IOException e) {
-                        last = e;
                         p.close();
+                        if (errs.length() < 600) errs.append("ipc-").append(i).append(": ").append(e.getMessage()).append("; ");
+                        if (String.valueOf(e.getMessage()).contains("rejected")) throw e;
                     }
-                } catch (IOException e) {
-                    last = e;
                 }
             }
-            throw last != null ? last : new IOException("no discord-ipc pipe found");
+            throw new IOException(errs.length() > 0 ? errs.toString()
+                    : "no discord-ipc pipe found (is the Discord desktop app running?)");
         }
 
         private void handshake(String appId) throws IOException {
             write(0, "{\"v\":1,\"client_id\":\"" + appId + "\"}");
             for (int i = 0; i < 4; i++) {
                 Frame f = read();
-                if (f.op == 3) { write(4, f.body); continue; }                       // ping -> pong
-                if (f.op == 2) throw new IOException("handshake rejected: " + f.body); // close
-                return;                                                                // READY
+                if (f.op == 3) { write(4, f.body); continue; }                          // ping -> pong
+                if (f.op == 2) throw new IOException("handshake rejected: " + f.body);    // close
+                ready = cut(f.body, 160);
+                return;                                                                   // READY
             }
         }
 
-        void send(String json) throws IOException {
+        String send(String json) throws IOException {
             write(1, json);
             for (int i = 0; i < 8; i++) {
                 Frame f = read();
                 if (f.op == 3) { write(4, f.body); continue; }
                 if (f.op == 2) throw new IOException("Discord closed the connection: " + f.body);
-                if (f.body.contains("\"evt\":\"ERROR\"")) log("Discord RPC rejected the presence: " + f.body);
-                return;
+                return f.body;
             }
+            return "";
         }
 
         private void write(int op, String json) throws IOException {
@@ -321,6 +376,10 @@ public final class DiscordRPC {
         return s.length() > 128 ? s.substring(0, 128) : s;
     }
 
+    private static String cut(String s, int n) {
+        return s == null ? "" : (s.length() > n ? s.substring(0, n) + "..." : s);
+    }
+
     private static String esc(String s) {
         StringBuilder b = new StringBuilder(s.length() + 8);
         for (int i = 0; i < s.length(); i++) {
@@ -348,9 +407,21 @@ public final class DiscordRPC {
         }
     }
 
-    private static void log(String s) {
+    /** Logs to the game log AND to .minecraft/kbclient/discord-rpc.log (overwritten each launch). */
+    private static synchronized void log(String s) {
         try {
-            if (KBClientMod.logger != null) KBClientMod.logger.info("[KBClient] " + s);
+            if (KBClientMod.logger != null) KBClientMod.logger.info("[KBClient] Discord RPC: " + s);
+        } catch (Throwable ignored) { }
+        try {
+            File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+            if (!dir.exists()) dir.mkdirs();
+            PrintWriter w = new PrintWriter(new FileWriter(new File(dir, "discord-rpc.log"), !logFresh));
+            logFresh = false;
+            try {
+                w.println(new SimpleDateFormat("HH:mm:ss").format(new Date()) + "  " + s);
+            } finally {
+                w.close();
+            }
         } catch (Throwable ignored) { }
     }
 }
@@ -491,6 +562,162 @@ def patch_readme(d):
     return "ok", "added a README section"
 
 
+def patch_gui_status(d):
+    if "DiscordRPC.statusText" in d.text():
+        return "skip", "status text already patched"
+    if "bDisc" not in d.text():
+        return "fail", "toggle missing, cannot add status text"
+    ok = d.insert_after(
+        "public void drawScreen(",
+        'if (bDisc != null) bDisc.displayString = "Discord RPC: " + com.oryvex.kbclient.DiscordRPC.statusText();',
+        prefix=True,
+    )
+    if not ok:
+        return "fail", "drawScreen() not found in GuiKbOptions.java"
+    return "ok", "toggle now shows live status (Connected / Discord not found / ...)"
+
+
+# --------------------------------------------------------------------------
+# --test : talk to Discord directly from Python (no Minecraft involved)
+# --------------------------------------------------------------------------
+class _FileIO:
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, b):
+        self.f.write(b)
+
+    def read(self, n):
+        buf = b""
+        while len(buf) < n:
+            chunk = self.f.read(n - len(buf))
+            if not chunk:
+                raise OSError("pipe closed by Discord")
+            buf += chunk
+        return buf
+
+    def close(self):
+        self.f.close()
+
+
+class _SockIO:
+    def __init__(self, s):
+        self.s = s
+
+    def write(self, b):
+        self.s.sendall(b)
+
+    def read(self, n):
+        buf = b""
+        while len(buf) < n:
+            chunk = self.s.recv(n - len(buf))
+            if not chunk:
+                raise OSError("socket closed by Discord")
+            buf += chunk
+        return buf
+
+    def close(self):
+        self.s.close()
+
+
+def _ipc_open():
+    last = None
+    for i in range(10):
+        if os.name == "nt":
+            for pre in (r"\\?\pipe\discord-ipc-", r"\\.\pipe\discord-ipc-"):
+                try:
+                    return _FileIO(open(pre + str(i), "r+b", buffering=0)), pre + str(i)
+                except OSError as e:
+                    last = e
+        else:
+            base = os.environ.get("XDG_RUNTIME_DIR") or os.environ.get("TMPDIR") or "/tmp"
+            path = os.path.join(base, "discord-ipc-%d" % i)
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                s.connect(path)
+                return _SockIO(s), path
+            except OSError as e:
+                s.close()
+                last = e
+    raise OSError(last or "no discord-ipc found")
+
+
+def _ipc_send(io, op, payload):
+    data = json.dumps(payload).encode("utf-8")
+    io.write(struct.pack("<II", op, len(data)) + data)
+
+
+def _ipc_recv(io):
+    op, ln = struct.unpack("<II", io.read(8))
+    body = io.read(ln).decode("utf-8", "replace") if ln else "{}"
+    try:
+        return op, json.loads(body)
+    except ValueError:
+        return op, {"raw": body}
+
+
+def run_test(app_id, seconds):
+    print("Discord test - application id %s" % app_id)
+    try:
+        io, where = _ipc_open()
+    except OSError as e:
+        print("  [FAIL] cannot reach Discord: %s" % e)
+        print("         Start the Discord DESKTOP app (not the website), log in, and run this")
+        print("         with the same Windows user (and not as admin unless Discord is too).")
+        return 1
+    print("  [OK]   connected to %s" % where)
+    try:
+        _ipc_send(io, 0, {"v": 1, "client_id": app_id})
+        op, msg = _ipc_recv(io)
+        if op == 2 or msg.get("evt") == "ERROR":
+            print("  [FAIL] Discord refused the application id: %s" % (msg.get("message") or msg))
+            print("         Check the id in the Developer Portal (General Information -> Application ID).")
+            return 1
+        user = (msg.get("data") or {}).get("user") or {}
+        print("  [OK]   logged in as: %s" % (user.get("username") or "?"))
+
+        act = {
+            "type": 0,
+            "details": "Testing KB Client",
+            "state": "adder.py --test",
+            "timestamps": {"start": int(time.time())},
+            "assets": {"large_image": "oryvex", "large_text": "KB Client",
+                       "small_image": "minecraft", "small_text": "Minecraft 1.8.9"},
+        }
+        _ipc_send(io, 1, {"cmd": "SET_ACTIVITY", "args": {"pid": os.getpid(), "activity": act},
+                          "nonce": str(uuid.uuid4())})
+        op, msg = _ipc_recv(io)
+        if msg.get("evt") == "ERROR":
+            print("  [FAIL] Discord rejected the status: %s" % ((msg.get("data") or {}).get("message") or msg))
+            return 1
+        print("  [OK]   status sent.")
+        print("\n  Now look at YOUR profile in Discord (click your avatar, bottom-left).")
+        print("  You should see \"Playing <your application name>\" with a timer.")
+        print("  - shown here but not in the mod  -> the mod isn't running this code (old jar?)")
+        print("  - NOT shown here                 -> Discord: Settings > Activity Privacy > turn ON")
+        print("                                      'Share my detected activity', and don't be Invisible")
+        print("  - shown but without pictures     -> art assets not uploaded / not processed yet")
+        print("\n  Keeping it alive for %d s - press Ctrl+C to stop." % seconds)
+        end = time.time() + seconds
+        try:
+            while time.time() < end:
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            pass
+        _ipc_send(io, 1, {"cmd": "SET_ACTIVITY", "args": {"pid": os.getpid()}, "nonce": str(uuid.uuid4())})
+        try:
+            _ipc_recv(io)
+        except OSError:
+            pass
+        print("  cleared.")
+        return 0
+    except OSError as e:
+        print("  [FAIL] connection error: %s" % e)
+        return 1
+    finally:
+        io.close()
+
+
 # --------------------------------------------------------------------------
 def info(tag, msg):
     print("  [%s] %s" % (tag, msg))
@@ -535,8 +762,13 @@ def main():
     ap.add_argument("project", nargs="?", help="project root (default: folder of adder.py)")
     ap.add_argument("--dry-run", action="store_true", help="show changes, write nothing")
     ap.add_argument("--undo", action="store_true", help="restore files from the last adder.py run")
+    ap.add_argument("--test", action="store_true", help="test Discord connection without Minecraft")
+    ap.add_argument("--seconds", type=int, default=60, help="how long --test keeps the status (default 60)")
     ap.add_argument("--app-id", default=APP_ID, help="Discord application id (default: %s)" % APP_ID)
     args = ap.parse_args()
+
+    if args.test:
+        sys.exit(run_test(args.app_id, args.seconds))
 
     root = find_root(args.project)
     print("Project: %s" % root)
@@ -564,9 +796,14 @@ def main():
     results["set"] = patch_settings(sett)
     results["gui"] = patch_gui(gui) if gui else ("fail", "GuiKbOptions.java not found")
     results["readme"] = patch_readme(readme) if readme else ("skip", "no README.md")
+    if gui and results["gui"][0] in ("ok", "skip"):
+        results["gui2"] = patch_gui_status(gui)
 
-    labels = {"mod": "KBClientMod.java", "set": "Settings.java", "gui": "GuiKbOptions.java", "readme": "README.md"}
-    for k in ("mod", "set", "gui", "readme"):
+    labels = {"mod": "KBClientMod.java", "set": "Settings.java", "gui": "GuiKbOptions.java",
+              "gui2": "GuiKbOptions.java", "readme": "README.md"}
+    for k in ("mod", "set", "gui", "gui2", "readme"):
+        if k not in results:
+            continue
         st, msg = results[k]
         info(st.upper(), "%s - %s" % (labels[k], msg))
 
@@ -632,14 +869,12 @@ def main():
     print("\nDone. Backup: %s" % os.path.relpath(run, root))
     print("""
 Next steps
-  1. Discord Developer Portal -> your app (%s) -> Rich Presence -> Art Assets:
-     upload discord_assets/oryvex.png   as  "oryvex"
-     upload discord_assets/minecraft.png as  "minecraft"
-     (images can take a few minutes to appear)
-  2. The text after "Playing ..." is the APPLICATION NAME from the portal.
-  3. Discord desktop must be running, and Settings -> Activity Privacy ->
-     "Share my activity" must be on.
-  4. Build:  gradlew build   (no build.gradle changes needed)
+  1. Build and REPLACE the old jar in .minecraft/mods (two KB Client jars = old one wins).
+  2. Start Minecraft. Open Options in KB Client: the Discord toggle shows the live status.
+     Full details: .minecraft/kbclient/discord-rpc.log
+  3. Not showing in Discord?  python adder.py --test   (works without Minecraft)
+  4. Art assets: Developer Portal -> your app (%s) -> Rich Presence -> Art Assets:
+     upload discord_assets/oryvex.png as "oryvex" and minecraft.png as "minecraft".
   5. Undo anytime:  python adder.py --undo
 """ % args.app_id)
 

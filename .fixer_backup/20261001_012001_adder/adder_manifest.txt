@@ -1,0 +1,2 @@
+M src/main/java/com/oryvex/kbclient/ui/GuiKbOptions.java
+M src/main/java/com/oryvex/kbclient/DiscordRPC.java
