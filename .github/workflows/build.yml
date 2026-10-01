@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Java 8
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '8'
@@ -24,38 +24,95 @@ jobs:
       - name: Install & Configure Gradle 4.10.3
         run: |
           wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
-          unzip -q gradle-4.10.3-bin.zip
+          unzip -q -o gradle-4.10.3-bin.zip
           export PATH=$PWD/gradle-4.10.3/bin:$PATH
           gradle wrapper --gradle-version 4.10.3
           chmod +x gradlew
 
-      - name: Download Google Fonts
+      - name: Download Fonts (Inter + Vazirmatn)
         run: |
-          mkdir -p src/main/resources/fonts
-          
-          # Inter Font (Dynamic extraction to handle version path changes)
-          curl -sL https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip -o inter.zip
-          INTER_FILE=$(unzip -l inter.zip | grep "Inter-Regular.ttf" | awk '{print $4}' | head -n 1)
-          if [ -n "$INTER_FILE" ]; then
-            unzip -j inter.zip "$INTER_FILE" -d src/main/resources/fonts
-          else
-            echo "Warning: Could not find Inter-Regular.ttf in archive"
+          set -e
+          FONTS_DIR="src/main/resources/fonts"
+          mkdir -p "$FONTS_DIR"
+
+          # پاک کردن نسخه‌های قبلی تا unzip تداخل نداشته باشه
+          rm -f "$FONTS_DIR/Inter-Regular.ttf" "$FONTS_DIR/InterVariable.ttf" \
+                "$FONTS_DIR/Vazirmatn-Regular.ttf"
+
+          # ---------- Inter ----------
+          INTER_OK=0
+          for URL in \
+            "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip" \
+            "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip" \
+            "https://github.com/rsms/inter/releases/download/v3.19/Inter-3.19.zip"
+          do
+            echo "Trying Inter: $URL"
+            if curl -sfL "$URL" -o inter.zip; then
+              # اولویت: Inter-Regular.ttf → Inter_18pt-Regular.ttf → InterVariable.ttf
+              INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)Inter-Regular\.ttf$" | head -n 1)
+              if [ -z "$INTER_FILE" ]; then
+                INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)Inter_18pt-Regular\.ttf$" | head -n 1)
+              fi
+              if [ -z "$INTER_FILE" ]; then
+                INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)InterVariable\.ttf$" | head -n 1)
+              fi
+
+              if [ -n "$INTER_FILE" ]; then
+                unzip -j -o inter.zip "$INTER_FILE" -d "$FONTS_DIR/"
+                BASENAME=$(basename "$INTER_FILE")
+                if [ "$BASENAME" != "Inter-Regular.ttf" ]; then
+                  mv -f "$FONTS_DIR/$BASENAME" "$FONTS_DIR/Inter-Regular.ttf"
+                fi
+                echo "✓ Inter ready as Inter-Regular.ttf (source: $BASENAME)"
+                INTER_OK=1
+                break
+              fi
+            fi
+          done
+          rm -f inter.zip
+
+          # ---------- Vazirmatn ----------
+          VAZIR_OK=0
+          for URL in \
+            "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-v33.003.zip" \
+            "https://github.com/rastikerdar/vazirmatn/releases/download/v33.0.3/Vazirmatn-v33.0.3.zip"
+          do
+            echo "Trying Vazirmatn: $URL"
+            if curl -sfL "$URL" -o vazir.zip; then
+              VAZIR_FILE=$(unzip -l vazir.zip | awk '{print $4}' | grep -E "Vazirmatn-Regular\.ttf$" | head -n 1)
+              if [ -n "$VAZIR_FILE" ]; then
+                unzip -j -o vazir.zip "$VAZIR_FILE" -d "$FONTS_DIR/"
+                echo "✓ Vazirmatn ready"
+                VAZIR_OK=1
+                break
+              fi
+            fi
+          done
+          rm -f vazir.zip
+
+          # ---------- Verification ----------
+          echo "----- fonts directory -----"
+          ls -la "$FONTS_DIR"/
+
+          if [ ! -f "$FONTS_DIR/Vazirmatn-Regular.ttf" ]; then
+            echo "::error::Vazirmatn-Regular.ttf is required (Persian font)"
+            exit 1
           fi
-          rm inter.zip
-          
-          # Vazirmatn Font (Persian) (Dynamic extraction)
-          curl -sL https://github.com/rastikerdar/vazirmatn/releases/download/v4.0.0/Vazirmatn-v4.0.0.zip -o vazir.zip
-          VAZIR_FILE=$(unzip -l vazir.zip | grep "Vazirmatn-Regular.ttf" | awk '{print $4}' | head -n 1)
-          if [ -n "$VAZIR_FILE" ]; then
-            unzip -j vazir.zip "$VAZIR_FILE" -d src/main/resources/fonts
-          else
-            echo "Warning: Could not find Vazirmatn-Regular.ttf in archive"
+
+          if [ ! -f "$FONTS_DIR/Inter-Regular.ttf" ]; then
+            echo "::warning::Inter not available — ModernFontRenderer will fall back to SansSerif"
           fi
-          rm vazir.zip
 
       - name: Build Mod with Gradle
         run: |
-          ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
+          ./gradlew build --no-daemon --stacktrace
+
+      - name: Verify Fonts Inside JAR
+        run: |
+          JAR=$(ls build/libs/KBClient-*.jar | head -n 1)
+          echo "JAR: $JAR"
+          echo "--- fonts inside jar ---"
+          unzip -l "$JAR" | grep -E "fonts/" || echo "::warning::No fonts found in jar!"
 
       - name: Upload Mod Artifact
         uses: actions/upload-artifact@v4
@@ -64,12 +121,16 @@ jobs:
           path: build/libs/*.jar
 
       - name: Obfuscate with ProGuard
+        if: hashFiles('proguard-rules.pro') != ''
         run: |
-          curl -sL -o proguard.zip https://github.com/Guardsquare/proguard/releases/download/v7.4.2/proguard-7.4.2.zip
-          unzip -q proguard.zip
+          curl -sfL -o proguard.zip https://github.com/Guardsquare/proguard/releases/download/v7.4.2/proguard-7.4.2.zip
+          unzip -q -o proguard.zip
           mkdir -p build/obf
           for jar in build/libs/*.jar; do
             name=$(basename "$jar" .jar)
+            case "$name" in
+              *-sources|*-dev) continue ;;
+            esac
             proguard-7.4.2/bin/proguard.sh \
               -injars "$jar" \
               -outjars "build/obf/${name}-obf.jar" \
@@ -77,6 +138,7 @@ jobs:
           done
 
       - name: Upload Obfuscated Artifact
+        if: hashFiles('proguard-rules.pro') != ''
         uses: actions/upload-artifact@v4
         with:
           name: KBClient-1.8.9-obfuscated

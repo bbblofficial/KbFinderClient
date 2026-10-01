@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""fix_inter.py — دانلود Inter از منابع جدید"""
-import io, os, sys, zipfile, urllib.request
+"""
+fix_workflow.py — تعمیر build.yml
+مشکل: unzip بدون -o روی فایل موجود سوال می‌پرسه و CI crash می‌کنه.
+راه‌حل: -o (overwrite) + حذف فایل‌های قبلی قبل از unzip.
+"""
+import sys
 from pathlib import Path
 
 
@@ -16,98 +20,161 @@ def find_root() -> Path:
 
 
 ROOT = find_root()
-FONTS_DIR = ROOT / "src" / "main" / "resources" / "fonts"
-FONTS_DIR.mkdir(parents=True, exist_ok=True)
+WORKFLOW_DIR = ROOT / ".github" / "workflows"
+WORKFLOW_DIR.mkdir(parents=True, exist_ok=True)
+WORKFLOW = WORKFLOW_DIR / "build.yml"
 
-TARGET = FONTS_DIR / "Inter-Regular.ttf"
-if TARGET.exists() and TARGET.stat().st_size > 10_000:
-    print(f"  [ OK  ] Inter-Regular.ttf already present")
-    sys.exit(0)
+WORKFLOW_CONTENT = r'''name: Build KB Client 1.8.9
 
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
 
-def download(url: str) -> bytes:
-    print(f"  [GET  ] {url}")
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read()
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-def save_from_zip(data: bytes):
-    zf = zipfile.ZipFile(io.BytesIO(data))
-    # اولویت: دقیقا Inter-Regular.ttf
-    for name in zf.namelist():
-        if os.path.basename(name).lower() == "inter-regular.ttf":
-            TARGET.write_bytes(zf.read(name))
-            return True
-    # بعد: هر ttf که regular داره
-    for name in zf.namelist():
-        b = os.path.basename(name).lower()
-        if b.endswith(".ttf") and "regular" in b:
-            TARGET.write_bytes(zf.read(name))
-            return True
-    return False
+      - name: Setup Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
 
+      - name: Install & Configure Gradle 4.10.3
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-4.10.3-bin.zip
+          unzip -q -o gradle-4.10.3-bin.zip
+          export PATH=$PWD/gradle-4.10.3/bin:$PATH
+          gradle wrapper --gradle-version 4.10.3
+          chmod +x gradlew
 
-# ---------------------------------------------------------------------------
-# منابع به‌ترتیب اولویت — همه از CDN های پایداری که واقعا کار می‌کنن
-# ---------------------------------------------------------------------------
-ZIP_URLS = [
-    # release رسمی Inter 4.1
-    "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
-    "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip",
-    "https://github.com/rsms/inter/releases/download/v3.19/Inter-3.19.zip",
-]
+      - name: Download Fonts (Inter + Vazirmatn)
+        run: |
+          set -e
+          FONTS_DIR="src/main/resources/fonts"
+          mkdir -p "$FONTS_DIR"
 
-# فایل‌های مستقیم ttf از CDN های عمومی
-DIRECT_URLS = [
-    # jsDelivr روی مخزن rsms/inter (شاخه main)
-    "https://cdn.jsdelivr.net/gh/rsms/inter@main/docs/font-files/Inter-Regular.ttf",
-    "https://cdn.jsdelivr.net/gh/rsms/inter@v4.0/docs/font-files/Inter-Regular.ttf",
-    # Google Fonts mirror (variable font — کار می‌کنه چون ttf معتبره)
-    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/inter/Inter%5Bopsz,wght%5D.ttf",
-    # منبع جایگزین: fontsource روی jsDelivr
-    "https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.16/files/inter-latin-400-normal.woff",
-]
+          # پاک کردن نسخه‌های قبلی تا unzip تداخل نداشته باشه
+          rm -f "$FONTS_DIR/Inter-Regular.ttf" "$FONTS_DIR/InterVariable.ttf" \
+                "$FONTS_DIR/Vazirmatn-Regular.ttf"
 
-ok = False
+          # ---------- Inter ----------
+          INTER_OK=0
+          for URL in \
+            "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip" \
+            "https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip" \
+            "https://github.com/rsms/inter/releases/download/v3.19/Inter-3.19.zip"
+          do
+            echo "Trying Inter: $URL"
+            if curl -sfL "$URL" -o inter.zip; then
+              # اولویت: Inter-Regular.ttf → Inter_18pt-Regular.ttf → InterVariable.ttf
+              INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)Inter-Regular\.ttf$" | head -n 1)
+              if [ -z "$INTER_FILE" ]; then
+                INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)Inter_18pt-Regular\.ttf$" | head -n 1)
+              fi
+              if [ -z "$INTER_FILE" ]; then
+                INTER_FILE=$(unzip -l inter.zip | awk '{print $4}' | grep -E "(^|/)InterVariable\.ttf$" | head -n 1)
+              fi
 
-print("[fix_inter] دانلود Inter ...")
-
-# ---- ۱) zip ها ----
-for url in ZIP_URLS:
-    try:
-        data = download(url)
-        if save_from_zip(data):
-            print(f"  [ OK  ] fonts/Inter-Regular.ttf  ({TARGET.stat().st_size} bytes)")
-            ok = True
-            break
-    except Exception as e:
-        print(f"         zip failed: {type(e).__name__}: {e}")
-
-# ---- ۲) ttf های مستقیم ----
-if not ok:
-    for url in DIRECT_URLS:
-        try:
-            data = download(url)
-            # اگر پسوند ttf داره یا حجم منطقیه، مستقیم ذخیره کن
-            if len(data) > 20_000:
-                TARGET.write_bytes(data)
-                print(f"  [ OK  ] fonts/Inter-Regular.ttf  ({TARGET.stat().st_size} bytes)")
-                ok = True
+              if [ -n "$INTER_FILE" ]; then
+                unzip -j -o inter.zip "$INTER_FILE" -d "$FONTS_DIR/"
+                BASENAME=$(basename "$INTER_FILE")
+                if [ "$BASENAME" != "Inter-Regular.ttf" ]; then
+                  mv -f "$FONTS_DIR/$BASENAME" "$FONTS_DIR/Inter-Regular.ttf"
+                fi
+                echo "✓ Inter ready as Inter-Regular.ttf (source: $BASENAME)"
+                INTER_OK=1
                 break
-        except Exception as e:
-            print(f"         direct failed: {type(e).__name__}: {e}")
+              fi
+            fi
+          done
+          rm -f inter.zip
 
+          # ---------- Vazirmatn ----------
+          VAZIR_OK=0
+          for URL in \
+            "https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-v33.003.zip" \
+            "https://github.com/rastikerdar/vazirmatn/releases/download/v33.0.3/Vazirmatn-v33.0.3.zip"
+          do
+            echo "Trying Vazirmatn: $URL"
+            if curl -sfL "$URL" -o vazir.zip; then
+              VAZIR_FILE=$(unzip -l vazir.zip | awk '{print $4}' | grep -E "Vazirmatn-Regular\.ttf$" | head -n 1)
+              if [ -n "$VAZIR_FILE" ]; then
+                unzip -j -o vazir.zip "$VAZIR_FILE" -d "$FONTS_DIR/"
+                echo "✓ Vazirmatn ready"
+                VAZIR_OK=1
+                break
+              fi
+            fi
+          done
+          rm -f vazir.zip
 
-if not ok:
-    print()
-    print("  [WARN ] Inter دانلود نشد.")
-    print("          ModernFontRenderer خودش به SansSerif fallback می‌کنه — مشکلی پیش نمیاد.")
-    print("          ولی اگه Inter واقعی می‌خوای، از این لینک دستی دانلود کن:")
-    print("             https://rsms.me/inter/")
-    print(f"          و فایل Inter-Regular.ttf رو بذار در:")
-    print(f"             {FONTS_DIR}")
-    sys.exit(0)
+          # ---------- Verification ----------
+          echo "----- fonts directory -----"
+          ls -la "$FONTS_DIR"/
 
+          if [ ! -f "$FONTS_DIR/Vazirmatn-Regular.ttf" ]; then
+            echo "::error::Vazirmatn-Regular.ttf is required (Persian font)"
+            exit 1
+          fi
+
+          if [ ! -f "$FONTS_DIR/Inter-Regular.ttf" ]; then
+            echo "::warning::Inter not available — ModernFontRenderer will fall back to SansSerif"
+          fi
+
+      - name: Build Mod with Gradle
+        run: |
+          ./gradlew build --no-daemon --stacktrace
+
+      - name: Verify Fonts Inside JAR
+        run: |
+          JAR=$(ls build/libs/KBClient-*.jar | head -n 1)
+          echo "JAR: $JAR"
+          echo "--- fonts inside jar ---"
+          unzip -l "$JAR" | grep -E "fonts/" || echo "::warning::No fonts found in jar!"
+
+      - name: Upload Mod Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KBClient-1.8.9
+          path: build/libs/*.jar
+
+      - name: Obfuscate with ProGuard
+        if: hashFiles('proguard-rules.pro') != ''
+        run: |
+          curl -sfL -o proguard.zip https://github.com/Guardsquare/proguard/releases/download/v7.4.2/proguard-7.4.2.zip
+          unzip -q -o proguard.zip
+          mkdir -p build/obf
+          for jar in build/libs/*.jar; do
+            name=$(basename "$jar" .jar)
+            case "$name" in
+              *-sources|*-dev) continue ;;
+            esac
+            proguard-7.4.2/bin/proguard.sh \
+              -injars "$jar" \
+              -outjars "build/obf/${name}-obf.jar" \
+              @proguard-rules.pro
+          done
+
+      - name: Upload Obfuscated Artifact
+        if: hashFiles('proguard-rules.pro') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: KBClient-1.8.9-obfuscated
+          path: build/obf/*.jar
+'''
+
+WORKFLOW.write_text(WORKFLOW_CONTENT, encoding="utf-8")
+print(f"  [WRITE] {WORKFLOW.relative_to(ROOT)}")
 print()
-print("  Done. حالا:  .\\gradlew clean build")
+print("Done. حالا push کن:")
+print("  git add .github/workflows/build.yml")
+print("  git commit -m 'fix: overwrite fonts without prompt'")
+print("  git push")
