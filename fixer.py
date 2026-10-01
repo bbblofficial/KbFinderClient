@@ -1,4 +1,11 @@
-package com.oryvex.kbclient.kb;
+import os
+import shutil
+
+TARGET_FILE = os.path.join(
+    "src", "main", "java", "com", "oryvex", "kbclient", "kb", "KBEstimator.java"
+)
+
+CLEAN_JAVA_CODE = '''package com.oryvex.kbclient.kb;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -327,3 +334,24 @@ public final class KBEstimator {
         }
     }
 }
+'''
+
+def main():
+    if not os.path.exists(TARGET_FILE):
+        print(f"❌ Error: Cannot find {TARGET_FILE}")
+        print("لطفاً مطمئن شوید دستور را در پوشه اصلی KnockbackClientMod اجرا می‌کنید.")
+        return
+
+    # ایجاد بکاپ از فایل فعلی
+    backup_path = TARGET_FILE + ".bak"
+    shutil.copy2(TARGET_FILE, backup_path)
+    print(f"📦 بکاپ فایل قدیمی در {backup_path} ذخیره شد.")
+
+    # بازنویسی مستقیم و استاندارد با UTF-8 و خطوط Unix LF
+    with open(TARGET_FILE, "w", encoding="utf-8", newline="\n") as f:
+        f.write(CLEAN_JAVA_CODE)
+
+    print("🎉 باگ با موفقیت برطرف شد! فایل KBEstimator.java کاملاً بازنویسی و پچ گردید.")
+
+if __name__ == "__main__":
+    main()
