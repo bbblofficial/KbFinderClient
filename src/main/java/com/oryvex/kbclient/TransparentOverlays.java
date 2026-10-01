@@ -1,25 +1,42 @@
 package com.oryvex.kbclient;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiNewChat;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.scoreboard.Score;
+import net.minecraft.scoreboard.ScoreObjective;
+import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardObjective;
+import net.minecraft.scoreboard.Team;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
+
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Installs a custom GuiIngame that renders the scoreboard, tab list and chat
- * WITHOUT the semi-transparent dark background panels.
+ * Makes the scoreboard / tab list / chat backgrounds fully transparent
+ * WITHOUT removing any text content.
  *
- * We do NOT remove the content - we only skip the background rects.
+ *  - Tab list     : RenderGameOverlayEvent.Pre PLAYER_LIST is cancelled
+ *  - Scoreboard   : GuiIngame.renderScoreboard() re-implemented with no fill
+ *  - Chat         : GuiNewChat.drawChat() re-implemented with no fill
  *
- * The vanilla methods are essentially copied and re-implemented with every
- * drawRect(...) that used 0x50000000 / 0x60000000 removed.
+ * Everything is 1.8.9 (stable_22) safe:
+ *   - uses ScoreObjective / Team / ScorePlayerTeam  (NOT the 1.10+ names)
+ *   - uses plain java.lang.reflect.Field for the GuiNewChat privates
+ *     (ObfuscationReflectionHelper.findField does not exist on 1.8.9)
  */
 public final class TransparentOverlays {
     private TransparentOverlays() {}
@@ -36,9 +53,9 @@ public final class TransparentOverlays {
 
             GuiIngame replacement = new TransparentGuiIngame(mc);
             ObfuscationReflectionHelper.setPrivateValue(
-                    Minecraft.class, mc, replacement, "ingameGUI", "field_71456_v");
+                    Minecraft.class, mc, replacement,
+                    "ingameGUI", "field_71456_v");
 
-            /* Replace the chat panel too, using reflection on the private field */
             try {
                 GuiNewChat chat = new TransparentChat(mc);
                 ObfuscationReflectionHelper.setPrivateValue(
@@ -49,187 +66,169 @@ public final class TransparentOverlays {
             }
 
             MinecraftForge.EVENT_BUS.register(new TabHider());
-
             KBClientMod.logger.info("[KBClient] transparent overlays installed");
         } catch (Throwable t) {
             KBClientMod.logger.error("[KBClient] TransparentOverlays failed: " + t);
         }
     }
 
-    /* ===================== GuiIngame subclass ===================== */
+    /* ============================================================== */
+    /*  GuiIngame subclass - scoreboard / player-list overrides        */
+    /* ============================================================== */
     public static class TransparentGuiIngame extends GuiIngame {
-        private final Minecraft mcRef;
+        public TransparentGuiIngame(Minecraft mc) { super(mc); }
 
-        public TransparentGuiIngame(Minecraft mc) {
-            super(mc);
-            this.mcRef = mc;
-        }
-
-        /* Scoreboard sidebar: same as vanilla, no background rects. */
         @Override
-        protected void renderScoreboard(ScoreboardObjective objective, ScaledResolution sr) {
+        protected void renderScoreboard(ScoreObjective objective, ScaledResolution sr) {
             if (objective == null) return;
             Scoreboard sb = objective.getScoreboard();
-            java.util.Collection<net.minecraft.scoreboard.Score> sorted =
-                    sb.getSortedScores(objective);
+            Collection<Score> all = sb.getSortedScores(objective);
 
-            java.util.List<net.minecraft.scoreboard.Score> list =
-                    new java.util.ArrayList<net.minecraft.scoreboard.Score>();
-            for (net.minecraft.scoreboard.Score s : sorted) {
+            List<Score> list = new ArrayList<Score>();
+            for (Score s : all) {
                 String n = s.getPlayerName();
                 if (n != null && !n.startsWith("#")) list.add(s);
             }
-            if (list.size() > 15) list = list.subList(list.size() - 15, list.size());
+            if (list.size() > 15) {
+                list = new ArrayList<Score>(list.subList(list.size() - 15, list.size()));
+            }
             if (list.isEmpty()) return;
 
-            int width = this.mc.fontRendererObj.getStringWidth(objective.getDisplayName());
-            for (net.minecraft.scoreboard.Score s : list) {
-                net.minecraft.scoreboard.ScoreboardTeam team =
-                        sb.getPlayersTeam(s.getPlayerName());
-                net.minecraft.util.IChatComponent c =
-                        net.minecraft.scoreboard.ScorePlayerTeam.formatPlayerName(team, s.getPlayerName());
-                width = Math.max(width, this.mc.fontRendererObj.getStringWidth(c.getFormattedText()));
+            int w = this.mc.fontRendererObj.getStringWidth(objective.getDisplayName());
+            for (Score s : list) {
+                Team t = sb.getPlayersTeam(s.getPlayerName());
+                String s1 = ScorePlayerTeam.formatPlayerName(t, s.getPlayerName());
+                String s2 = EnumChatFormatting.RED + "" + s.getScorePoints();
+                w = Math.max(w, this.mc.fontRendererObj.getStringWidth(s1 + s2));
             }
 
             int lineH  = this.mc.fontRendererObj.FONT_HEIGHT;
             int totalH = list.size() * lineH;
             int y0     = sr.getScaledHeight() / 2 + totalH / 3;
             int right  = sr.getScaledWidth() - 3;
-            int left   = right - width;
+            int left   = right - w;
+            int xRight = right + 2;
 
-            int idx = 0;
-            for (net.minecraft.scoreboard.Score s : list) {
-                idx++;
-                net.minecraft.scoreboard.ScoreboardTeam team =
-                        sb.getPlayersTeam(s.getPlayerName());
-                String name = net.minecraft.scoreboard.ScorePlayerTeam
-                        .formatPlayerName(team, s.getPlayerName()).getFormattedText();
-                String pts  = "\u00a7c" + s.getScorePoints();
-                int y = y0 - idx * lineH;
+            int j = 0;
+            for (Score s : list) {
+                ++j;
+                Team t = sb.getPlayersTeam(s.getPlayerName());
+                String s1 = ScorePlayerTeam.formatPlayerName(t, s.getPlayerName());
+                String s2 = EnumChatFormatting.RED + "" + s.getScorePoints();
+                int y = y0 - j * lineH;
 
-                /* NOTE: no drawRect background here on purpose */
-                this.mc.fontRendererObj.drawString(name, left, y, 0x20FFFFFF);
-                this.mc.fontRendererObj.drawString(
-                        pts,
-                        right + 2 - this.mc.fontRendererObj.getStringWidth(pts),
-                        y, 0x20FFFFFF);
+                /* >>> background rects REMOVED on purpose <<< */
+                this.mc.fontRendererObj.drawString(s1, left, y, 553648127);
+                this.mc.fontRendererObj.drawString(s2,
+                        xRight - this.mc.fontRendererObj.getStringWidth(s2), y, 553648127);
 
-                if (idx == list.size()) {
-                    String title = objective.getDisplayName().getFormattedText();
-                    this.mc.fontRendererObj.drawString(
-                            title,
-                            left + width / 2 - this.mc.fontRendererObj.getStringWidth(title) / 2,
-                            y - lineH, 0x20FFFFFF);
+                if (j == list.size()) {
+                    String title = objective.getDisplayName();
+                    this.mc.fontRendererObj.drawString(title,
+                            left + w / 2
+                                    - this.mc.fontRendererObj.getStringWidth(title) / 2,
+                            y - lineH, 553648127);
                 }
             }
         }
 
-        /* The tab list is fully cancelled by TabHider below. */
         @Override
         protected void renderPlayerList(ScaledResolution sr, Scoreboard sb) {
-            /* no-op: TabHider cancels the event so this method never draws a bg */
+            /* no-op - TabHider already cancels the event, this is the belt */
         }
     }
 
-    /* ===================== Chat subclass ===================== */
+    /* ============================================================== */
+    /*  GuiNewChat subclass - chat without the dark background         */
+    /* ============================================================== */
     public static class TransparentChat extends GuiNewChat {
-        private final Minecraft mcRef;
+        private static final Field F_LINES  = findField(GuiNewChat.class,
+                "drawnChatLines", "field_146253_i");
+        private static final Field F_SCROLL = findField(GuiNewChat.class,
+                "scrollPos", "field_146250_j");
 
-        private static Field F_LINES;
-        private static Field F_SCROLL;
+        public TransparentChat(Minecraft mc) { super(mc); }
 
-        static {
-            try {
-                F_LINES  = ObfuscationReflectionHelper.findField(
-                        GuiNewChat.class, "drawnChatLines", "field_146253_i");
-                F_SCROLL = ObfuscationReflectionHelper.findField(
-                        GuiNewChat.class, "scrollPos", "field_146250_j");
-                F_LINES.setAccessible(true);
-                F_SCROLL.setAccessible(true);
-            } catch (Throwable ignored) { }
-        }
-
-        public TransparentChat(Minecraft mc) {
-            super(mc);
-            this.mcRef = mc;
+        private static Field findField(Class<?> c, String... names) {
+            for (String n : names) {
+                try {
+                    Field f = c.getDeclaredField(n);
+                    f.setAccessible(true);
+                    return f;
+                } catch (Throwable ignored) { }
+            }
+            return null;
         }
 
         @Override
         public void drawChat(int updateCounter) {
-            if (this.mcRef.gameSettings.chatVisibility ==
-                    net.minecraft.entity.player.EntityPlayer.EnumChatVisibility.HIDDEN) return;
-
-            if (F_LINES == null) {
-                /* fallback: vanilla behaviour if reflection failed */
+            if (this.mc.gameSettings.chatVisibility == EntityPlayer.EnumChatVisibility.HIDDEN) return;
+            if (F_LINES == null || F_SCROLL == null) {
                 super.drawChat(updateCounter);
                 return;
             }
-
             try {
                 @SuppressWarnings("unchecked")
-                java.util.List<net.minecraft.client.gui.ChatLine> lines =
-                        (java.util.List<net.minecraft.client.gui.ChatLine>) F_LINES.get(this);
+                List<ChatLine> lines = (List<ChatLine>) F_LINES.get(this);
                 int scrollPos = F_SCROLL.getInt(this);
+                if (lines == null) return;
 
-                int lineCount = this.getLineCount();
+                int  lineCount = this.getLineCount();
                 boolean chatOpen = this.getChatOpen();
-                int total = lines.size();
-                float chatOpacity = this.mcRef.gameSettings.chatOpacity * 0.9F + 0.1F;
-
+                int  total = lines.size();
                 if (total <= 0) return;
 
-                float scale = this.getChatScale();
-                int boxWidth = net.minecraft.util.MathHelper.ceiling_float_int(
-                        (float) this.getChatWidth() / scale);
+                float opacity = this.mc.gameSettings.chatOpacity * 0.9F + 0.1F;
+                float scale   = this.getChatScale();
+                int   boxW    = MathHelper.ceiling_float_int(this.getChatWidth() / scale);
+                if (boxW < 1) boxW = 1;
 
-                net.minecraft.client.renderer.GlStateManager.pushMatrix();
-                net.minecraft.client.renderer.GlStateManager.translate(2.0F, 20.0F, 0.0F);
-                net.minecraft.client.renderer.GlStateManager.scale(scale, scale, 1.0F);
+                GlStateManager.pushMatrix();
+                GlStateManager.translate(2.0F, 20.0F, 0.0F);
+                GlStateManager.scale(scale, scale, 1.0F);
 
-                int drawn = 0;
                 for (int i = 0; i + scrollPos < total && i < lineCount; i++) {
-                    net.minecraft.client.gui.ChatLine cl = lines.get(i + scrollPos);
+                    ChatLine cl = lines.get(i + scrollPos);
                     if (cl == null) continue;
 
                     int age = updateCounter - cl.getUpdatedCounter();
                     if (age >= 200 && !chatOpen) continue;
 
-                    double d = (double) age / 200.0D;
-                    d = 1.0D - d;
-                    d = d * 10.0D;
-                    d = net.minecraft.util.MathHelper.clamp_double(d, 0.0D, 1.0D);
-                    d = d * d;
-                    int alphaByte = (int)(255.0D * d);
-                    if (chatOpen) alphaByte = 255;
-                    alphaByte = (int)((float) alphaByte * chatOpacity);
-                    drawn++;
+                    double d0 = (double) age / 200.0D;
+                    d0 = 1.0D - d0;
+                    d0 = d0 * 10.0D;
+                    d0 = MathHelper.clamp_double(d0, 0.0D, 1.0D);
+                    d0 = d0 * d0;
 
-                    if (alphaByte > 3) {
-                        int x = 0;
-                        int y = -i * 9;
+                    int a = (int)(255.0D * d0);
+                    if (chatOpen) a = 255;
+                    a = (int)((float) a * opacity);
+                    if (a <= 3) continue;
 
-                        /* >>> background rect REMOVED on purpose <<< */
+                    int x = 0;
+                    int y = -i * 9;
 
-                        String s = cl.getChatComponent().getFormattedText();
-                        net.minecraft.client.renderer.GlStateManager.enableBlend();
-                        this.mcRef.fontRendererObj.drawStringWithShadow(
-                                s, (float) x, (float) (y - 8),
-                                16777215 + (alphaByte << 24));
-                        net.minecraft.client.renderer.GlStateManager.disableAlpha();
-                        net.minecraft.client.renderer.GlStateManager.disableBlend();
-                    }
+                    /* >>> background rects REMOVED on purpose <<< */
+
+                    String s = cl.getChatComponent().getFormattedText();
+                    GlStateManager.enableBlend();
+                    this.mc.fontRendererObj.drawStringWithShadow(
+                            s, (float) x, (float)(y - 8),
+                            16777215 + (a << 24));
+                    GlStateManager.disableAlpha();
+                    GlStateManager.disableBlend();
                 }
 
-                /* scrolling box background also skipped */
-                net.minecraft.client.renderer.GlStateManager.popMatrix();
+                GlStateManager.popMatrix();
             } catch (Throwable t) {
-                /* on any error just fall back to vanilla */
                 try { super.drawChat(updateCounter); } catch (Throwable ignored) { }
             }
         }
     }
 
-    /* ===================== Tab list hider ===================== */
+    /* ============================================================== */
+    /*  Tab list canceller                                             */
+    /* ============================================================== */
     public static class TabHider {
         @SubscribeEvent
         public void onRenderPre(RenderGameOverlayEvent.Pre e) {
