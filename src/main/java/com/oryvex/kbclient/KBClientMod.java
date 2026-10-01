@@ -50,11 +50,17 @@ public class KBClientMod {
     private static final String HOOK = "kb_client_handler";
     private static KBClientMod instance;
     public static Logger logger;
+    
+    /** فونت مدرن فقط برای UI خودمون — mc.fontRendererObj دست‌نخورده می‌مونه تا چت سالم بمونه. */
+    public static com.oryvex.kbclient.font.ModernFontRenderer modernFont;
+    
     private final KBTracker tracker = new KBTracker();
     private KeyBinding openKey;
     private Channel hookedChannel;
     private boolean pendingOpen;
     private Object lastWorld;
+    public static net.minecraft.client.multiplayer.ServerData lastServerData;
+    public static KBLoading customLoadingScreen;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
@@ -69,19 +75,52 @@ public class KBClientMod {
 
     @EventHandler
     public void init(FMLInitializationEvent e) {
+        com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+        MinecraftForge.EVENT_BUS.register(__fix);
+        net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new KBCommand());
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
+        
+        try {
+            Minecraft mcF = Minecraft.getMinecraft();
+            modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(
+                mcF.gameSettings,
+                new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
+                mcF.renderEngine, false
+            );
+            logger.info("[KBClient] ModernFontRenderer loaded (used only by KB Client UI)");
+        } catch (Throwable t) {
+            logger.error("[KBClient] ModernFontRenderer failed: " + t);
+        }
+        
         DiscordRPC.start();
     }
 
     private void installLoading() {
-        Minecraft mc = Minecraft.getMinecraft();
+        final Minecraft mc = Minecraft.getMinecraft();
+        customLoadingScreen = new KBLoading(mc);
         try {
-            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, customLoadingScreen, "loadingScreen", "field_71461_s");
             logger.info("[KBClient] custom loading screen installed");
+            
+            Thread loadingThemer = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try { Thread.sleep(2); } catch (Exception ignored) {}
+                        if (Settings.customLoading && mc.loadingScreen != null && mc.loadingScreen != customLoadingScreen) {
+                            try {
+                                ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, customLoadingScreen, "loadingScreen", "field_71461_s");
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            }, "KBClient-LoadingThemer");
+            loadingThemer.setDaemon(true);
+            loadingThemer.start();
         } catch (Throwable t) {
             logger.error("[KBClient] could not install loading screen: " + t);
         }
@@ -90,7 +129,9 @@ public class KBClientMod {
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (e.gui instanceof GuiMainMenu) e.gui = new GuiModernMenu(tracker);
+        if (e.gui instanceof GuiMainMenu) {
+            e.gui = new GuiModernMenu(tracker);
+        }
         if (e.gui == null) {
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
@@ -101,24 +142,62 @@ public class KBClientMod {
     }
 
     @SubscribeEvent
-    public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+    public void onDrawScreenPre(GuiScreenEvent.DrawScreenEvent.Pre e) {
+        GuiScreen g = e.gui;
+        if (g == null) return;
+        if (Settings.customLoading) {
+            if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
+                e.setCanceled(true);
+                LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
+                Fade.screen.draw(g.width, g.height);
+            } else if (g instanceof GuiDownloadTerrain) {
+                e.setCanceled(true);
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
+                Fade.screen.draw(g.width, g.height);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onDrawScreenPost(GuiScreenEvent.DrawScreenEvent.Post e) {
         GuiScreen g = e.gui;
         if (g == null || g instanceof FadeScreen) return;
-        if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
-            LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+        if (Settings.customLoading && (g instanceof net.minecraft.client.multiplayer.GuiConnecting || g instanceof GuiDownloadTerrain)) {
+            return;
         }
         Fade.screen.draw(g.width, g.height);
     }
 
     @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
-        if (!(e.gui instanceof GuiIngameMenu)) return;
-        for (int i = 0; i < e.buttonList.size(); i++) {
-            GuiButton b = e.buttonList.get(i);
-            if (b.id == 0) {
-                UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
-                u.icon = UiButton.ICON_GEAR;
-                e.buttonList.set(i, u);
+        if (e.gui instanceof GuiIngameMenu) {
+            for (int i = 0; i < e.buttonList.size(); i++) {
+                GuiButton b = e.buttonList.get(i);
+                if (b.id == 0) {
+                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                    u.icon = UiButton.ICON_GEAR;
+                    e.buttonList.set(i, u);
+                }
+            }
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected) {
+            for (GuiButton b : e.buttonList) {
+                if (b.id == 0) {
+                    e.buttonList.add(new UiButton(999, b.xPosition, b.yPosition + b.height + 6, b.width, b.height, "Reconnect").style(UiButton.PRIMARY));
+                    break;
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
+        if (e.gui instanceof GuiIngameMenu && e.button.id == 0) {
+            e.setCanceled(true);
+            Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected && e.button.id == 999) {
+            if (lastServerData != null) {
+                Minecraft mc = Minecraft.getMinecraft();
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiModernMenu(tracker), mc, lastServerData));
             }
         }
     }
@@ -136,6 +215,7 @@ public class KBClientMod {
     public void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
+        if (mc.getCurrentServerData() != null) lastServerData = mc.getCurrentServerData();
         tracker.tick();
         DiscordRPC.tick();
         if (mc.theWorld != lastWorld) {
@@ -171,7 +251,6 @@ public class KBClientMod {
         }
     }
 
-    /** CRITICAL FIX: Capture old motion BEFORE super.channelRead applies the new velocity */
     private static class VelocityHook extends ChannelDuplexHandler {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -180,27 +259,12 @@ public class KBClientMod {
                 final int id = v.getEntityID();
                 final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
                 final Minecraft mc = Minecraft.getMinecraft();
-                
-                final double oldX, oldY, oldZ;
-                final boolean oldGround, oldSprint;
-                if (mc.thePlayer != null && mc.thePlayer.getEntityId() == id) {
-                    oldX = mc.thePlayer.motionX;
-                    oldY = mc.thePlayer.motionY;
-                    oldZ = mc.thePlayer.motionZ;
-                    oldGround = mc.thePlayer.onGround;
-                    oldSprint = mc.thePlayer.isSprinting();
-                } else {
-                    oldX = oldY = oldZ = 0;
-                    oldGround = false;
-                    oldSprint = false;
-                }
-
                 mc.addScheduledTask(new Runnable() {
                     @Override
                     public void run() {
                         EntityPlayerSP p = mc.thePlayer;
                         if (p != null && p.getEntityId() == id) {
-                            KBClientMod.getInstance().getTracker().capture(x, y, z, oldX, oldY, oldZ, oldGround, oldSprint);
+                            KBClientMod.getInstance().getTracker().capture(x, y, z);
                         }
                     }
                 });
