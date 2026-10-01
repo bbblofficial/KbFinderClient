@@ -1,11 +1,4 @@
-import os
-import re
-
-def add_alt_manager():
-    print("🚀 Adding Alt Manager to KB Client...")
-
-    # 1. Create GuiAltManager.java
-    alt_manager_code = """package com.oryvex.kbclient.ui;
+package com.oryvex.kbclient.ui;
 
 import java.io.IOException;
 import net.minecraft.client.Minecraft;
@@ -131,51 +124,3 @@ public class GuiAltManager extends FadeScreen {
         drawFade();
     }
 }
-"""
-    os.makedirs("src/main/java/com/oryvex/kbclient/ui", exist_ok=True)
-    with open("src/main/java/com/oryvex/kbclient/ui/GuiAltManager.java", "w", encoding="utf-8") as f:
-        f.write(alt_manager_code)
-    print("✅ Created GuiAltManager.java")
-
-    # 2. Patch GuiModernMenu.java
-    modern_menu_path = "src/main/java/com/oryvex/kbclient/ui/GuiModernMenu.java"
-    if os.path.exists(modern_menu_path):
-        with open(modern_menu_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        if "GuiAltManager" not in content:
-            # جا دادن دکمه Alt Manager در منو (افزایش سطرها از ۴ به ۵)
-            content = content.replace("int rows = 4;", "int rows = 5;")
-
-            button_patch = """this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
-        this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
-        this.buttonList.add(new UiButton(6, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(260));
-        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 3 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(330));
-        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 4 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(400));
-        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 4 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(470));"""
-            
-            # ریپلیس کردن بلاک دکمه‌ها
-            start_str = 'this.buttonList.add(new UiButton(1'
-            end_str = 'Quit").style(UiButton.DANGER).delay(400));'
-            
-            if start_str in content and end_str in content:
-                start_idx = content.find(start_str)
-                end_idx = content.find(end_str) + len(end_str)
-                content = content[:start_idx] + button_patch + content[end_idx:]
-
-            # اضافه کردن اکشن کلیلک به سوییچ کیس
-            content = content.replace(
-                "case 3: closeTo(new GuiAnalyzer(tracker, this)); break;",
-                "case 3: closeTo(new GuiAnalyzer(tracker, this)); break;\n            case 6: closeTo(new GuiAltManager(this)); break;"
-            )
-
-            with open(modern_menu_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            print("✅ Patched GuiModernMenu.java to include Alt Manager.")
-        else:
-            print("ℹ️ GuiModernMenu.java already has Alt Manager.")
-    else:
-        print(f"❌ Error: Could not find {modern_menu_path}")
-
-if __name__ == "__main__":
-    add_alt_manager()

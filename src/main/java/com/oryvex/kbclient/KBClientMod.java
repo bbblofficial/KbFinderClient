@@ -62,6 +62,7 @@ public class KBClientMod {
     private boolean pendingOpen;
     private Object lastWorld;
     private boolean loadingInstalled;
+    public static net.minecraft.client.multiplayer.ServerData lastServerData;
     private boolean hasFakeLoaded = false;
     private ServerData lastServer;
 
@@ -133,16 +134,26 @@ public class KBClientMod {
         Fade.screen.draw(g.width, g.height);
     }
 
-    @SubscribeEvent
+        @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
         if (e.gui instanceof GuiIngameMenu) {
             for (int i = 0; i < e.buttonList.size(); i++) {
-                GuiButton b = e.buttonList.get(i);
+                net.minecraft.client.gui.GuiButton b = e.buttonList.get(i);
                 if (b.id == 0) {
                     UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
                     u.icon = UiButton.ICON_GEAR;
                     e.buttonList.set(i, u);
                 }
+            }
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected) {
+            for (net.minecraft.client.gui.GuiButton b : e.buttonList) {
+                if (b.id == 0) { // دکمه Back دیفالت ماینکرفت
+                    e.buttonList.add(new UiButton(999, b.xPosition, b.yPosition + b.height + 6, b.width, b.height, "Reconnect").style(UiButton.PRIMARY));
+                    break;
+                }
+            }
+        }
+    }
             }
             return;
         }
@@ -167,12 +178,16 @@ public class KBClientMod {
     }
 
     
-    @SubscribeEvent
+        @SubscribeEvent
     public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
-        // When clicking the 'Options' button (ID 0) in the pause menu, open KB Client Options instead
-        if (e.gui instanceof net.minecraft.client.gui.GuiIngameMenu && e.button.id == 0) {
+        if (e.gui instanceof GuiIngameMenu && e.button.id == 0) {
             e.setCanceled(true);
             net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected && e.button.id == 999) {
+            if (lastServerData != null) {
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new com.oryvex.kbclient.ui.GuiModernMenu(tracker), mc, lastServerData));
+            }
         }
     }
 
@@ -189,6 +204,7 @@ public class KBClientMod {
     public void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
+        if (mc.getCurrentServerData() != null) lastServerData = mc.getCurrentServerData();
         tracker.tick();
         DiscordRPC.tick();
 

@@ -20,7 +20,7 @@ public class GuiModernMenu extends FadeScreen {
     public void initGui() {
         this.buttonList.clear();
         int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
-        int rows = 4;
+        int rows = 5;
         int total = rows * bh + (rows - 1) * gap;
         int top = this.height / 2 - total / 2 + 26;
         panelW = bw + 28;
@@ -32,9 +32,10 @@ public class GuiModernMenu extends FadeScreen {
         int half = (bw - gap) / 2;
         this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
         this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
-        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(260));
-        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 3 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(330));
-        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 3 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(400));
+        this.buttonList.add(new UiButton(6, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(260));
+        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 3 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(330));
+        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 4 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(400));
+        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 4 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(470));
     }
 
     @Override
@@ -43,6 +44,7 @@ public class GuiModernMenu extends FadeScreen {
             case 1: closeTo(new GuiSelectWorld(this)); break;
             case 2: closeTo(new GuiMultiplayer(this)); break;
             case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+            case 6: closeTo(new GuiAltManager(this)); break;
             case 4: closeTo(new GuiKbOptions(tracker, this)); break;
             case 5:
                 closeThen(new Runnable() {
