@@ -6286,6 +6286,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850316 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850528 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850825 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851238 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851650 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │   └── refs
 │   │       ├── heads
 │   │       │   └── main
@@ -6338,6 +6340,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850316 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850528 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850825 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851238 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851650 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │       └── remotes
 │   │           └── origin
 │   │               └── main
@@ -6388,6 +6392,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850349 +0330	update by push
   cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850549 +0330	update by push
   b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850837 +0330	update by push
+  64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851295 +0330	update by push
+  53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851673 +0330	update by push
 │   ├── objects
 │   │   ├── 00
 │   │   │   ├── 4c38f071c23400f96b3a6e7d72a53e7aef03af
@@ -6616,8 +6622,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 547a96b4ae28c5d8692db4cd99fcf06d924095
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-│   │   │   └── 557c8d66f40a03f79a37ccb2760cdf42ce025f
+│   │   │   ├── 557c8d66f40a03f79a37ccb2760cdf42ce025f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 8474fca936e2de517b71a0b39f6bb1515f2242
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 1f
 │   │   │   ├── 125da4c51b5add2e95649d8280c82306ca9df4
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -6644,6 +6652,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
 │   │   │   └── 8cdb55d4fe9336869810f6ce29991355c462f1
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── 23
+│   │   │   └── 0949465d507312aba2a44c1c61c340629b7b11
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 24
 │   │   │   ├── 1c60a973f95d2856138c9c5fcafd30be3f2c89
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -6658,6 +6669,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 68efb67801d47b638572f33b62517fbf3b37b9
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── 28
+│   │   │   ├── 80d95d2e170169d268bf47a5d72fa3a18219cf
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
 │   │   │   ├── b6a32ed39e9885d04061e4fcd494ffb30fd720
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   │   └── d23bfb7466425e3cc8469f811af2e59d38bdd7
@@ -6797,6 +6810,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   ├── 0c590af9661db544baed31242f5fcddf1c860d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── a8fbc4a1986398ae8b48096c61c1dc3b72a607
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── dea52672eb8fc6f161424872a53bd3224cb308
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 38
@@ -6888,8 +6903,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 46
 │   │   │   ├── 216d1eb927958af988a4ee33996834d35b26d6
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-│   │   │   └── 22cd5a4cb653c61f8cb484413c734247a1b777
+│   │   │   ├── 22cd5a4cb653c61f8cb484413c734247a1b777
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   ├── 71ecd7e3ef25fedabcb1be018dade0ce94ae42
+  [Error: 'utf-8' codec can't decode byte 0xcc in position 19: invalid continuation byte]
+│   │   │   └── d5baae32badf03411f777ae007ca808853ba52
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 47
 │   │   │   ├── 27651906b02563b5935cf1030e936af4750230
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -6922,8 +6941,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 99038254a2da775c31fb7dd230c76688203040
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
 │   │   ├── 4c
-│   │   │   └── 611854db6a36180ec211248f80275f77fdfa6c
+│   │   │   ├── 611854db6a36180ec211248f80275f77fdfa6c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── dfa5511ef378693188a2b89f5dc570a602db51
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 4d
 │   │   │   ├── 3f553ae817c73c94188e3c0c22e470ab97c1f6
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -6969,6 +6990,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── c075b5960294e32a885fe57eaebd2e38bd421c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── f3e2b9d9fc56cccd34080ba9e9f5d42fde4548
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── f8d1fd30ef5759701e5306aeeefb23faf204dc
   [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
 │   │   ├── 54
@@ -7010,6 +7033,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   ├── 76b365358b67959df71fdf08ee2f84128c9f9a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── b4f3f67027e81b5976d1657a0bbb5d19c9749b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── c116f1379435f661b23d2e6a2ba2441b07e571
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── d5991042808ea42661752350a578deee528e0f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7081,8 +7106,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 63
 │   │   │   ├── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-│   │   │   └── 75bb598dfe9d9b3238648e55387432f019bf7d
+│   │   │   ├── 75bb598dfe9d9b3238648e55387432f019bf7d
   [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
+│   │   │   └── dc2f51b1eb6ec97f4eb37a2f515ca01da5f026
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 64
 │   │   │   ├── 4597158fa0b97026af0cf35afe0d08f93d87a5
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -7124,7 +7151,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 6a
 │   │   │   ├── 1ba8342ec11693d13745e29bd61f41669691c2
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
-│   │   │   └── a3202fa69ddaa91fbf67128fcfbfb166b3ad2a
+│   │   │   ├── a3202fa69ddaa91fbf67128fcfbfb166b3ad2a
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── f0e3500fa2c1f9022d8b75dfcc732daf4559c6
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 6b
 │   │   │   ├── adf8f5fe3c398eed603096d2ebaf6d1448cf4c
@@ -7144,8 +7173,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 5030780ad8d76c6da33eefc32e0efabcf85df1
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-│   │   │   └── 761a287091540f3031413138713b297f6fdf56
+│   │   │   ├── 761a287091540f3031413138713b297f6fdf56
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   │   └── b43f7f6851ac697a9731c6ae08acb7a6d1c47c
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
 │   │   ├── 6d
 │   │   │   ├── 467b06a64612951cf8e7f5fdd0c5d7fdec0062
   [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
@@ -7156,8 +7187,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 6e
 │   │   │   ├── 4b4b5af134387a3b61f643405cc59f42e4864e
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
-│   │   │   └── 6ae72279207b46b994e4846b7edb0e07ca8d2a
+│   │   │   ├── 6ae72279207b46b994e4846b7edb0e07ca8d2a
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
+│   │   │   └── ee0cda5b63c94730c9e2420ba72c76e6372c15
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 6f
 │   │   │   ├── 14575b68589265339e5fd96d1a056a2146fcf9
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7185,6 +7218,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   ├── 3ccff54e0d1ba57ec249ab1fc23ceebb333410
   [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
 │   │   │   ├── 8aee2b8ee52ed6be5fd31635b409aa515f7066
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── c0a6b351615cec0eca50a0dc2c305db355f447
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
@@ -7336,7 +7371,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   ├── d65e5668536eadab73feed1073fc816c276e1c
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── d939268d0481cd3c11f98eea52a10f04075e9a
+│   │   │   ├── d939268d0481cd3c11f98eea52a10f04075e9a
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── ffc34be977964bf0f06b15b03f7cd43d3d2f72
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 86
 │   │   │   ├── 040241c80ec20a999b3040e69b3b78db922da6
@@ -7349,6 +7386,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 88
 │   │   │   ├── 461335eadcdab54b98e91285fd99f3d6a3c410
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   ├── 879581c82809905434fdd70969d15179b4f572
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── dceb93d39204b598e75a3218cbe8295e81b087
   [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
 │   │   ├── 89
@@ -7364,6 +7403,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── c97ba2f4060203363c858c93c25aa34d87a54c
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 8b
+│   │   │   ├── 50a9a2ffe806df8629f9a7eb0e210dd2086cee
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 72088c83782a22474a5a1dcd91e138a94ed9d4
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── b477084caa620cc37f9e89fa77a5da66182b39
@@ -7540,8 +7581,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb0 in position 9: invalid start byte]
 │   │   │   ├── 42dd592ae7620687e1b4e395df32e724280aa1
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
-│   │   │   └── 8abe8d5c58c9f7059d9e079e11e17978edb94b
+│   │   │   ├── 8abe8d5c58c9f7059d9e079e11e17978edb94b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── f682f3f7de744c4f7da207edc4fbd253d5bbc5
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── a4
 │   │   │   ├── 57f8c0693113540002b6482e74855d24799999
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7593,6 +7636,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 0245ca61810998acfbbf58c9a9fba9070f16b9
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
 │   │   ├── ac
+│   │   │   ├── 0daa628812bb1d37dd78d4afdd7990c0d053a9
+  [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   │   ├── 832d014e4bf306746c62f97a2196ff7c564d50
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── ab8bfb6d83a25ae622c455fa96bab3bd466ce9
@@ -7715,6 +7760,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── bf
 │   │   │   ├── 0cdc5279c79f89ac874af1a5a8877923f32032
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   ├── 3630c1c4d5de63c5fe6597592a97c2e8163fe8
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   ├── 4d01e66cefdf89a9e014158134fe45073cb840
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   │   ├── a275cbabff9b0cd1fe77b171b8854b27c038eb
@@ -7952,8 +7999,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 79d8ed42432719de69026d373496ae65837fe9
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e3
-│   │   │   └── 3dbb6872a554ef1727aaf38fbf20b4579b0086
+│   │   │   ├── 3dbb6872a554ef1727aaf38fbf20b4579b0086
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 8e3570956b665e6af76addad00f621a209c1c4
+  [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
 │   │   ├── e4
 │   │   │   ├── 0eb29518aa6ad4f6438edd5f2f3cc44a8d00d4
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -7982,14 +8031,18 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── d9c23a3dfb093af9952dda56425efde19aab10
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e7
+│   │   │   ├── 69797a2d582a9452317ea14b2e3020f1f62a79
+  [Error: 'utf-8' codec can't decode byte 0xb3 in position 8: invalid start byte]
 │   │   │   ├── 74c483e362c9be05dc1c06fa676503245dcbcb
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── c760da2e9638b7fc4616d2b5dfdf7c3390415e
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   │   ├── c89e69a07c8afbeb32ecb086b7fca12efcc45b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── c9ebf3437991b20b571b8c0234790ce64ac6fc
+│   │   │   ├── c9ebf3437991b20b571b8c0234790ce64ac6fc
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── fc269110f21d5baf38b9d29ce92aa5ce2b34dc
+  [Error: 'utf-8' codec can't decode byte 0xd5 in position 2: invalid continuation byte]
 │   │   ├── e8
 │   │   │   ├── 6bd4b357c3ec5a95a209a1e73be85b86f59f1a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -8144,11 +8197,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   └── refs
 │       ├── heads
 │       │   └── main
-  64c89f9976db90c6961972c1b487cc308df6abf1
+  a2f682f3f7de744c4f7da207edc4fbd253d5bbc5
 │       ├── remotes
 │       │   └── origin
 │       │       └── main
-  64c89f9976db90c6961972c1b487cc308df6abf1
+  a2f682f3f7de744c4f7da207edc4fbd253d5bbc5
 │       └── tags
 ├── .github
 │   └── workflows
@@ -14758,6 +14811,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850316 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850528 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850825 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851238 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851650 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   │   │   └── refs
   │   │       ├── heads
   │   │       │   └── main
@@ -14810,6 +14865,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850316 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850528 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850825 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851238 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851650 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   │   │       └── remotes
   │   │           └── origin
   │   │               └── main
@@ -14860,6 +14917,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     bac92474676a9bab5ba4a93dc3b6d00e1a6a15e6 cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 muvixo <godarshia20@gmail.com> 1790850349 +0330	update by push
     cf4154d0510c37f38ce47dbe7fe3f2ee69a0c118 b0756bc6d875d9e546df32202770668402eb2e86 muvixo <godarshia20@gmail.com> 1790850549 +0330	update by push
     b0756bc6d875d9e546df32202770668402eb2e86 64c89f9976db90c6961972c1b487cc308df6abf1 muvixo <godarshia20@gmail.com> 1790850837 +0330	update by push
+    64c89f9976db90c6961972c1b487cc308df6abf1 53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 muvixo <godarshia20@gmail.com> 1790851295 +0330	update by push
+    53f3e2b9d9fc56cccd34080ba9e9f5d42fde4548 a2f682f3f7de744c4f7da207edc4fbd253d5bbc5 muvixo <godarshia20@gmail.com> 1790851673 +0330	update by push
   │   ├── objects
   │   │   ├── 00
   │   │   │   ├── 4c38f071c23400f96b3a6e7d72a53e7aef03af
@@ -15088,8 +15147,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── 547a96b4ae28c5d8692db4cd99fcf06d924095
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   └── 557c8d66f40a03f79a37ccb2760cdf42ce025f
+  │   │   │   ├── 557c8d66f40a03f79a37ccb2760cdf42ce025f
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 8474fca936e2de517b71a0b39f6bb1515f2242
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   ├── 1f
   │   │   │   ├── 125da4c51b5add2e95649d8280c82306ca9df4
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -15116,6 +15177,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
   │   │   │   └── 8cdb55d4fe9336869810f6ce29991355c462f1
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── 23
+  │   │   │   └── 0949465d507312aba2a44c1c61c340629b7b11
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 24
   │   │   │   ├── 1c60a973f95d2856138c9c5fcafd30be3f2c89
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -15130,6 +15194,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 68efb67801d47b638572f33b62517fbf3b37b9
     [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
   │   │   ├── 28
+  │   │   │   ├── 80d95d2e170169d268bf47a5d72fa3a18219cf
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
   │   │   │   ├── b6a32ed39e9885d04061e4fcd494ffb30fd720
     [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
   │   │   │   └── d23bfb7466425e3cc8469f811af2e59d38bdd7
@@ -15269,6 +15335,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   │   ├── 0c590af9661db544baed31242f5fcddf1c860d
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── a8fbc4a1986398ae8b48096c61c1dc3b72a607
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── dea52672eb8fc6f161424872a53bd3224cb308
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 38
@@ -15360,8 +15428,12 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 46
   │   │   │   ├── 216d1eb927958af988a4ee33996834d35b26d6
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   │   └── 22cd5a4cb653c61f8cb484413c734247a1b777
+  │   │   │   ├── 22cd5a4cb653c61f8cb484413c734247a1b777
     [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   │   ├── 71ecd7e3ef25fedabcb1be018dade0ce94ae42
+    [Error: 'utf-8' codec can't decode byte 0xcc in position 19: invalid continuation byte]
+  │   │   │   └── d5baae32badf03411f777ae007ca808853ba52
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 47
   │   │   │   ├── 27651906b02563b5935cf1030e936af4750230
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -15394,8 +15466,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 99038254a2da775c31fb7dd230c76688203040
     [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
   │   │   ├── 4c
-  │   │   │   └── 611854db6a36180ec211248f80275f77fdfa6c
+  │   │   │   ├── 611854db6a36180ec211248f80275f77fdfa6c
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── dfa5511ef378693188a2b89f5dc570a602db51
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   ├── 4d
   │   │   │   ├── 3f553ae817c73c94188e3c0c22e470ab97c1f6
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
@@ -15441,6 +15515,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── c075b5960294e32a885fe57eaebd2e38bd421c
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── f3e2b9d9fc56cccd34080ba9e9f5d42fde4548
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   │   └── f8d1fd30ef5759701e5306aeeefb23faf204dc
     [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
   │   │   ├── 54
@@ -15482,6 +15558,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   ├── 76b365358b67959df71fdf08ee2f84128c9f9a
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── b4f3f67027e81b5976d1657a0bbb5d19c9749b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── c116f1379435f661b23d2e6a2ba2441b07e571
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── d5991042808ea42661752350a578deee528e0f
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -15553,8 +15631,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 63
   │   │   │   ├── 1e8963d1f7f6e5ba862cfa0a4c4ada2d732b0f
     [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   │   └── 75bb598dfe9d9b3238648e55387432f019bf7d
+  │   │   │   ├── 75bb598dfe9d9b3238648e55387432f019bf7d
     [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
+  │   │   │   └── dc2f51b1eb6ec97f4eb37a2f515ca01da5f026
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 64
   │   │   │   ├── 4597158fa0b97026af0cf35afe0d08f93d87a5
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -15596,7 +15676,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 6a
   │   │   │   ├── 1ba8342ec11693d13745e29bd61f41669691c2
     [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
-  │   │   │   └── a3202fa69ddaa91fbf67128fcfbfb166b3ad2a
+  │   │   │   ├── a3202fa69ddaa91fbf67128fcfbfb166b3ad2a
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── f0e3500fa2c1f9022d8b75dfcc732daf4559c6
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 6b
   │   │   │   ├── adf8f5fe3c398eed603096d2ebaf6d1448cf4c
@@ -15616,8 +15698,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── 5030780ad8d76c6da33eefc32e0efabcf85df1
     [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   │   └── 761a287091540f3031413138713b297f6fdf56
+  │   │   │   ├── 761a287091540f3031413138713b297f6fdf56
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   │   └── b43f7f6851ac697a9731c6ae08acb7a6d1c47c
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
   │   │   ├── 6d
   │   │   │   ├── 467b06a64612951cf8e7f5fdd0c5d7fdec0062
     [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
@@ -15628,8 +15712,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 6e
   │   │   │   ├── 4b4b5af134387a3b61f643405cc59f42e4864e
     [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
-  │   │   │   └── 6ae72279207b46b994e4846b7edb0e07ca8d2a
+  │   │   │   ├── 6ae72279207b46b994e4846b7edb0e07ca8d2a
     [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
+  │   │   │   └── ee0cda5b63c94730c9e2420ba72c76e6372c15
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 6f
   │   │   │   ├── 14575b68589265339e5fd96d1a056a2146fcf9
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -15657,6 +15743,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   ├── 3ccff54e0d1ba57ec249ab1fc23ceebb333410
     [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
   │   │   │   ├── 8aee2b8ee52ed6be5fd31635b409aa515f7066
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── c0a6b351615cec0eca50a0dc2c305db355f447
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── ed1b1df050a7a40e7f6774d2786211ad03b787
     [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
@@ -15808,7 +15896,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   │   ├── d65e5668536eadab73feed1073fc816c276e1c
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── d939268d0481cd3c11f98eea52a10f04075e9a
+  │   │   │   ├── d939268d0481cd3c11f98eea52a10f04075e9a
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── ffc34be977964bf0f06b15b03f7cd43d3d2f72
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 86
   │   │   │   ├── 040241c80ec20a999b3040e69b3b78db922da6
@@ -15821,6 +15911,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 88
   │   │   │   ├── 461335eadcdab54b98e91285fd99f3d6a3c410
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   ├── 879581c82809905434fdd70969d15179b4f572
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   │   └── dceb93d39204b598e75a3218cbe8295e81b087
     [Error: 'utf-8' codec can't decode byte 0xdd in position 2: invalid continuation byte]
   │   │   ├── 89
@@ -15836,6 +15928,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── c97ba2f4060203363c858c93c25aa34d87a54c
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   ├── 8b
+  │   │   │   ├── 50a9a2ffe806df8629f9a7eb0e210dd2086cee
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── 72088c83782a22474a5a1dcd91e138a94ed9d4
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   │   ├── b477084caa620cc37f9e89fa77a5da66182b39
@@ -15919,61 +16013,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   ├── c478dad66b4a13a3ae6dc83525cb9e1912ede8
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── daca2af81da6e2999bbb207480f51f2bcf1309
-    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
-  │   │   ├── 97
-  │   │   │   └── d1d8169d19ea49b77cadf906ba95be97b991b3
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── 98
-  │   │   │   └── 8694cb6bd1b8a828d038f411935747bef98e14
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── 99
-  │   │   │   ├── 2eca224fc1476c0a25cc7b6bdb2723dbc8e08d
-    [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
-  │   │   │   └── e807a2530c278a12c494bf347150a8b73ed0a6
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 9a
-  │   │   │   ├── 4dc4ad14057c49894860d60197f8b14ab287ad
-    [Error: 'utf-8' codec can't decode byte 0xcc in position 19: invalid continuation byte]
-  │   │   │   └── f51862dfefb0787b9fe01c863ad7b348cecd9c
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   ├── 9b
-  │   │   │   ├── 5b96b9a0f8daa860269d50c2499106fc7a4adb
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 9cee150360d431b01bc898590712df78c9ec3d
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── ecf2d61d861c6eb69c271b83778396938a6ce4
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 9c
-  │   │   │   ├── 003211911f5906150920acb446e5ed3b58cfc0
-    [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
-  │   │   │   ├── 41e73a2c05836220605712bd2a3aad72ebdcca
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 5796ecc90e32ffdbbb9073e21a16aa1747922c
-    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   │   ├── b294f220feb3eab666c567afbbc89b775eb7db
-    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
-  │   │   │   └── e0e7400d1bb25153dc5b3bf179bd4272660413
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── 9d
-  │   │   │   ├── 300fde1535c481a9c98ce4423dfb7e67d3ed85
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 63cf65188b93c38126cc6a2430a0b073f213fa
-    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
-  │   │   │   ├── 657732946e233d00e212e8f93bad8ce1dd3ecd
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   │   ├── 668c52354cc0d07c9842c8f89bd7f2aad55fa4
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 6d0f6f6ddc223830d9e36673c7cc11a7f25ba4
-    [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
-  │   │   │   ├── 9bc2641ae647d2eda087feb9a03510ea2dc4c3
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 9c60344706cd0005ce38dd8b2478c84aee06f6
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── ac73e50f02fbba40a68e2cd58b2262306c01ba
-    [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   │   ├── ce5aabbd0e08d082950bab3fff17f250135ee3
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── f10e063bd8d42011977b889469f87c0ce9cced
 ├── gradle
 │   └── wrapper
 │       └── gradle-wrapper.properties
@@ -18597,6 +18636,454 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           if (cur.length() > 0) lines.add(cur.toString());
           return lines;
       }
+  
+  
+      /* ------------------------------------------------------------------ */
+      /*  Dashed rules (restored — the Graph tab and section headers use them) */
+      /* ------------------------------------------------------------------ */
+  
+      /** Dashed horizontal rule from (x, y) with length w. */
+      public static void dashedH(float x, float y, float w, int color) {
+          if (w <= 0f || ((color >>> 24) & 255) <= 4) return;
+          for (float i = 0f; i < w; i += 6f) {
+              int x0 = (int) (x + i);
+              int x1 = (int) (x + Math.min(w, i + 3f));
+              Gui.drawRect(x0, (int) y, x1, (int) y + 1, color);
+          }
+      }
+  
+      /** Dashed vertical rule from (x, y) with length h. */
+      public static void dashedV(float x, float y, float h, int color) {
+          if (h <= 0f || ((color >>> 24) & 255) <= 4) return;
+          for (float i = 0f; i < h; i += 6f) {
+              int y0 = (int) (y + i);
+              int y1 = (int) (y + Math.min(h, i + 3f));
+              Gui.drawRect((int) x, y0, (int) x + 1, y1, color);
+          }
+      }
+  }
+        │                   ├── Draw.java.bak
+  package com.oryvex.kbclient.ui;
+  
+  import net.minecraft.client.Minecraft;
+  import net.minecraft.client.gui.FontRenderer;
+  import net.minecraft.client.gui.Gui;
+  import net.minecraft.client.renderer.GlStateManager;
+  import org.lwjgl.opengl.GL11;
+  
+  import java.util.ArrayList;
+  import java.util.List;
+  
+  /** Minimal drawing toolkit: rectangles, borders, lines, text, vector icons. */
+  public final class Draw {
+      private Draw() {}
+  
+      // ---- Icon IDs ----
+      public static final int ICON_NONE    = 0;
+      public static final int ICON_GEAR    = 1;
+      public static final int ICON_ARROW   = 2;
+      public static final int ICON_PLUS    = 3;
+      public static final int ICON_MINUS   = 4;
+      public static final int ICON_CLOSE   = 5;
+      public static final int ICON_CHECK   = 6;
+      public static final int ICON_PLAY    = 7;
+      public static final int ICON_GRAPH   = 8;
+      public static final int ICON_USER    = 9;
+      public static final int ICON_HOME    = 10;
+      public static final int ICON_STAR    = 11;
+      public static final int ICON_TRASH   = 12;
+      public static final int ICON_COPY    = 13;
+      public static final int ICON_SAVE    = 14;
+  
+      // ---- math helpers ----
+      public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
+      public static float ease(float t) { t = clamp(t); return t * t * (3f - 2f * t); }
+      public static float easeOut(float t) { t = clamp(t); return 1f - (1f - t) * (1f - t); }
+      public static float lerp(float a, float b, float t) { return a + (b - a) * clamp(t); }
+  
+      public static int lerp(int a, int b, float t) {
+          t = clamp(t);
+          int aa = (a >>> 24) & 255, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+          int ba = (b >>> 24) & 255, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+          return (((int)(aa + (ba - aa) * t)) << 24)
+               | (((int)(ar + (br - ar) * t)) << 16)
+               | (((int)(ag + (bg - ag) * t)) << 8)
+               |  ((int)(ab + (bb - ab) * t));
+      }
+  
+      public static int alpha(int color, float a) {
+          return ((int)(clamp(a) * 255f) << 24) | (color & 0xFFFFFF);
+      }
+  
+      public static int fade(int color, float a) {
+          return ((int)(((color >>> 24) & 255) * clamp(a)) << 24) | (color & 0xFFFFFF);
+      }
+  
+      public static int confColor(double c) {
+          float f = (float) Math.max(0, Math.min(1, c));
+          return f < 0.5f ? lerp(Theme.BAD, Theme.WARN, f * 2f)
+                          : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
+      }
+  
+      // ---- GL state ----
+      public static void blend() {
+          GlStateManager.enableBlend();
+          GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+          GlStateManager.color(1f, 1f, 1f, 1f);
+      }
+  
+      public static void resetColor() {
+          GlStateManager.color(1f, 1f, 1f, 1f);
+          GlStateManager.disableBlend();
+      }
+  
+      // ---- primitives ----
+      public static void rect(float x, float y, float w, float h, int color) {
+          Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), color);
+      }
+  
+      public static void vgradient(int w, int h, int top, int bottom) {
+          // flat background — ignore gradient, draw solid
+          rect(0, 0, w, h, top);
+      }
+  
+      public static void vgrad(float x, float y, float w, float h, int top, int bottom) {
+          rect(x, y, w, h, top);
+      }
+  
+      public static void hgrad(float x, float y, float w, float h, int left, int right) {
+          rect(x, y, w, h, left);
+      }
+  
+      public static void roundRect(float x, float y, float w, float h, float r, int color) {
+          if (w <= 0 || h <= 0) return;
+          if (((color >>> 24) & 255) <= 4) return;
+          r = Math.min(r, Math.min(w, h) / 2f);
+          int ir = (int) Math.ceil(r);
+          if (ir <= 0) { Gui.drawRect((int)x, (int)y, (int)(x+w), (int)(y+h), color); return; }
+          Gui.drawRect((int)x,       (int)(y + r), (int)(x + w), (int)(y + h - r), color);
+          Gui.drawRect((int)(x + r), (int)y,       (int)(x + w - r), (int)(y + r),   color);
+          Gui.drawRect((int)(x + r), (int)(y + h - r), (int)(x + w - r), (int)(y + h), color);
+          for (int i = 0; i < ir; i++) {
+              double dy = ir - i - 0.5;
+              int inset = (int) Math.round(ir - Math.sqrt(Math.max(0, ir * ir - dy * dy)));
+              Gui.drawRect((int)(x + inset), (int)(y + i),         (int)(x + w - inset), (int)(y + i + 1), color);
+              Gui.drawRect((int)(x + inset), (int)(y + h - i - 1), (int)(x + w - inset), (int)(y + h - i), color);
+          }
+      }
+  
+      /** Thin 1px outline drawn on top of a rounded rect. */
+      public static void roundOutline(float x, float y, float w, float h, float r, float t, int color) {
+          if (((color >>> 24) & 255) <= 4) return;
+          rect(x + r, y,             w - 2 * r, t, color);
+          rect(x + r, y + h - t,     w - 2 * r, t, color);
+          rect(x,             y + r, t, h - 2 * r, color);
+          rect(x + w - t,     y + r, t, h - 2 * r, color);
+      }
+  
+      /** Flat panel: fill + 1px border. */
+      public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
+          if (((fill >>> 24) & 255) > 4) roundRect(x, y, w, h, r, fill);
+          if (border != 0 && ((border >>> 24) & 255) > 4) roundOutline(x, y, w, h, r, 1f, border);
+      }
+  
+      public static void bar(float x, float y, float w, float h, double frac, int bg, int fg) {
+          roundRect(x, y, w, h, h / 2f, bg);
+          float fw = (float)(w * Math.max(0, Math.min(1, frac)));
+          if (fw > 0) roundRect(x, y, fw, h, h / 2f, fg);
+      }
+  
+      public static void circle(float cx, float cy, float r, int color) {
+          if (((color >>> 24) & 255) <= 4) return;
+          int ir = (int) Math.ceil(r);
+          for (int dy = -ir; dy <= ir; dy++) {
+              int half = (int) Math.sqrt(Math.max(0, ir * ir - dy * dy));
+              rect(cx - half, cy + dy, half * 2, 1, color);
+          }
+      }
+  
+      public static void line(float x1, float y1, float x2, float y2, float width, int color) {
+          if (((color >>> 24) & 255) <= 4) return;
+          float dx = x2 - x1, dy = y2 - y1;
+          float len = (float) Math.sqrt(dx * dx + dy * dy);
+          if (len < 0.01f) return;
+          int steps = (int) Math.ceil(len);
+          for (int i = 0; i <= steps; i++) {
+              float t = i / (float) steps;
+              rect(x1 + dx * t - width / 2f, y1 + dy * t - width / 2f, width, width, color);
+          }
+      }
+  
+      // ---- Icons (flat vector, no glow) ----
+      public static void icon(int type, float cx, float cy, float size, int color) {
+          if (((color >>> 24) & 255) <= 4) return;
+          float h = size / 2f;
+          switch (type) {
+              case ICON_GEAR:  drawGear(cx, cy, h, 0f, color); break;
+              case ICON_ARROW: drawTriangle(cx + h * 0.15f, cy, h, color, 1); break;
+              case ICON_PLAY:  drawTriangle(cx + h * 0.15f, cy, h, color, 1); break;
+              case ICON_PLUS:  drawPlus(cx, cy, h, color); break;
+              case ICON_MINUS: rect(cx - h, cy - Math.max(1f, h * 0.15f), h * 2f, Math.max(1.5f, h * 0.3f), color); break;
+              case ICON_CLOSE: drawClose(cx, cy, h, color); break;
+              case ICON_CHECK: drawCheck(cx, cy, h, color); break;
+              case ICON_GRAPH: drawGraph(cx, cy, h, color); break;
+              case ICON_USER:  drawUser(cx, cy, h, color); break;
+              case ICON_HOME:  drawHome(cx, cy, h, color); break;
+              case ICON_STAR:  drawStar(cx, cy, h, color); break;
+              case ICON_TRASH: drawTrash(cx, cy, h, color); break;
+              case ICON_COPY:  drawCopy(cx, cy, h, color); break;
+              case ICON_SAVE:  drawSave(cx, cy, h, color); break;
+              default:         rect(cx - h, cy - h, size, size, color); break;
+          }
+      }
+  
+      private static void drawGear(float cx, float cy, float r, float angle, int color) {
+          if (r < 0.5f) return;
+          float or_ = r, ir = r * 0.66f, tr = r * 0.22f;
+          int teeth = 8;
+          double ar = Math.toRadians(angle);
+  
+          GlStateManager.disableTexture2D();
+          GlStateManager.enableBlend();
+          setGLColor(color);
+  
+          for (int i = 0; i < teeth; i++) {
+              double a0 = ar + (2 * Math.PI * i) / teeth;
+              double a1 = a0 + (2 * Math.PI / teeth) * 0.55;
+              float x0 = cx + (float)Math.cos(a0) * ir;
+              float y0 = cy + (float)Math.sin(a0) * ir;
+              float x1 = cx + (float)Math.cos(a1) * ir;
+              float y1 = cy + (float)Math.sin(a1) * ir;
+              float dx = x1 - x0, dy = y1 - y0;
+              float len = (float)Math.sqrt(dx * dx + dy * dy);
+              if (len < 0.001f) continue;
+              float nx = -dy / len * tr, ny = dx / len * tr;
+              float ex0 = cx + (float)Math.cos(a0) * or_;
+              float ey0 = cy + (float)Math.sin(a0) * or_;
+              float ex1 = cx + (float)Math.cos(a1) * or_;
+              float ey1 = cy + (float)Math.sin(a1) * or_;
+  
+              GL11.glBegin(GL11.GL_QUADS);
+              GL11.glVertex2f(x0 + nx, y0 + ny);
+              GL11.glVertex2f(x1 + nx, y1 + ny);
+              GL11.glVertex2f(ex1, ey1);
+              GL11.glVertex2f(ex0, ey0);
+              GL11.glEnd();
+              GL11.glBegin(GL11.GL_QUADS);
+              GL11.glVertex2f(x1 + nx, y1 + ny);
+              GL11.glVertex2f(x1 - nx, y1 - ny);
+              GL11.glVertex2f(ex1, ey1);
+              GL11.glVertex2f(ex0, ey0);
+              GL11.glEnd();
+              GL11.glBegin(GL11.GL_QUADS);
+              GL11.glVertex2f(x1 - nx, y1 - ny);
+              GL11.glVertex2f(x0 - nx, y0 - ny);
+              GL11.glVertex2f(ex1, ey1);
+              GL11.glVertex2f(ex0, ey0);
+              GL11.glEnd();
+              GL11.glBegin(GL11.GL_QUADS);
+              GL11.glVertex2f(x0 - nx, y0 - ny);
+              GL11.glVertex2f(x0 + nx, y0 + ny);
+              GL11.glVertex2f(ex1, ey1);
+              GL11.glVertex2f(ex0, ey0);
+              GL11.glEnd();
+          }
+  
+          GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+          GL11.glVertex2f(cx, cy);
+          for (int i = 0; i <= 32; i++) {
+              double a = ar + (2 * Math.PI * i) / 32;
+              GL11.glVertex2f(cx + (float)Math.cos(a) * ir, cy + (float)Math.sin(a) * ir);
+          }
+          GL11.glEnd();
+  
+          GlStateManager.color(1f, 1f, 1f, 1f);
+          GlStateManager.enableTexture2D();
+      }
+  
+      private static void drawTriangle(float cx, float cy, float h, int color, int dir) {
+          GlStateManager.disableTexture2D();
+          GlStateManager.enableBlend();
+          setGLColor(color);
+          GL11.glBegin(GL11.GL_TRIANGLES);
+          if (dir == 1) {
+              GL11.glVertex2f(cx - h * 0.55f, cy - h * 0.85f);
+              GL11.glVertex2f(cx - h * 0.55f, cy + h * 0.85f);
+              GL11.glVertex2f(cx + h * 0.85f, cy);
+          } else {
+              GL11.glVertex2f(cx + h * 0.55f, cy - h * 0.85f);
+              GL11.glVertex2f(cx + h * 0.55f, cy + h * 0.85f);
+              GL11.glVertex2f(cx - h * 0.85f, cy);
+          }
+          GL11.glEnd();
+          GlStateManager.color(1f, 1f, 1f, 1f);
+          GlStateManager.enableTexture2D();
+      }
+  
+      private static void drawPlus(float cx, float cy, float h, int color) {
+          float t = Math.max(2f, h * 0.32f);
+          rect(cx - h,      cy - t / 2f, h * 2f, t, color);
+          rect(cx - t / 2f, cy - h,      t, h * 2f, color);
+      }
+  
+      private static void drawClose(float cx, float cy, float h, int color) {
+          float t = Math.max(1.6f, h * 0.26f);
+          line(cx - h * 0.85f, cy - h * 0.85f, cx + h * 0.85f, cy + h * 0.85f, t, color);
+          line(cx + h * 0.85f, cy - h * 0.85f, cx - h * 0.85f, cy + h * 0.85f, t, color);
+      }
+  
+      private static void drawCheck(float cx, float cy, float h, int color) {
+          float t = Math.max(1.6f, h * 0.26f);
+          line(cx - h * 0.85f, cy,               cx - h * 0.2f, cy + h * 0.7f, t, color);
+          line(cx - h * 0.2f,  cy + h * 0.7f,    cx + h * 0.85f, cy - h * 0.7f, t, color);
+      }
+  
+      private static void drawGraph(float cx, float cy, float h, int color) {
+          float bw = h * 0.32f;
+          rect(cx - h * 0.85f, cy - h * 0.15f, bw, h * 1.0f, color);
+          rect(cx - bw * 0.5f, cy - h * 0.75f, bw, h * 1.6f, color);
+          rect(cx + h * 0.55f, cy - h * 0.45f, bw, h * 1.3f, color);
+      }
+  
+      private static void drawUser(float cx, float cy, float h, int color) {
+          circle(cx, cy - h * 0.35f, h * 0.35f, color);
+          float bodyY = cy + h * 0.15f;
+          rect(cx - h * 0.7f, bodyY, h * 1.4f, h * 0.7f, color);
+      }
+  
+      private static void drawHome(float cx, float cy, float h, int color) {
+          GlStateManager.disableTexture2D();
+          GlStateManager.enableBlend();
+          setGLColor(color);
+          GL11.glBegin(GL11.GL_TRIANGLES);
+          GL11.glVertex2f(cx, cy - h * 0.9f);
+          GL11.glVertex2f(cx - h * 0.85f, cy);
+          GL11.glVertex2f(cx + h * 0.85f, cy);
+          GL11.glEnd();
+          GlStateManager.color(1f, 1f, 1f, 1f);
+          GlStateManager.enableTexture2D();
+          rect(cx - h * 0.6f, cy, h * 1.2f, h * 0.85f, color);
+      }
+  
+      private static void drawStar(float cx, float cy, float h, int color) {
+          GlStateManager.disableTexture2D();
+          GlStateManager.enableBlend();
+          setGLColor(color);
+          GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+          GL11.glVertex2f(cx, cy);
+          for (int i = 0; i <= 10; i++) {
+              double a = -Math.PI / 2 + (Math.PI * 2 * i) / 10;
+              float rr = (i % 2 == 0) ? h : h * 0.42f;
+              GL11.glVertex2f(cx + (float)Math.cos(a) * rr, cy + (float)Math.sin(a) * rr);
+          }
+          GL11.glEnd();
+          GlStateManager.color(1f, 1f, 1f, 1f);
+          GlStateManager.enableTexture2D();
+      }
+  
+      private static void drawTrash(float cx, float cy, float h, int color) {
+          rect(cx - h * 0.65f, cy - h * 0.4f, h * 1.3f, h * 1.2f, color);
+          rect(cx - h * 0.85f, cy - h * 0.7f, h * 1.7f, h * 0.2f, color);
+          rect(cx - h * 0.3f,  cy - h * 0.95f, h * 0.6f, h * 0.2f, color);
+      }
+  
+      private static void drawCopy(float cx, float cy, float h, int color) {
+          float t = Math.max(1f, h * 0.16f);
+          roundOutline(cx - h * 0.55f, cy - h * 0.85f, h * 1.05f, h * 1.35f, 2f, t, color);
+          roundOutline(cx - h * 0.15f, cy - h * 0.4f,  h * 1.05f, h * 1.35f, 2f, t, color);
+      }
+  
+      private static void drawSave(float cx, float cy, float h, int color) {
+          float t = Math.max(1f, h * 0.16f);
+          roundOutline(cx - h * 0.85f, cy - h * 0.85f, h * 1.7f, h * 1.7f, 2f, t, color);
+          rect(cx - h * 0.4f, cy - h * 0.85f, h * 0.8f, h * 0.5f, color);
+          rect(cx - h * 0.55f, cy + h * 0.15f, h * 1.1f, h * 0.6f, color);
+      }
+  
+      private static void setGLColor(int color) {
+          float r = ((color >> 16) & 255) / 255f;
+          float g = ((color >> 8)  & 255) / 255f;
+          float b = ( color        & 255) / 255f;
+          float a = ((color >>> 24)      ) / 255f;
+          GlStateManager.color(r, g, b, a);
+      }
+  
+      // ---- text ----
+      public static FontRenderer font() {
+          try {
+              com.oryvex.kbclient.font.ModernFontRenderer mf = com.oryvex.kbclient.KBClientMod.modernFont;
+              if (mf != null) return mf;
+          } catch (Throwable ignored) { }
+          return Minecraft.getMinecraft().fontRendererObj;
+      }
+  
+      public static int width(String s, float scale) { return (int)(font().getStringWidth(s) * scale); }
+      public static int w(String s, float scale, boolean bold) { return width(s, scale); }
+      public static float lineH(float scale) { return font().FONT_HEIGHT * scale; }
+  
+      public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
+          if (s == null || s.isEmpty()) return;
+          if (((color >>> 24) & 255) <= 4) return;
+          GlStateManager.pushMatrix();
+          GlStateManager.scale(scale, scale, 1f);
+          font().drawString(s, x / scale, y / scale, color, false);
+          GlStateManager.popMatrix();
+      }
+  
+      public static void centered(String s, float cx, float cy, int color, float scale, boolean shadow) {
+          if (s == null || s.isEmpty()) return;
+          float tw = font().getStringWidth(s) * scale;
+          float th = font().FONT_HEIGHT * scale;
+          text(s, cx - tw / 2f, cy - th / 2f, color, scale, false);
+      }
+  
+      public static void mid(String s, float cx, float cy, int color, float scale, boolean shadow) {
+          centered(s, cx, cy, color, scale, false);
+      }
+      public static void mid(String s, float cx, float cy, int color, float scale) {
+          centered(s, cx, cy, color, scale, false);
+      }
+  
+      public static void left(String s, float x, float cy, int color, float scale, boolean shadow) {
+          if (s == null || s.isEmpty()) return;
+          float th = font().FONT_HEIGHT * scale;
+          text(s, x, cy - th / 2f, color, scale, false);
+      }
+  
+      public static void right(String s, float rx, float cy, int color, float scale, boolean shadow) {
+          if (s == null || s.isEmpty()) return;
+          float tw = font().getStringWidth(s) * scale;
+          float th = font().FONT_HEIGHT * scale;
+          text(s, rx - tw, cy - th / 2f, color, scale, false);
+      }
+  
+      public static String fit(String s, float maxW, float scale, boolean bold) {
+          if (s == null) return "";
+          if (w(s, scale, bold) <= maxW) return s;
+          String ell = "...";
+          while (s.length() > 0 && w(s + ell, scale, bold) > maxW) {
+              s = s.substring(0, s.length() - 1);
+          }
+          return s + ell;
+      }
+  
+      public static List<String> wrap(String s, float maxW, float scale, boolean bold) {
+          List<String> lines = new ArrayList<String>();
+          if (s == null || s.isEmpty()) return lines;
+          String[] words = s.split(" ");
+          StringBuilder cur = new StringBuilder();
+          for (String word : words) {
+              String test = cur.length() == 0 ? word : cur + " " + word;
+              if (w(test, scale, bold) > maxW && cur.length() > 0) {
+                  lines.add(cur.toString());
+                  cur = new StringBuilder(word);
+              } else {
+                  cur = new StringBuilder(test);
+              }
+          }
+          if (cur.length() > 0) lines.add(cur.toString());
+          return lines;
+      }
   }
         │                   ├── Fade.java
   package com.oryvex.kbclient.ui;
@@ -19292,6 +19779,164 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
       }
   }
         │                   ├── GuiKbOptions.java
+  package com.oryvex.kbclient.ui;
+  
+  import com.oryvex.kbclient.KBTracker;
+  import java.io.IOException;
+  import net.minecraft.client.gui.GuiButton;
+  import net.minecraft.client.gui.GuiOptions;
+  import net.minecraft.client.gui.GuiScreen;
+  
+  /**
+   * Centered, flat options screen for KB Client.
+   *
+   *   ┌──────────────────────────────────────┐
+   *   │              OPTIONS                 │
+   *   │       KB Client preferences          │
+   *   │            ─────────                 │
+   *   │  HUD overlay              [toggle]   │
+   *   │  Hit toasts               [toggle]   │
+   *   │  Custom loading screen    [toggle]   │
+   *   │  Discord Rich Presence    [toggle]   │
+   *   │  Screen fades: Normal                │
+   *   │      [ ⚙ MC Options ]  [ ✓ Done ]    │
+   *   │      KB Client 3.0 | Forge 1.8.9     │
+   *   └──────────────────────────────────────┘
+   *
+   * The legacy "Menu particles" toggle has been removed.
+   */
+  public class GuiKbOptions extends FadeScreen {
+  
+      private final KBTracker tracker;
+      private final GuiScreen parent;
+  
+      private UiButton bHud, bToast, bLoad, bDisc, bFade;
+  
+      private int cardX, cardY, cardW, cardH;
+  
+      public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
+          this.tracker = tracker;
+          this.parent  = parent;
+      }
+  
+      @Override
+      public void initGui() {
+          this.buttonList.clear();
+  
+          int cx = this.width / 2;
+  
+          int bw  = Math.min(300, this.width - 80);
+          int bh  = 22;
+          int gap = 5;
+  
+          int pad        = 24;
+          int headerH    = 88;
+          int togglesH   = 5 * (bh + gap) - gap;   // 130
+          int actionsGap = 12;
+          int actionsH   = bh;                     // 22
+          int footerH    = 40;
+  
+          cardW = bw + pad * 2;
+          cardH = pad + headerH + togglesH + actionsGap + actionsH + footerH + pad;
+          cardX = cx - cardW / 2;
+          cardY = Math.max(16, (this.height - cardH) / 2);
+  
+          int togglesY = cardY + pad + headerH;
+          int bx       = cx - bw / 2;
+  
+          bHud   = new UiButton(1, bx, togglesY,                    bw, bh, "HUD overlay")
+                          .style(UiButton.TOGGLE).delay(50);
+          bToast = new UiButton(3, bx, togglesY + 1 * (bh + gap),   bw, bh, "Hit toasts")
+                          .style(UiButton.TOGGLE).delay(90);
+          bLoad  = new UiButton(4, bx, togglesY + 2 * (bh + gap),   bw, bh, "Custom loading screen")
+                          .style(UiButton.TOGGLE).delay(130);
+          bDisc  = new UiButton(8, bx, togglesY + 3 * (bh + gap),   bw, bh, "Discord Rich Presence")
+                          .style(UiButton.TOGGLE).delay(170);
+          bFade  = new UiButton(5, bx, togglesY + 4 * (bh + gap),   bw, bh, "")
+                          .delay(210);
+  
+          this.buttonList.add(bHud);
+          this.buttonList.add(bToast);
+          this.buttonList.add(bLoad);
+          this.buttonList.add(bDisc);
+          this.buttonList.add(bFade);
+  
+          int actionY   = togglesY + togglesH + actionsGap;
+          int actionGap = 8;
+          int halfW     = (bw - actionGap) / 2;
+  
+          UiButton mcOpt = new UiButton(6, bx, actionY, halfW, bh, "MC Options");
+          mcOpt.icon(Draw.ICON_GEAR).delay(250);
+  
+          UiButton done = new UiButton(7, bx + halfW + actionGap, actionY, halfW, bh, "Done");
+          done.style(UiButton.PRIMARY).icon(Draw.ICON_CHECK).delay(290);
+  
+          this.buttonList.add(mcOpt);
+          this.buttonList.add(done);
+  
+          sync();
+      }
+  
+      private void sync() {
+          bHud.on   = Settings.hud;
+          bToast.on = Settings.toasts;
+          bLoad.on  = Settings.customLoading;
+          bDisc.on  = Settings.discordRpc;
+          bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
+      }
+  
+      @Override
+      protected void actionPerformed(GuiButton b) throws IOException {
+          switch (b.id) {
+              case 1: Settings.hud           = !Settings.hud;           break;
+              case 3: Settings.toasts        = !Settings.toasts;        break;
+              case 4: Settings.customLoading = !Settings.customLoading; break;
+              case 8:
+                  Settings.discordRpc = !Settings.discordRpc;
+                  com.oryvex.kbclient.DiscordRPC.apply();
+                  break;
+              case 5: Settings.fade = (Settings.fade + 1) % 4;          break;
+              case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
+              case 7: Settings.save(); closeTo(parent);                    return;
+              default: break;
+          }
+          Settings.save();
+          sync();
+      }
+  
+      @Override
+      protected void onKey(char c, int key) throws IOException {
+          if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) {
+              Settings.save();
+              closeTo(parent);
+          }
+      }
+  
+      @Override
+      public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+          // Flat full-screen backdrop
+          Draw.rect(0, 0, this.width, this.height, Theme.BG0);
+  
+          // Centered card
+          Draw.panel(cardX, cardY, cardW, cardH, 10f, Theme.SURFACE, Theme.BORDER);
+  
+          float cx = this.width / 2f;
+  
+          // ---- Header -------------------------------------------------
+          float titleCY = cardY + 44f;
+          Draw.centered("OPTIONS",               cx, titleCY,        Theme.TEXT,  1.8f,  false);
+          Draw.centered("KB Client preferences", cx, titleCY + 24f,  Theme.MUTED, 0.85f, false);
+          Draw.rect(cx - 30f, titleCY + 42f, 60f, 1f, Theme.BORDER);
+  
+          // ---- Footer -------------------------------------------------
+          Draw.centered("KB Client 3.0  |  Forge 1.8.9",
+                  cx, cardY + cardH - 20f, Theme.DIM, 0.7f, false);
+  
+          super.drawScreen(mouseX, mouseY, partialTicks);
+          drawFade();
+      }
+  }
+        │                   ├── GuiKbOptions.java.bak
   package com.oryvex.kbclient.ui;
   
   import com.oryvex.kbclient.KBTracker;
