@@ -84,6 +84,15 @@ public class KBClientMod {
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
         DiscordRPC.start();
+
+        try {
+            Minecraft mc = Minecraft.getMinecraft();
+            mc.fontRendererObj = new com.oryvex.kbclient.font.ModernFontRenderer(mc.gameSettings, new net.minecraft.util.ResourceLocation("textures/font/ascii.png"), mc.renderEngine, false);
+            logger.info("[KBClient] ModernFontRenderer attached to client.");
+        } catch (Throwable t) {
+            logger.error("[KBClient] Failed to attach ModernFontRenderer: " + t);
+        }
+
     }
 
     private void installLoading() {

@@ -29,19 +29,31 @@ jobs:
           gradle wrapper --gradle-version 4.10.3
           chmod +x gradlew
 
-      
-    - name: Download Google Fonts
-      run: |
-        mkdir -p src/main/resources/fonts
-        # Inter Font
-        curl -sL https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip -o inter.zip
-        unzip -j inter.zip "Inter-4.0/ttf/Inter-Regular.ttf" -d src/main/resources/fonts
-        rm inter.zip
-        # Vazirmatn Font (Persian)
-        curl -sL https://github.com/rastikerdar/vazirmatn/releases/download/v4.0.0/Vazirmatn-v4.0.0.zip -o vazir.zip
-        unzip -j vazir.zip "Vazirmatn-v4.0.0/ttf/Vazirmatn-Regular.ttf" -d src/main/resources/fonts
-        rm vazir.zip
-- name: Build Mod with Gradle
+      - name: Download Google Fonts
+        run: |
+          mkdir -p src/main/resources/fonts
+          
+          # Inter Font (Dynamic extraction to handle version path changes)
+          curl -sL https://github.com/rsms/inter/releases/download/v4.0/Inter-4.0.zip -o inter.zip
+          INTER_FILE=$(unzip -l inter.zip | grep "Inter-Regular.ttf" | awk '{print $4}' | head -n 1)
+          if [ -n "$INTER_FILE" ]; then
+            unzip -j inter.zip "$INTER_FILE" -d src/main/resources/fonts
+          else
+            echo "Warning: Could not find Inter-Regular.ttf in archive"
+          fi
+          rm inter.zip
+          
+          # Vazirmatn Font (Persian) (Dynamic extraction)
+          curl -sL https://github.com/rastikerdar/vazirmatn/releases/download/v4.0.0/Vazirmatn-v4.0.0.zip -o vazir.zip
+          VAZIR_FILE=$(unzip -l vazir.zip | grep "Vazirmatn-Regular.ttf" | awk '{print $4}' | head -n 1)
+          if [ -n "$VAZIR_FILE" ]; then
+            unzip -j vazir.zip "$VAZIR_FILE" -d src/main/resources/fonts
+          else
+            echo "Warning: Could not find Vazirmatn-Regular.ttf in archive"
+          fi
+          rm vazir.zip
+
+      - name: Build Mod with Gradle
         run: |
           ./gradlew build --no-daemon --stacktrace || ./gradlew build --no-daemon --stacktrace
 

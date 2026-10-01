@@ -1,12 +1,4 @@
-import os
-
-def main():
-    # 1. Create the font directory
-    font_dir = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "font")
-    os.makedirs(font_dir, exist_ok=True)
-
-    # 2. Generate ModernFontRenderer.java
-    font_renderer_code = """package com.oryvex.kbclient.font;
+package com.oryvex.kbclient.font;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -223,37 +215,3 @@ public class ModernFontRenderer extends FontRenderer {
         return getStringWidth(String.valueOf(character));
     }
 }
-"""
-
-    with open(os.path.join(font_dir, "ModernFontRenderer.java"), "w", encoding="utf-8") as f:
-        f.write(font_renderer_code)
-
-    # 3. Patch KBClientMod.java to overwrite mc.fontRendererObj natively
-    mod_file = os.path.join("src", "main", "java", "com", "oryvex", "kbclient", "KBClientMod.java")
-    if os.path.exists(mod_file):
-        with open(mod_file, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        insertion = """
-        try {
-            Minecraft mc = Minecraft.getMinecraft();
-            mc.fontRendererObj = new com.oryvex.kbclient.font.ModernFontRenderer(mc.gameSettings, new net.minecraft.util.ResourceLocation("textures/font/ascii.png"), mc.renderEngine, false);
-            logger.info("[KBClient] ModernFontRenderer attached to client.");
-        } catch (Throwable t) {
-            logger.error("[KBClient] Failed to attach ModernFontRenderer: " + t);
-        }
-"""
-        
-        # Inject our initializer into the post-init lifecycle routine alongside RPC
-        if "DiscordRPC.start();" in content:
-            content = content.replace("DiscordRPC.start();", "DiscordRPC.start();\n" + insertion)
-        elif "installLoading();" in content:
-            content = content.replace("installLoading();", "installLoading();\n" + insertion)
-
-        with open(mod_file, "w", encoding="utf-8") as f:
-            f.write(content)
-
-    print("Fixer applied successfully. ModernFontRenderer generated and registered.")
-
-if __name__ == "__main__":
-    main()
