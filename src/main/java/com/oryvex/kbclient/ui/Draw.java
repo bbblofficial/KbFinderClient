@@ -359,4 +359,94 @@ public final class Draw {
         GL11.glDisable(GL11.GL_LINE_SMOOTH);
         GlStateManager.enableTexture2D();
     }
+
+    public static void vgradient(int w, int h, int top, int bottom) {
+        for (int y = 0; y < h; y += 3) {
+            Gui.drawRect(0, y, w, Math.min(h, y + 3), lerp(top, bottom, y / (float) h));
+        }
+    }
+
+    public static void shadow(float x, float y, float w, float h, float r, int color, float spread) {
+        float alpha = (color >> 24 & 0xFF) / 255.0F;
+        if (alpha <= 0.01f) return;
+        float red = (color >> 16 & 0xFF) / 255.0F;
+        float green = (color >> 8 & 0xFF) / 255.0F;
+        float blue = (color & 0xFF) / 255.0F;
+        blend();
+        GlStateManager.disableTexture2D();
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glLineWidth(1.5f);
+        for (float i = 0.5f; i < spread; i += 0.5f) {
+            float a = alpha * (1f - (i / spread)) * 0.05f;
+            GlStateManager.color(red, green, blue, a);
+            float nx = x - i, ny = y - i, nw = w + i * 2, nh = h + i * 2, nr = r + i;
+            GL11.glBegin(GL11.GL_LINE_LOOP);
+            for (int j = 180; j <= 270; j += 10) GL11.glVertex2d(nx + nr + Math.cos(Math.toRadians(j)) * nr, ny + nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 270; j <= 360; j += 10) GL11.glVertex2d(nx + nw - nr + Math.cos(Math.toRadians(j)) * nr, ny + nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 0; j <= 90; j += 10) GL11.glVertex2d(nx + nw - nr + Math.cos(Math.toRadians(j)) * nr, ny + nh - nr + Math.sin(Math.toRadians(j)) * nr);
+            for (int j = 90; j <= 180; j += 10) GL11.glVertex2d(nx + nr + Math.cos(Math.toRadians(j)) * nr, ny + nh - nr + Math.sin(Math.toRadians(j)) * nr);
+            GL11.glEnd();
+        }
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.enableTexture2D();
+    }
+
+    public static FontRenderer font() { return Minecraft.getMinecraft().fontRendererObj; }
+
+    public static int width(String s, float scale) { return (int) (font().getStringWidth(s) * scale); }
+
+    public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
+        if (((color >>> 24) & 255) <= 4) return;
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(scale, scale, 1f);
+        font().drawString(s, x / scale, y / scale, color, shadow);
+        GlStateManager.popMatrix();
+    }
+
+    public static void centered(String s, float cx, float y, int color, float scale, boolean shadow) {
+        text(s, cx - font().getStringWidth(s) * scale / 2f, y, color, scale, shadow);
+    }
+
+    public static void plexusBackground(int w, int h, float maxAlpha) {
+        float t = (System.currentTimeMillis() % 100000L) / 1000f;
+        int count = 100;
+        float[] px = new float[count];
+        float[] py = new float[count];
+        for (int i = 0; i < count; i++) {
+            float sp = 1.5f + (i % 4) * 0.8f;
+            px[i] = (i * 93 + t * sp * 18f) % (w + 100) - 50;
+            py[i] = (i * 61 - t * sp * 12f) % (h + 100) - 50;
+            if (py[i] < -50) py[i] += h + 100;
+        }
+        blend();
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glLineWidth(1.2f);
+        GL11.glBegin(GL11.GL_LINES);
+        for (int i = 0; i < count; i++) {
+            for (int j = i + 1; j < count; j++) {
+                float dx = px[i] - px[j];
+                float dy = py[i] - py[j];
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120f) {
+                    float a = (1f - dist / 120f) * maxAlpha * 0.6f;
+                    int color = alpha(Theme.ACCENT, a);
+                    float red = (color >> 16 & 0xFF) / 255.0F;
+                    float green = (color >> 8 & 0xFF) / 255.0F;
+                    float blue = (color & 0xFF) / 255.0F;
+                    GlStateManager.color(red, green, blue, a);
+                    GL11.glVertex2d(px[i], py[i]);
+                    GL11.glVertex2d(px[j], py[j]);
+                }
+            }
+        }
+        GL11.glEnd();
+        for (int i = 0; i < count; i++) {
+            float tw = 0.5f + 0.5f * (float) Math.sin(t * 2f + i);
+            int a = (int) (maxAlpha * 255f * tw);
+            roundRect(px[i] - 1.5f, py[i] - 1.5f, 3f, 3f, 1.5f, (a << 24) | (Theme.ACCENT & 0xFFFFFF));
+        }
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+    }
 }
