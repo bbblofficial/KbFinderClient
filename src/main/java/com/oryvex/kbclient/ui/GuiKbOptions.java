@@ -6,26 +6,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiOptions;
 import net.minecraft.client.gui.GuiScreen;
 
-/**
- * Centered, flat options screen for KB Client.
- *
- *   ┌──────────────────────────────────────┐
- *   │              OPTIONS                 │
- *   │       KB Client preferences          │
- *   │            ─────────                 │
- *   │  HUD overlay              [toggle]   │
- *   │  Hit toasts               [toggle]   │
- *   │  Custom loading screen    [toggle]   │
- *   │  Discord Rich Presence    [toggle]   │
- *   │  Screen fades: Normal                │
- *   │      [ ⚙ MC Options ]  [ ✓ Done ]    │
- *   │      KB Client 3.0 | Forge 1.8.9     │
- *   └──────────────────────────────────────┘
- *
- * The legacy "Menu particles" toggle has been removed.
- */
 public class GuiKbOptions extends FadeScreen {
-
     private final KBTracker tracker;
     private final GuiScreen parent;
 
@@ -43,17 +24,13 @@ public class GuiKbOptions extends FadeScreen {
         this.buttonList.clear();
 
         int cx = this.width / 2;
-
-        int bw  = Math.min(300, this.width - 80);
-        int bh  = 22;
+        int bw = Math.min(300, this.width - 80);
+        int bh = 22;
         int gap = 5;
 
-        int pad        = 24;
-        int headerH    = 88;
-        int togglesH   = 5 * (bh + gap) - gap;   // 130
-        int actionsGap = 12;
-        int actionsH   = bh;                     // 22
-        int footerH    = 40;
+        int pad = 24, headerH = 88;
+        int togglesH = 5 * (bh + gap) - gap;
+        int actionsGap = 12, actionsH = bh, footerH = 40;
 
         cardW = bw + pad * 2;
         cardH = pad + headerH + togglesH + actionsGap + actionsH + footerH + pad;
@@ -63,35 +40,28 @@ public class GuiKbOptions extends FadeScreen {
         int togglesY = cardY + pad + headerH;
         int bx       = cx - bw / 2;
 
-        bHud   = new UiButton(1, bx, togglesY,                    bw, bh, "HUD overlay")
-                        .style(UiButton.TOGGLE).delay(50);
-        bToast = new UiButton(3, bx, togglesY + 1 * (bh + gap),   bw, bh, "Hit toasts")
-                        .style(UiButton.TOGGLE).delay(90);
-        bLoad  = new UiButton(4, bx, togglesY + 2 * (bh + gap),   bw, bh, "Custom loading screen")
-                        .style(UiButton.TOGGLE).delay(130);
-        bDisc  = new UiButton(8, bx, togglesY + 3 * (bh + gap),   bw, bh, "Discord Rich Presence")
-                        .style(UiButton.TOGGLE).delay(170);
-        bFade  = new UiButton(5, bx, togglesY + 4 * (bh + gap),   bw, bh, "")
-                        .delay(210);
+        bHud   = new UiButton(1, bx, togglesY,                  bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(50);
+        bToast = new UiButton(3, bx, togglesY + 1*(bh+gap),     bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(90);
+        bLoad  = new UiButton(4, bx, togglesY + 2*(bh+gap),     bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(130);
+        bDisc  = new UiButton(8, bx, togglesY + 3*(bh+gap),     bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(170);
+        bFade  = new UiButton(5, bx, togglesY + 4*(bh+gap),     bw, bh, "").delay(210);
 
-        this.buttonList.add(bHud);
-        this.buttonList.add(bToast);
-        this.buttonList.add(bLoad);
-        this.buttonList.add(bDisc);
-        this.buttonList.add(bFade);
+        buttonList.add(bHud);
+        buttonList.add(bToast);
+        buttonList.add(bLoad);
+        buttonList.add(bDisc);
+        buttonList.add(bFade);
 
-        int actionY   = togglesY + togglesH + actionsGap;
-        int actionGap = 8;
-        int halfW     = (bw - actionGap) / 2;
+        int actionY = togglesY + togglesH + actionsGap;
+        int ag = 8;
+        int halfW = (bw - ag) / 2;
 
-        UiButton mcOpt = new UiButton(6, bx, actionY, halfW, bh, "MC Options");
-        mcOpt.icon(Draw.ICON_GEAR).delay(250);
+        UiButton mcOpt = new UiButton(6, bx, actionY, halfW, bh, "MC Options").delay(250);
+        UiButton done  = new UiButton(7, bx + halfW + ag, actionY, halfW, bh, "Done")
+                .style(UiButton.PRIMARY).delay(290);
 
-        UiButton done = new UiButton(7, bx + halfW + actionGap, actionY, halfW, bh, "Done");
-        done.style(UiButton.PRIMARY).icon(Draw.ICON_CHECK).delay(290);
-
-        this.buttonList.add(mcOpt);
-        this.buttonList.add(done);
+        buttonList.add(mcOpt);
+        buttonList.add(done);
 
         sync();
     }
@@ -133,23 +103,17 @@ public class GuiKbOptions extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Flat full-screen backdrop
         Draw.rect(0, 0, this.width, this.height, Theme.BG0);
-
-        // Centered card
-        Draw.panel(cardX, cardY, cardW, cardH, 10f, Theme.SURFACE, Theme.BORDER);
+        Draw.panel(cardX, cardY, cardW, cardH, 8f, Theme.SURFACE, Theme.BORDER);
 
         float cx = this.width / 2f;
-
-        // ---- Header -------------------------------------------------
         float titleCY = cardY + 44f;
-        Draw.centered("OPTIONS",               cx, titleCY,        Theme.TEXT,  1.8f,  false);
-        Draw.centered("KB Client preferences", cx, titleCY + 24f,  Theme.MUTED, 0.85f, false);
+        Draw.centered("OPTIONS",               cx, titleCY,       Theme.TEXT,  1.8f,  false);
+        Draw.centered("KB Client preferences", cx, titleCY + 24f, Theme.MUTED, 0.85f, false);
         Draw.rect(cx - 30f, titleCY + 42f, 60f, 1f, Theme.BORDER);
 
-        // ---- Footer -------------------------------------------------
         Draw.centered("KB Client 3.0  |  Forge 1.8.9",
-                cx, cardY + cardH - 20f, Theme.DIM, 0.7f, false);
+                      cx, cardY + cardH - 20f, Theme.DIM, 0.7f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();
