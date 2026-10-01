@@ -173,7 +173,7 @@ public class GuiAnalyzer extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        drawBackdrop(34);
+        drawBackdrop(mouseX, mouseY);
 
         Draw.text("KNOCKBACK ANALYZER", px, 11, Theme.TEXT, 1.4f, true);
         Draw.text("Carbon / Spigot profile - detector + exact YAML import", px, 28, Theme.MUTED, 0.75f, false);

@@ -115,7 +115,7 @@ public class UiButton extends GuiButton {
         float isz = Math.min(11f, h - 8f);
         boolean hasIcon = icon != ICON_NONE;
         String label = Draw.fit(displayString, w - (hasIcon ? isz + 22f : 16f), textSize, false);
-        float tw = Draw.w(label, textSize);
+        float tw = Draw.w(label, textSize, false);
         float startX;
         if (left) startX = x + 11f;
         else startX = x + (w - (tw + (hasIcon ? isz + 6f : 0f))) / 2f;
@@ -124,7 +124,7 @@ public class UiButton extends GuiButton {
             float ix = startX + isz / 2f;
             int ic = style == PRIMARY ? textCol : Draw.fade(Draw.lerp(Draw.lerp(Theme.MUTED, Theme.SOFT, 0.5f), Draw.lerp(accent, 0xFFFFFFFF, 0.25f), hv), ap);
             if (style == DANGER) ic = Draw.fade(Draw.lerp(Theme.BAD, 0xFFFFFFFF, hv * 0.5f), ap);
-            if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic);
+            if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic, 0);
             else Draw.icon(icon, ix, cy, isz * 1.15f, ic);
             startX += isz + 6f;
         }

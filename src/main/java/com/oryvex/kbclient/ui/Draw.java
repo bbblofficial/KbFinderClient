@@ -340,4 +340,23 @@ public final class Draw {
         if (currentLine.length() > 0) lines.add(currentLine.toString().trim());
         return lines;
     }
+
+    public static void radial(float cx, float cy, float r, int color, boolean fill) {
+        float alpha = (color >> 24 & 0xFF) / 255.0F;
+        if (alpha <= 0.01f) return;
+        float red = (color >> 16 & 0xFF) / 255.0F;
+        float green = (color >> 8 & 0xFF) / 255.0F;
+        float blue = (color & 0xFF) / 255.0F;
+        blend();
+        GlStateManager.disableTexture2D();
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.color(red, green, blue, alpha);
+        GL11.glBegin(fill ? GL11.GL_POLYGON : GL11.GL_LINE_LOOP);
+        for (int i = 0; i <= 360; i += 5) {
+            GL11.glVertex2d(cx + Math.cos(Math.toRadians(i)) * r, cy + Math.sin(Math.toRadians(i)) * r);
+        }
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
+        GlStateManager.enableTexture2D();
+    }
 }

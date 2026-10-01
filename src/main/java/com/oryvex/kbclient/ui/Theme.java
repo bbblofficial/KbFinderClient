@@ -67,4 +67,12 @@ public final class Theme {
     }
 
     public static float phase() { return (System.currentTimeMillis() % 7000L) / 7000f; }
+    public static final int PANEL = 0xFF121A29;
+    public static final int PANEL2 = 0xFF182235;
+    public static final int PANEL3 = 0xFF22304A;
+    public static final int BORDER = 0xFF25324B;
+    public static final int BORDER_HI = 0xFF3B5078;
+    public static final int ACCENT = 0xFF22D3EE;
+    public static final int ACCENT_DK = 0xFF0E7490;
+    public static final int ACCENT2 = 0xFFA78BFA;
 }

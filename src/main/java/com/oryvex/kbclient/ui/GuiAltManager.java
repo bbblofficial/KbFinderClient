@@ -104,7 +104,7 @@ public class GuiAltManager extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        drawBackdrop(20);
+        drawBackdrop(mouseX, mouseY);
         Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
         Draw.centered("ALT MANAGER", cx, cardY + 12, Theme.TEXT, 1.4f, true);
         Draw.centered("Current: " + this.mc.getSession().getUsername(), cx, cardY + 30, Theme.ACCENT, 0.85f, false);
