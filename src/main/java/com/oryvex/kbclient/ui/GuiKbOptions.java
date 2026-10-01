@@ -20,27 +20,27 @@ public class GuiKbOptions extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        int bw = Math.min(260, this.width - 60);
-        int bh = 22;
+        int bw = Math.min(280, this.width - 80);
+        int bh = 24;
         int gap = 6;
         int cx = this.width / 2;
 
         int rows = 6;
-        int innerH = rows * (bh + gap) + gap + 2 * (bh + gap) + 8;
-        cardW = bw + 40;
-        cardH = innerH + 70;
+        int innerH = rows * (bh + gap) + gap + 2 * (bh + gap) + 12;
+        cardW = bw + 48;
+        cardH = innerH + 90;
         cardX = cx - cardW / 2;
-        cardY = Math.max(20, (this.height - cardH) / 2);
+        cardY = Math.max(24, (this.height - cardH) / 2);
 
-        int y = cardY + 58;
+        int y = cardY + 74;
         int bx = cx - bw / 2;
 
-        bHud   = new UiButton(1, bx, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
-        bPart  = new UiButton(2, bx, y + 1 * (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(100);
-        bToast = new UiButton(3, bx, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(140);
-        bLoad  = new UiButton(4, bx, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(180);
-        bDisc  = new UiButton(8, bx, y + 4 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(220);
-        bFade  = new UiButton(5, bx, y + 5 * (bh + gap), bw, bh, "").delay(260);
+        bHud   = new UiButton(1, bx, y,                          bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+        bPart  = new UiButton(2, bx, y + 1 * (bh + gap),         bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(100);
+        bToast = new UiButton(3, bx, y + 2 * (bh + gap),         bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(140);
+        bLoad  = new UiButton(4, bx, y + 3 * (bh + gap),         bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(180);
+        bDisc  = new UiButton(8, bx, y + 4 * (bh + gap),         bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(220);
+        bFade  = new UiButton(5, bx, y + 5 * (bh + gap),         bw, bh, "").delay(260);
 
         this.buttonList.add(bHud);
         this.buttonList.add(bPart);
@@ -49,9 +49,9 @@ public class GuiKbOptions extends FadeScreen {
         this.buttonList.add(bDisc);
         this.buttonList.add(bFade);
 
-        int y2 = y + 6 * (bh + gap) + 10;
-        this.buttonList.add(new UiButton(6, bx, y2, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(300));
-        this.buttonList.add(new UiButton(7, bx, y2 + bh + gap, bw, bh, "Done").style(UiButton.PRIMARY).delay(340));
+        int y2 = y + 6 * (bh + gap) + 12;
+        this.buttonList.add(new UiButton(6, bx, y2,                 bw, bh, "Minecraft Options...").icon(Draw.ICON_GEAR).delay(300));
+        this.buttonList.add(new UiButton(7, bx, y2 + bh + gap,      bw, bh, "Done").style(UiButton.PRIMARY).icon(Draw.ICON_CHECK).delay(340));
 
         sync();
     }
@@ -90,11 +90,11 @@ public class GuiKbOptions extends FadeScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawBackdrop(mouseX, mouseY);
-        Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
+        Draw.panel(cardX, cardY, cardW, cardH, 10, Theme.GLASS, Theme.BORDER);
 
         float cx = this.width / 2f;
-        Draw.centered("OPTIONS", cx, cardY + 22, Theme.TEXT, 1.6f, true);
-        Draw.centered("KB Client preferences", cx, cardY + 42, Theme.MUTED, 0.85f, false);
+        Draw.centered("OPTIONS", cx, cardY + 26, Theme.TEXT, 1.8f, true);
+        Draw.centered("KB Client preferences", cx, cardY + 50, Theme.MUTED, 0.9f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();

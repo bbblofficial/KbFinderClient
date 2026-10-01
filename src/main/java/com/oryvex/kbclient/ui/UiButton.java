@@ -4,12 +4,23 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import org.lwjgl.input.Mouse;
 
+/**
+ * Modern flat button with:
+ *  - Correct icon sizing (never exceeds button height)
+ *  - Smooth hover / press / toggle animations
+ *  - Staggered intro animation
+ *  - Multiple styles: NORMAL, PRIMARY, DANGER, TAB, TOGGLE, GHOST
+ */
 public class UiButton extends GuiButton {
-    public static final int NORMAL = 0, PRIMARY = 1, DANGER = 2, TAB = 3, TOGGLE = 4, GHOST = 5;
-    public static final int ICON_NONE = Draw.ICON_NONE, ICON_GEAR = Draw.ICON_GEAR;
+    public static final int NORMAL  = 0;
+    public static final int PRIMARY = 1;
+    public static final int DANGER  = 2;
+    public static final int TAB     = 3;
+    public static final int TOGGLE  = 4;
+    public static final int GHOST   = 5;
 
     public int style = NORMAL;
-    public int icon = ICON_NONE;
+    public int icon = Draw.ICON_NONE;
     public boolean selected;
     public boolean on;
     public long delay;
@@ -51,47 +62,48 @@ public class UiButton extends GuiButton {
         if (ap <= 0.01f) return;
         if (!enabled) ap *= 0.55f;
 
-        float inset = pr * 0.9f;
-        float x = xPosition + inset;
-        float y = yPosition + inset + (1f - ap) * 7f;
-        float w = width - inset * 2f;
-        float h = height - inset * 2f;
-        float r = Math.min(h / 2f, style == TAB ? 4f : 7f);
+        // press feedback: shift down 1px and reduce height 1px
+        float x = xPosition + pr * 0.5f;
+        float y = yPosition + pr * 0.5f + (1f - ap) * 8f;
+        float w = width - pr;
+        float h = height - pr;
+        float r = Math.min(h / 2f, style == TAB ? 4f : 6f);
         float cy = y + h / 2f;
 
-        int accent = Theme.accent();
+        int accent  = Theme.accent();
         int accent2 = Theme.accent2();
         int textCol;
 
         switch (style) {
             case PRIMARY: {
-                int c1 = Draw.lerp(Draw.shade(accent, 0.86f), accent, hv);
-                int c2 = Draw.lerp(Draw.shade(accent2, 0.86f), accent2, hv);
+                int c1 = Draw.lerp(Draw.shade(accent, 0.75f), accent, hv);
+                int c2 = Draw.lerp(Draw.shade(accent2, 0.75f), accent2, hv);
                 Draw.roundRect(x, y, w, h, r, Draw.fade(c1, ap));
-                Draw.roundOutline(x, y, w, h, r, 1f, Draw.fade(0x55FFFFFF, ap * (0.5f + 0.5f * hv)));
-                textCol = Ui.onAccent();
+                Draw.roundRect(x, y + h * 0.4f, w, h * 0.6f, r, Draw.fade(c2, ap));
+                Draw.roundOutline(x, y, w, h, r, 1f, Draw.fade(0x33FFFFFF, ap));
+                textCol = 0xFFFFFFFF;
                 break;
             }
             case DANGER: {
-                Draw.roundRect(x, y, w, h, r,
-                        Draw.fade(Draw.lerp(Theme.FILL, 0x55FB7185, hv), ap));
+                int fill = Draw.lerp(0x22FB7185, 0x55FB7185, hv);
+                Draw.roundRect(x, y, w, h, r, Draw.fade(fill, ap));
                 Draw.roundOutline(x, y, w, h, r, 1f,
-                        Draw.fade(Draw.lerp(Theme.STROKE, Theme.BAD, hv), ap));
-                textCol = Draw.lerp(Draw.lerp(Theme.SOFT, Theme.BAD, 0.4f), 0xFFFFFFFF, hv * 0.6f);
+                        Draw.fade(Draw.lerp(0x44FB7185, 0xFFFB7185, hv), ap));
+                textCol = Draw.lerp(0xFFFCA5A5, 0xFFFFFFFF, hv);
                 break;
             }
             case TAB: {
                 Draw.roundRect(x, y, w, h, r,
-                        Draw.fade(selected ? Theme.FILL : Draw.lerp(0x00FFFFFF, Theme.FILL, hv), ap));
+                        Draw.fade(selected ? Theme.FILL_HI : Draw.lerp(0x00FFFFFF, Theme.FILL, hv), ap));
                 textCol = selected ? Theme.TEXT : Draw.lerp(Theme.MUTED, Theme.TEXT, hv);
                 break;
             }
             case TOGGLE: {
                 Draw.roundRect(x, y, w, h, r,
-                        Draw.fade(Draw.lerp(Theme.FILL, Theme.FILL_HI, hv * 0.8f), ap));
+                        Draw.fade(Draw.lerp(Theme.FILL, Theme.FILL_HI, hv * 0.7f), ap));
                 Draw.roundOutline(x, y, w, h, r, 1f,
-                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.7f), hv), ap));
-                textCol = Draw.lerp(Theme.SOFT, Theme.TEXT, Math.max(hv, kn * 0.7f));
+                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.5f), hv), ap));
+                textCol = Draw.lerp(Theme.SOFT, Theme.TEXT, Math.max(hv, kn * 0.5f));
                 break;
             }
             case GHOST: {
@@ -104,7 +116,7 @@ public class UiButton extends GuiButton {
                 Draw.roundRect(x, y, w, h, r,
                         Draw.fade(Draw.lerp(Theme.FILL, Theme.FILL_HI, hv), ap));
                 Draw.roundOutline(x, y, w, h, r, 1f,
-                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.75f), hv), ap));
+                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.65f), hv), ap));
                 textCol = Draw.lerp(Theme.SOFT, Theme.TEXT, hv);
             }
         }
@@ -112,38 +124,55 @@ public class UiButton extends GuiButton {
         textCol = Draw.fade(textCol, ap);
 
         if (style == TOGGLE) {
-            Draw.left(Draw.fit(displayString, w - 48f, textSize, false), x + 10f, cy, textCol, textSize, false);
-            Ui.toggle(x + w - 10f - 24f, cy, kn, ap);
+            // label on left, switch on right
+            float sw = 22f, sh = 12f;
+            float sx = x + w - sw - 10f;
+            Draw.left(Draw.fit(displayString, w - sw - 26f, textSize, false),
+                    x + 10f, cy, textCol, textSize, false);
+            drawToggleSwitch(sx, cy - sh / 2f, sw, sh, kn, ap);
             return;
         }
 
-        float isz = Math.min(11f, h - 8f);
-        boolean hasIcon = icon != ICON_NONE;
-        String label = Draw.fit(displayString, w - (hasIcon ? isz + 22f : 16f), textSize, false);
+        // ---- icon sizing: icon diameter = min(button height * 0.55, 12) ----
+        boolean hasIcon = icon != Draw.ICON_NONE;
+        float iconSize = Math.min(h * 0.55f, 12f);
+        float gap = 6f;
+
+        String label = Draw.fit(displayString,
+                w - (hasIcon ? iconSize + gap + 20f : 20f), textSize, false);
         float tw = Draw.w(label, textSize, false);
+
+        float contentW = hasIcon ? iconSize + gap + tw : tw;
         float startX;
         if (left) startX = x + 12f;
-        else      startX = x + (w - (tw + (hasIcon ? isz + 6f : 0f))) / 2f;
+        else      startX = x + (w - contentW) / 2f;
 
         if (hasIcon) {
-            float ix = startX + isz / 2f;
-            int ic = style == PRIMARY ? textCol
-                    : Draw.fade(Draw.lerp(Draw.lerp(Theme.MUTED, Theme.SOFT, 0.5f),
-                            Draw.lerp(accent, 0xFFFFFFFF, 0.25f), hv), ap);
-            if (style == DANGER) ic = Draw.fade(Draw.lerp(Theme.BAD, 0xFFFFFFFF, hv * 0.5f), ap);
-            if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic);
-            else Draw.icon(icon, ix, cy, isz * 1.15f, ic);
-            startX += isz + 6f;
+            float icx = startX + iconSize / 2f;
+            int ic = (style == PRIMARY) ? textCol
+                    : Draw.fade(Draw.lerp(Theme.SOFT, accent, hv), ap);
+            if (style == DANGER) ic = textCol;
+            Draw.icon(icon, icx, cy, iconSize, ic);
+            startX += iconSize + gap;
         }
 
         if (left) {
             Draw.left(label, startX, cy, textCol, textSize, style == PRIMARY);
         } else {
-            Draw.centered(label, x + w / 2f, cy, textCol, textSize, style == PRIMARY);
+            Draw.left(label, startX, cy, textCol, textSize, style == PRIMARY);
         }
 
         if (style == TAB && selected) {
             Draw.roundRect(x + 8f, y + h - 2f, w - 16f, 2f, 1f, Draw.fade(accent, ap));
         }
+    }
+
+    private void drawToggleSwitch(float sx, float sy, float sw, float sh, float knob, float ap) {
+        int off = Draw.fade(0x30FFFFFF, ap);
+        int onC = Draw.fade(Theme.accent(), ap);
+        int track = Draw.lerp(off, onC, knob);
+        Draw.roundRect(sx, sy, sw, sh, sh / 2f, track);
+        float kx = sx + sh / 2f + (sw - sh) * knob;
+        Draw.circle(kx, sy + sh / 2f, sh / 2f - 1.5f, Draw.fade(0xFFFFFFFF, ap));
     }
 }

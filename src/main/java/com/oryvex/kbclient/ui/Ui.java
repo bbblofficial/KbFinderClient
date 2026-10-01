@@ -12,11 +12,13 @@ public final class Ui {
     }
 
     public static void toggle(float x, float cy, float knob, float alpha) {
-        float w = 24f, h = 12f, y = cy - h / 2f;
-        int off = Draw.fade(0x38FFFFFF, alpha);
-        int c1 = Draw.lerp(off, Draw.fade(Theme.accent(), alpha), knob);
-        Draw.roundRect(x, y, w, h, h / 2f, c1);
-        Draw.circle(x + 6f + (w - 12f) * knob, cy, 4.2f, Draw.fade(0xFFFFFFFF, alpha));
+        float w = 22f, h = 12f, y = cy - h / 2f;
+        int off = Draw.fade(0x30FFFFFF, alpha);
+        int onC = Draw.fade(Theme.accent(), alpha);
+        int track = Draw.lerp(off, onC, knob);
+        Draw.roundRect(x, y, w, h, h / 2f, track);
+        float kx = x + h / 2f + (w - h) * knob;
+        Draw.circle(kx, cy, h / 2f - 1.5f, Draw.fade(0xFFFFFFFF, alpha));
     }
 
     public static void slider(float x, float cy, float w, float frac, boolean active, float alpha) {

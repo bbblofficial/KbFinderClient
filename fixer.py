@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-fixer_v3.py — چت با فونت فارسی/انگلیسی + آیکون درست + دکمه‌های جدید
-از ریشه پروژه اجرا کن.
+fixer_v4.py — بازطراحی کامل دکمه و UI
+- آیکون درست اندازه (radius = size/2)
+- دکمه با طراحی جدید مدرن
+- Layout بهتر و فاصله‌گذاری درست
+- آیکون‌های برداری تمیز برای gear, arrow, plus, minus, copy, save, close, check
 """
 import sys
 from pathlib import Path
@@ -33,404 +36,237 @@ def write(path: Path, body: str):
 
 
 # ===========================================================================
-# 1) ModernFontRenderer — حالا برای **چت هم** استفاده می‌شه
-#    - BiDi درست با TextLayout (کلمه‌به‌کلمه نه حرف‌به‌حرف)
-#    - trimStringToWidth / listFormattedStringToWidth کامل
-#    - getStringWidth دقیق
+# 1) Draw.java — بازنویسی کامل با آیکون‌های برداری درست
 # ===========================================================================
-write(FONT / "ModernFontRenderer.java", r'''package com.oryvex.kbclient.font;
+write(UI / "Draw.java", r'''package com.oryvex.kbclient.ui;
 
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.font.FontRenderContext;
-import java.awt.font.TextAttribute;
-import java.awt.font.TextLayout;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
-import java.io.InputStream;
-import java.text.AttributedString;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.renderer.texture.TextureUtil;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.client.settings.GameSettings;
-import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
-/**
- * AWT-backed font renderer with proper Arabic/Persian shaping and RTL support.
- * Used for both the custom UI and the vanilla chat by replacing mc.fontRendererObj.
- *
- * The renderer draws the whole string through a single TextLayout so bidi
- * reordering is correct. Colour formatting codes (\u00a7x) are handled by
- * splitting the string into coloured runs before shaping.
- */
-public class ModernFontRenderer extends FontRenderer {
+import java.util.ArrayList;
+import java.util.List;
 
-    private static final int FONT_SIZE   = 32;
-    private static final int BASE_HEIGHT = 9;
-    private static final int PAD         = 2;
+/** Immediate-mode drawing toolkit. All icons are vector-based. */
+public final class Draw {
+    private Draw() {}
 
-    private static final int[] COLOR_CODES = new int[32];
-    static {
-        for (int i = 0; i < 32; ++i) {
-            int j = (i >> 3 & 1) * 85;
-            int k = (i >> 2 & 1) * 170 + j;
-            int l = (i >> 1 & 1) * 170 + j;
-            int m = (i & 1) * 170 + j;
-            if (i == 6) k += 85;
-            if (i >= 16) { k /= 4; l /= 4; m /= 4; }
-            COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | m & 255;
-        }
+    // Icon IDs
+    public static final int ICON_NONE    = 0;
+    public static final int ICON_GEAR    = 1;
+    public static final int ICON_ARROW   = 2;
+    public static final int ICON_PLUS    = 3;
+    public static final int ICON_MINUS   = 4;
+    public static final int ICON_COPY    = 5;
+    public static final int ICON_SAVE    = 6;
+    public static final int ICON_TRASH   = 7;
+    public static final int ICON_REFRESH = 8;
+    public static final int ICON_CLOSE   = 9;
+    public static final int ICON_CHECK   = 10;
+    public static final int ICON_HOME    = 11;
+    public static final int ICON_PLAY    = 12;
+    public static final int ICON_GRAPH   = 13;
+    public static final int ICON_CODE    = 14;
+    public static final int ICON_USER    = 15;
+    public static final int ICON_STAR    = 16;
+
+    // ---- math ----
+    public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
+    public static float ease(float t) { t = clamp(t); return t * t * (3f - 2f * t); }
+    public static float easeOut(float t) { t = clamp(t); return 1f - (1f - t) * (1f - t); }
+    public static float easeInOut(float t) { t = clamp(t); return t < 0.5f ? 2f*t*t : 1f-(float)Math.pow(-2f*t+2f,2f)/2f; }
+    public static float lerp(float a, float b, float t) { return a + (b - a) * clamp(t); }
+
+    public static int lerp(int a, int b, float t) {
+        t = clamp(t);
+        int aa = (a >>> 24) & 255, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+        int ba = (b >>> 24) & 255, br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+        return (((int)(aa + (ba - aa) * t)) << 24)
+             | (((int)(ar + (br - ar) * t)) << 16)
+             | (((int)(ag + (bg - ag) * t)) << 8)
+             |  ((int)(ab + (bb - ab) * t));
     }
 
-    private final Font inter;
-    private final Font vazir;
-    private final FontRenderContext frc = new FontRenderContext(null, true, true);
-
-    private static final class GlyphTex {
-        final int id, width, height;
-        final float scale;
-        GlyphTex(int id, int w, int h, float s) { this.id = id; this.width = w; this.height = h; this.scale = s; }
+    public static int alpha(int color, float a) {
+        return ((int)(clamp(a) * 255f) << 24) | (color & 0xFFFFFF);
     }
 
-    private final Map<String, GlyphTex> cache = new LinkedHashMap<String, GlyphTex>(1024, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, GlyphTex> eldest) {
-            if (size() > 1024) {
-                try { GlStateManager.deleteTexture(eldest.getValue().id); } catch (Throwable ignored) {}
-                return true;
-            }
-            return false;
-        }
-    };
-
-    public ModernFontRenderer(GameSettings gs, ResourceLocation loc, TextureManager tm, boolean unicode) {
-        super(gs, loc, tm, unicode);
-        Font i = load("/fonts/Inter-Regular.ttf");
-        Font v = load("/fonts/Vazirmatn-Regular.ttf");
-        this.inter = (i != null) ? i : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
-        this.vazir = (v != null) ? v : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
-        this.FONT_HEIGHT = BASE_HEIGHT;
+    public static int fade(int color, float a) {
+        return ((int)(((color >>> 24) & 255) * clamp(a)) << 24) | (color & 0xFFFFFF);
     }
 
-    private Font load(String path) {
-        try {
-            InputStream is = ModernFontRenderer.class.getResourceAsStream(path);
-            if (is == null) return null;
-            Font f = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont((float) FONT_SIZE);
-            is.close();
-            return f;
-        } catch (Throwable t) { return null; }
+    public static int shade(int color, float s) {
+        float r = ((color >> 16) & 255) / 255f;
+        float g = ((color >> 8)  & 255) / 255f;
+        float b = ( color        & 255) / 255f;
+        r *= s; g *= s; b *= s;
+        return (color & 0xFF000000)
+             | (((int)(r * 255)) << 16)
+             | (((int)(g * 255)) << 8)
+             |  ((int)(b * 255));
     }
 
-    public static boolean hasRtl(String text) {
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if ((c >= 0x0590 && c <= 0x05FF)
-             || (c >= 0x0600 && c <= 0x06FF)
-             || (c >= 0x0750 && c <= 0x077F)
-             || (c >= 0x08A0 && c <= 0x08FF)
-             || (c >= 0xFB1D && c <= 0xFDFF)
-             || (c >= 0xFE70 && c <= 0xFEFF)) return true;
-        }
-        return false;
+    public static int confColor(double c) {
+        float f = (float) Math.max(0, Math.min(1, c));
+        return f < 0.5f ? lerp(Theme.BAD, Theme.WARN, f * 2f)
+                        : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
     }
 
-    /** Mixed script: from position 0, is the visual order RTL? */
-    public static boolean isRtlDominant(String text) {
-        int rtl = 0, ltr = 0;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c >= 0x0590 && c <= 0x08FF) rtl++;
-            else if (Character.isLetter(c)) ltr++;
-        }
-        return rtl > ltr;
-    }
-
-    /** Bake whole string via TextLayout. Bidi handled internally. */
-    private GlyphTex bake(String text) {
-        Font font = hasRtl(text) ? vazir : inter;
-
-        TextLayout layout = new TextLayout(text, font, frc);
-        int ascent  = (int) Math.ceil(layout.getAscent());
-        int descent = (int) Math.ceil(layout.getDescent());
-        int leading = (int) Math.ceil(layout.getLeading());
-        Rectangle2D bounds = layout.getBounds();
-        int naturalW = (int) Math.ceil(Math.max(bounds.getWidth(), layout.getAdvance()));
-
-        int w = Math.max(1, naturalW + PAD * 2);
-        int h = Math.max(1, ascent + descent + leading + PAD * 2);
-        int baseline = PAD + ascent;
-
-        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,    RenderingHints.VALUE_STROKE_PURE);
-        g.setColor(Color.WHITE);
-        layout.draw(g, PAD, baseline);
-        g.dispose();
-
-        int id = TextureUtil.glGenTextures();
-        TextureUtil.uploadTextureImageAllocate(id, img, true, false);
-        float scale = (float) BASE_HEIGHT / FONT_SIZE;
-        return new GlyphTex(id, w, h, scale);
-    }
-
-    @Override
-    public int drawString(String text, float x, float y, int color, boolean dropShadow) {
-        if (text == null || text.isEmpty()) return (int) x;
-        if (dropShadow) draw(text, x + 1f, y + 1f, color, true);
-        return draw(text, x, y, color, false);
-    }
-
-    @Override
-    public int drawStringWithShadow(String text, float x, float y, int color) {
-        return drawString(text, x, y, color, true);
-    }
-
-    private int draw(String text, float x, float y, int color, boolean shadow) {
+    // ---- GL state ----
+    public static void blend() {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-        GlStateManager.enableTexture2D();
-
-        // Split by § codes into (substring, color) runs, keeping bidi correctness
-        // inside each run. Since § only appears at run boundaries, each run is
-        // shaped independently by TextLayout — this is exactly what we want.
-        float curX = x;
-        int curColor = color;
-        if ((curColor & 0xFC000000) == 0) curColor |= 0xFF000000;
-        if (shadow) curColor = (curColor & 0xFCFCFC) >> 2 | (curColor & 0xFF000000);
-
-        int i = 0;
-        final int n = text.length();
-        StringBuilder run = new StringBuilder();
-        while (i < n) {
-            if (text.charAt(i) == '\u00a7' && i + 1 < n) {
-                // flush current run
-                if (run.length() > 0) {
-                    curX = drawRun(run.toString(), curX, y, curColor);
-                    run.setLength(0);
-                }
-                char code = Character.toLowerCase(text.charAt(i + 1));
-                int ci = "0123456789abcdef".indexOf(code);
-                if (ci >= 0) {
-                    curColor = COLOR_CODES[ci];
-                    if (shadow) curColor = (curColor & 0xFCFCFC) >> 2 | (curColor & 0xFF000000);
-                    else curColor |= 0xFF000000;
-                } else if (code == 'r') {
-                    curColor = color;
-                    if (shadow) curColor = (curColor & 0xFCFCFC) >> 2 | (curColor & 0xFF000000);
-                }
-                i += 2;
-                continue;
-            }
-            run.append(text.charAt(i));
-            i++;
-        }
-        if (run.length() > 0) curX = drawRun(run.toString(), curX, y, curColor);
-
         GlStateManager.color(1f, 1f, 1f, 1f);
-        return (int) curX;
     }
 
-    private float drawRun(String run, float x, float y, int color) {
-        if (run.isEmpty()) return x;
-        GlyphTex tex = cache.get(run);
-        if (tex == null) { tex = bake(run); cache.put(run, tex); }
-
-        GlStateManager.bindTexture(tex.id);
-        float r = (color >> 16 & 255) / 255f;
-        float g = (color >> 8  & 255) / 255f;
-        float b = ( color       & 255) / 255f;
-        float a = (color >>> 24      ) / 255f;
-        GlStateManager.color(r, g, b, a);
-
-        float s = tex.scale;
-        GlStateManager.pushMatrix();
-        GlStateManager.scale(s, s, 1f);
-
-        float dx = x / s;
-        float dy = y / s;
-        float dw = tex.width;
-        float dh = tex.height;
-
-        Tessellator t = Tessellator.getInstance();
-        WorldRenderer wr = t.getWorldRenderer();
-        wr.begin(7, DefaultVertexFormats.POSITION_TEX);
-        wr.pos(dx,      dy + dh, 0.0D).tex(0.0D, 1.0D).endVertex();
-        wr.pos(dx + dw, dy + dh, 0.0D).tex(1.0D, 1.0D).endVertex();
-        wr.pos(dx + dw, dy,      0.0D).tex(1.0D, 0.0D).endVertex();
-        wr.pos(dx,      dy,      0.0D).tex(0.0D, 0.0D).endVertex();
-        t.draw();
-
-        GlStateManager.popMatrix();
-        return x + tex.width * s;
+    public static void resetColor() {
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.disableBlend();
     }
 
-    @Override
-    public int getStringWidth(String text) {
-        if (text == null || text.isEmpty()) return 0;
-        float w = 0;
-        int i = 0;
-        final int n = text.length();
-        StringBuilder run = new StringBuilder();
-        while (i < n) {
-            if (text.charAt(i) == '\u00a7' && i + 1 < n) {
-                if (run.length() > 0) {
-                    w += runWidth(run.toString());
-                    run.setLength(0);
-                }
-                i += 2;
-                continue;
-            }
-            run.append(text.charAt(i));
-            i++;
+    // ---- primitives ----
+    public static void rect(float x, float y, float w, float h, int color) {
+        Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), color);
+    }
+
+    public static void vgradient(int w, int h, int top, int bottom) {
+        for (int y = 0; y < h; y += 3) {
+            Gui.drawRect(0, y, w, Math.min(h, y + 3), lerp(top, bottom, y / (float) h));
         }
-        if (run.length() > 0) w += runWidth(run.toString());
-        return (int) Math.ceil(w);
     }
 
-    private float runWidth(String run) {
-        if (run.isEmpty()) return 0;
-        GlyphTex tex = cache.get(run);
-        if (tex == null) { tex = bake(run); cache.put(run, tex); }
-        return tex.width * tex.scale;
-    }
-
-    @Override
-    public int getCharWidth(char c) {
-        if (c == '\u00a7') return -1;
-        return getStringWidth(String.valueOf(c));
-    }
-
-    @Override
-    public boolean getUnicodeFlag() { return false; }
-
-    @Override
-    public String trimStringToWidth(String text, int width) {
-        return trimStringToWidth(text, width, false);
-    }
-
-    @Override
-    public String trimStringToWidth(String text, int width, boolean reverse) {
-        if (text == null || text.isEmpty()) return "";
-        StringBuilder out = new StringBuilder();
-        float w = 0;
-        int i = reverse ? text.length() - 1 : 0;
-        int step = reverse ? -1 : 1;
-        while (i >= 0 && i < text.length()) {
-            char c = text.charAt(i);
-            if (c == '\u00a7' && i + step >= 0 && i + step < text.length()) {
-                out.append(c).append(text.charAt(i + step));
-                i += step * 2;
-                continue;
-            }
-            float cw = getStringWidth(String.valueOf(c));
-            if (w + cw > width) break;
-            out.append(c);
-            w += cw;
-            i += step;
+    public static void vgrad(float x, float y, float w, float h, int top, int bottom) {
+        for (int i = 0; i < h; i += 2) {
+            float t = i / h;
+            rect(x, y + i, w, 2, lerp(top, bottom, t));
         }
-        if (reverse) out.reverse();
-        return out.toString();
     }
 
-    @Override
-    public List<String> listFormattedStringToWidth(String text, int width) {
-        List<String> out = new ArrayList<String>();
-        if (text == null || text.isEmpty()) return out;
-        String[] lines = text.split("\n", -1);
-        for (String line : lines) out.addAll(wrapFormattedStringToWidth(line, width));
-        return out;
-    }
-
-    private List<String> wrapFormattedStringToWidth(String s, int width) {
-        List<String> out = new ArrayList<String>();
-        if (s == null || s.isEmpty()) { out.add(""); return out; }
-        StringBuilder line = new StringBuilder();
-        float w = 0;
-        int i = 0;
-        while (i < s.length()) {
-            char c = s.charAt(i);
-            if (c == '\u00a7' && i + 1 < s.length()) {
-                line.append(c).append(s.charAt(i + 1));
-                i += 2;
-                continue;
-            }
-            if (c == ' ') {
-                float sw = getStringWidth(" ");
-                if (w + sw > width) { out.add(line.toString()); line.setLength(0); w = 0; }
-                else { line.append(c); w += sw; }
-                i++;
-                continue;
-            }
-            int j = i;
-            while (j < s.length() && s.charAt(j) != ' ' && s.charAt(j) != '\u00a7') j++;
-            String word = s.substring(i, j);
-            float ww = getStringWidth(word);
-            if (w + ww > width && line.length() > 0) { out.add(line.toString()); line.setLength(0); w = 0; }
-            line.append(word);
-            w += ww;
-            i = j;
+    public static void hgrad(float x, float y, float w, float h, int left, int right) {
+        for (int i = 0; i < w; i += 2) {
+            float t = i / w;
+            rect(x + i, y, 2, h, lerp(left, right, t));
         }
-        if (line.length() > 0) out.add(line.toString());
-        return out;
     }
 
-    @Override
-    public void onResourceManagerReload(net.minecraft.client.resources.IResourceManager rm) { }
-}
-''')
-
-
-# ===========================================================================
-# 2) Draw.java — آیکون gear تمام‌برداری (بدون roundRect در اندازه کوچک)
-#    و دکمه‌های جدید تمیز
-# ===========================================================================
-DRAW = UI / "Draw.java"
-txt = DRAW.read_text(encoding="utf-8")
-
-# جایگزینی gear() با یک چرخ‌دنده تمام‌برداری
-old_gear_start = txt.find("    public static void gear(")
-old_gear_end   = txt.find("    public static void icon(", old_gear_start)
-new_gear = '''    /**
-     * Pixel-perfect vector gear icon, drawn with GL lines + triangles.
-     * Looks the same at any size — the old roundRect-based version broke
-     * on small buttons (see issue with Options button).
-     */
-    public static void gear(float cx, float cy, float r, float angle, int color) {
+    public static void roundRect(float x, float y, float w, float h, float r, int color) {
+        if (w <= 0 || h <= 0) return;
         if (((color >>> 24) & 255) <= 4) return;
-        if (r < 1.5f) return;
+        r = Math.min(r, Math.min(w, h) / 2f);
+        int ir = (int) Math.ceil(r);
+        if (ir <= 0) { Gui.drawRect((int)x, (int)y, (int)(x+w), (int)(y+h), color); return; }
+        Gui.drawRect((int)x,       (int)(y + r), (int)(x + w), (int)(y + h - r), color);
+        Gui.drawRect((int)(x + r), (int)y,       (int)(x + w - r), (int)(y + r),   color);
+        Gui.drawRect((int)(x + r), (int)(y + h - r), (int)(x + w - r), (int)(y + h), color);
+        for (int i = 0; i < ir; i++) {
+            double dy = ir - i - 0.5;
+            int inset = (int) Math.round(ir - Math.sqrt(Math.max(0, ir * ir - dy * dy)));
+            Gui.drawRect((int)(x + inset), (int)(y + i),         (int)(x + w - inset), (int)(y + i + 1),   color);
+            Gui.drawRect((int)(x + inset), (int)(y + h - i - 1), (int)(x + w - inset), (int)(y + h - i),   color);
+        }
+    }
 
-        float or = r;          // outer radius (tooth tip)
-        float ir = r * 0.62f;  // inner radius (body)
-        float tr = r * 0.28f;  // tooth width
+    public static void roundOutline(float x, float y, float w, float h, float r, float t, int color) {
+        if (((color >>> 24) & 255) <= 4) return;
+        rect(x + r, y,             w - 2 * r, t, color);
+        rect(x + r, y + h - t,     w - 2 * r, t, color);
+        rect(x,             y + r, t, h - 2 * r, color);
+        rect(x + w - t,     y + r, t, h - 2 * r, color);
+    }
+
+    public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
+        if (((fill >>> 24) & 255) > 4) roundRect(x, y, w, h, r, fill);
+        if (border != 0 && ((border >>> 24) & 255) > 4) roundOutline(x, y, w, h, r, 1f, border);
+    }
+
+    public static void bar(float x, float y, float w, float h, double frac, int bg, int fg) {
+        roundRect(x, y, w, h, h / 2f, bg);
+        float fw = (float)(w * Math.max(0, Math.min(1, frac)));
+        if (fw > 0) roundRect(x, y, fw, h, h / 2f, fg);
+    }
+
+    public static void dashedH(float x, float y, float w, int color) {
+        for (int i = 0; i < w; i += 6) rect(x + i, y, Math.min(w - i, 3), 1, color);
+    }
+
+    public static void circle(float cx, float cy, float r, int color) {
+        if (((color >>> 24) & 255) <= 4) return;
+        int ir = (int) Math.ceil(r);
+        for (int dy = -ir; dy <= ir; dy++) {
+            int half = (int) Math.sqrt(Math.max(0, ir * ir - dy * dy));
+            rect(cx - half, cy + dy, half * 2, 1, color);
+        }
+    }
+
+    public static void line(float x1, float y1, float x2, float y2, float width, int color) {
+        if (((color >>> 24) & 255) <= 4) return;
+        float dx = x2 - x1, dy = y2 - y1;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len < 0.01f) return;
+        int steps = (int) Math.ceil(len);
+        for (int i = 0; i <= steps; i++) {
+            float t = i / (float) steps;
+            rect(x1 + dx * t - width / 2f, y1 + dy * t - width / 2f, width, width, color);
+        }
+    }
+
+    public static void glow(float x, float y, float w, float h, float r, int color, float spread) {
+        if (((color >>> 24) & 255) <= 4) return;
+        for (int i = 1; i <= (int) spread; i++) {
+            int a = (int) (((color >>> 24) & 255) * (1f - i / spread) * 0.08f);
+            if (a <= 0) continue;
+            roundRect(x - i, y - i, w + i * 2, h + i * 2, r + i, (a << 24) | (color & 0xFFFFFF));
+        }
+    }
+
+    // ---- ICONS (vector, correct size) ----
+    /**
+     * Draws a vector icon centred at (cx, cy).
+     * "size" is the full bounding-box size (diameter for circular icons).
+     * Icons never exceed the given size.
+     */
+    public static void icon(int type, float cx, float cy, float size, int color) {
+        if (((color >>> 24) & 255) <= 4) return;
+        float h = size / 2f;
+        switch (type) {
+            case ICON_GEAR:    drawGear(cx, cy, h, 0f, color); break;
+            case ICON_ARROW:   drawArrow(cx, cy, h, color); break;
+            case ICON_PLUS:    drawPlus(cx, cy, h, color); break;
+            case ICON_MINUS:   drawMinus(cx, cy, h, color); break;
+            case ICON_CLOSE:   drawClose(cx, cy, h, color); break;
+            case ICON_CHECK:   drawCheck(cx, cy, h, color); break;
+            case ICON_COPY:    drawCopy(cx, cy, h, color); break;
+            case ICON_SAVE:    drawSave(cx, cy, h, color); break;
+            case ICON_TRASH:   drawTrash(cx, cy, h, color); break;
+            case ICON_REFRESH: drawRefresh(cx, cy, h, color); break;
+            case ICON_HOME:    drawHome(cx, cy, h, color); break;
+            case ICON_PLAY:    drawPlay(cx, cy, h, color); break;
+            case ICON_GRAPH:   drawGraph(cx, cy, h, color); break;
+            case ICON_CODE:    drawCode(cx, cy, h, color); break;
+            case ICON_USER:    drawUser(cx, cy, h, color); break;
+            case ICON_STAR:    drawStar(cx, cy, h, color); break;
+            default:           rect(cx - h, cy - h, size, size, color); break;
+        }
+    }
+
+    /** Rotating gear with 8 teeth, radius r. Bounded to 2r diameter. */
+    public static void drawGear(float cx, float cy, float r, float angle, int color) {
+        if (r < 0.5f) return;
+        float or_ = r;               // tooth tip radius
+        float ir  = r * 0.66f;       // body radius
+        float tr  = r * 0.22f;       // half tooth width
         int teeth = 8;
 
-        float ar = (float) Math.toRadians(angle);
+        double ar = Math.toRadians(angle);
 
         GlStateManager.disableTexture2D();
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        setGLColor(color);
 
-        float rr = ((color >> 16) & 255) / 255f;
-        float gg = ((color >> 8)  & 255) / 255f;
-        float bb = ( color        & 255) / 255f;
-        float aa = ((color >>> 24)      ) / 255f;
-        GlStateManager.color(rr, gg, bb, aa);
-
-        // --- teeth as quads ---
+        // teeth quads (built as two triangles each)
         for (int i = 0; i < teeth; i++) {
             double a0 = ar + (2 * Math.PI * i) / teeth;
             double a1 = a0 + (2 * Math.PI / teeth) * 0.55;
@@ -443,175 +279,815 @@ new_gear = '''    /**
             float dx = x1 - x0, dy = y1 - y0;
             float len = (float)Math.sqrt(dx * dx + dy * dy);
             if (len < 0.001f) continue;
-            float nx = -dy / len * (tr * 0.5f);
-            float ny =  dx / len * (tr * 0.5f);
+            float nx = -dy / len * tr;
+            float ny =  dx / len * tr;
 
-            float tx0 = x0 + nx, ty0 = y0 + ny;
-            float tx1 = x1 + nx, ty1 = y1 + ny;
-            float tx2 = x1 - nx, ty2 = y1 - ny;
-            float tx3 = x0 - nx, ty3 = y0 - ny;
+            float ex0 = cx + (float)Math.cos(a0) * or_;
+            float ey0 = cy + (float)Math.sin(a0) * or_;
+            float ex1 = cx + (float)Math.cos(a1) * or_;
+            float ey1 = cy + (float)Math.sin(a1) * or_;
 
-            float ex0 = cx + (float)Math.cos(a0) * or;
-            float ey0 = cy + (float)Math.sin(a0) * or;
-            float ex1 = cx + (float)Math.cos(a1) * or;
-            float ey1 = cy + (float)Math.sin(a1) * or;
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 + nx, y0 + ny);
+            GL11.glVertex2f(x1 + nx, y1 + ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
-            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x1 + nx, y1 + ny);
+            GL11.glVertex2f(x1 - nx, y1 - ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
-            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x1 - nx, y1 - ny);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(ex0,      ey0);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
-            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(x0 + nx, y0 + ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
-            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glVertex2f(ex0,      ey0);
+            GL11.glEnd();
         }
 
-        // --- inner disc ---
-        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
-        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
-        for (int i = 0; i <= 32; i++) {
-            double a = ar + (2 * Math.PI * i) / 32;
-            org.lwjgl.opengl.GL11.glVertex2f(
-                cx + (float)Math.cos(a) * ir,
-                cy + (float)Math.sin(a) * ir);
+        // body disc
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 40; i++) {
+            double a = ar + (2 * Math.PI * i) / 40;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * ir, cy + (float)Math.sin(a) * ir);
         }
-        org.lwjgl.opengl.GL11.glEnd();
-
-        // --- centre hole ---
-        int bg = 0;
-        try {
-            bg = (org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_BLEND) != 0) ? 0x00000000 : 0x00000000;
-        } catch (Throwable ignored) {}
-        org.lwjgl.opengl.GL11.glColor4f(0f, 0f, 0f, 0f);
-        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
-        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
-        for (int i = 0; i <= 24; i++) {
-            double a = (2 * Math.PI * i) / 24;
-            org.lwjgl.opengl.GL11.glVertex2f(
-                cx + (float)Math.cos(a) * (r * 0.24f),
-                cy + (float)Math.sin(a) * (r * 0.24f));
-        }
-        org.lwjgl.opengl.GL11.glEnd();
+        GL11.glEnd();
 
         GlStateManager.color(1f, 1f, 1f, 1f);
         GlStateManager.enableTexture2D();
     }
 
-    /** Legacy signature (angle + hole). Kept so old callers keep compiling. */
-    public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
-        gear(cx, cy, r, angle, color);
+    private static void drawArrow(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        float w = h * 0.85f;
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx - w * 0.55f, cy - h * 0.75f);
+        GL11.glVertex2f(cx - w * 0.55f, cy + h * 0.75f);
+        GL11.glVertex2f(cx + w * 0.95f, cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
     }
 
-'''
-txt = txt[:old_gear_start] + new_gear + txt[old_gear_end:]
+    private static void drawPlus(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.32f);
+        rect(cx - h,      cy - t / 2f, h * 2f, t, color);
+        rect(cx - t / 2f, cy - h,      t, h * 2f, color);
+    }
 
-# جایگزینی icon() با یک نسخه‌ی بهتر (بدون بلاک تکراری)
-old_icon_start = txt.find("    public static void icon(")
-old_icon_end   = txt.find("    /** فونت UI ما:", old_icon_start)
-if old_icon_end == -1:
-    old_icon_end = txt.find("    public static FontRenderer font()", old_icon_start)
-new_icon = '''    public static void icon(int type, float cx, float cy, float size, int color) {
-        float h = size / 2f;
-        if (type == ICON_ARROW) {
-            GlStateManager.disableTexture2D();
-            GlStateManager.enableBlend();
-            float rr = ((color >> 16) & 255) / 255f;
-            float gg = ((color >> 8)  & 255) / 255f;
-            float bb = ( color        & 255) / 255f;
-            float aa = ((color >>> 24)      ) / 255f;
-            GlStateManager.color(rr, gg, bb, aa);
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLES);
-            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy - h);
-            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy + h);
-            org.lwjgl.opengl.GL11.glVertex2f(cx + h * 0.9f, cy);
-            org.lwjgl.opengl.GL11.glEnd();
-            GlStateManager.color(1f, 1f, 1f, 1f);
-            GlStateManager.enableTexture2D();
-        } else if (type == ICON_GEAR) {
-            gear(cx, cy, h, 0, color);
+    private static void drawMinus(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.32f);
+        rect(cx - h, cy - t / 2f, h * 2f, t, color);
+    }
+
+    private static void drawClose(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.28f);
+        line(cx - h, cy - h, cx + h, cy + h, t, color);
+        line(cx + h, cy - h, cx - h, cy + h, t, color);
+    }
+
+    private static void drawCheck(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.28f);
+        line(cx - h,       cy,        cx - h * 0.3f, cy + h * 0.7f, t, color);
+        line(cx - h * 0.3f, cy + h * 0.7f, cx + h,    cy - h * 0.75f, t, color);
+    }
+
+    private static void drawCopy(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        roundOutline(cx - h * 0.55f, cy - h * 0.85f, h * 1.05f, h * 1.35f, 2f, t, color);
+        roundOutline(cx - h * 0.15f, cy - h * 0.4f,  h * 1.05f, h * 1.35f, 2f, t, color);
+    }
+
+    private static void drawSave(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        roundOutline(cx - h * 0.85f, cy - h * 0.85f, h * 1.7f, h * 1.7f, 2f, t, color);
+        rect(cx - h * 0.45f, cy - h * 0.85f, h * 0.9f, h * 0.55f, color);
+        rect(cx - h * 0.55f, cy + h * 0.15f, h * 1.1f, h * 0.65f, color);
+    }
+
+    private static void drawTrash(float cx, float cy, float h, int color) {
+        rect(cx - h * 0.7f, cy - h * 0.4f, h * 1.4f, h * 1.25f, color);
+        rect(cx - h * 0.85f, cy - h * 0.7f, h * 1.7f, h * 0.2f, color);
+        rect(cx - h * 0.3f,  cy - h * 0.95f, h * 0.6f, h * 0.2f, color);
+    }
+
+    private static void drawRefresh(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.22f);
+        int segs = 20;
+        for (int i = 0; i < segs; i++) {
+            double a0 = -Math.PI * 0.35 + (i / (double)segs) * (Math.PI * 1.7);
+            double a1 = -Math.PI * 0.35 + ((i + 1) / (double)segs) * (Math.PI * 1.7);
+            float x0 = cx + (float)Math.cos(a0) * h * 0.7f;
+            float y0 = cy + (float)Math.sin(a0) * h * 0.7f;
+            float x1 = cx + (float)Math.cos(a1) * h * 0.7f;
+            float y1 = cy + (float)Math.sin(a1) * h * 0.7f;
+            line(x0, y0, x1, y1, t, color);
+        }
+        // arrow head
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        float ah = h * 0.4f;
+        float ax = cx + h * 0.7f;
+        float ay = cy - h * 0.1f;
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(ax - ah * 0.5f, ay - ah);
+        GL11.glVertex2f(ax + ah * 0.5f, ay - ah);
+        GL11.glVertex2f(ax,             ay + ah * 0.4f);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void drawHome(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx,          cy - h);
+        GL11.glVertex2f(cx - h,      cy);
+        GL11.glVertex2f(cx + h,      cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+        rect(cx - h * 0.65f, cy, h * 1.3f, h * 0.85f, color);
+    }
+
+    private static void drawPlay(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx - h * 0.55f, cy - h * 0.8f);
+        GL11.glVertex2f(cx - h * 0.55f, cy + h * 0.8f);
+        GL11.glVertex2f(cx + h * 0.85f, cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void drawGraph(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        float base = cy + h * 0.85f;
+        rect(cx - h * 0.75f, cy - h * 0.4f,  h * 0.35f, h * 1.25f, color);
+        rect(cx - h * 0.15f, cy - h * 0.85f, h * 0.35f, h * 1.7f,  color);
+        rect(cx + h * 0.45f, cy - h * 0.2f,  h * 0.35f, h * 1.05f, color);
+        rect(cx - h * 0.85f, base, h * 1.7f, t, color);
+    }
+
+    private static void drawCode(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.22f);
+        line(cx - h * 0.2f, cy - h * 0.7f,  cx - h * 0.85f, cy,          t, color);
+        line(cx - h * 0.85f, cy,             cx - h * 0.2f, cy + h * 0.7f, t, color);
+        line(cx + h * 0.2f, cy - h * 0.7f,  cx + h * 0.85f, cy,          t, color);
+        line(cx + h * 0.85f, cy,             cx + h * 0.2f, cy + h * 0.7f, t, color);
+    }
+
+    private static void drawUser(float cx, float cy, float h, int color) {
+        circle(cx, cy - h * 0.4f, h * 0.38f, color);
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy + h * 0.55f);
+        for (int i = 0; i <= 24; i++) {
+            double a = Math.PI + (Math.PI * i) / 24;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * h * 0.75f, cy + h * 0.75f + (float)Math.sin(a) * h * 0.55f);
+        }
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void drawStar(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 10; i++) {
+            double a = -Math.PI / 2 + (Math.PI * 2 * i) / 10;
+            float rr = (i % 2 == 0) ? h : h * 0.42f;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * rr, cy + (float)Math.sin(a) * rr);
+        }
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void setGLColor(int color) {
+        float r = ((color >> 16) & 255) / 255f;
+        float g = ((color >> 8)  & 255) / 255f;
+        float b = ( color        & 255) / 255f;
+        float a = ((color >>> 24)      ) / 255f;
+        GlStateManager.color(r, g, b, a);
+    }
+
+    // ---- text ----
+    public static FontRenderer font() {
+        try {
+            com.oryvex.kbclient.font.ModernFontRenderer mf = com.oryvex.kbclient.KBClientMod.modernFont;
+            if (mf != null) return mf;
+        } catch (Throwable ignored) { }
+        return Minecraft.getMinecraft().fontRendererObj;
+    }
+
+    public static int width(String s, float scale) { return (int)(font().getStringWidth(s) * scale); }
+    public static int w(String s, float scale, boolean bold) { return width(s, scale); }
+    public static float lineH(float scale) { return font().FONT_HEIGHT * scale; }
+
+    public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
+        if (s == null || s.isEmpty()) return;
+        if (((color >>> 24) & 255) <= 4) return;
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(scale, scale, 1f);
+        font().drawString(s, x / scale, y / scale, color, shadow);
+        GlStateManager.popMatrix();
+    }
+
+    public static void centered(String s, float cx, float cy, int color, float scale, boolean shadow) {
+        if (s == null || s.isEmpty()) return;
+        float tw = font().getStringWidth(s) * scale;
+        float th = font().FONT_HEIGHT * scale;
+        text(s, cx - tw / 2f, cy - th / 2f, color, scale, shadow);
+    }
+
+    public static void mid(String s, float cx, float cy, int color, float scale, boolean shadow) {
+        centered(s, cx, cy, color, scale, shadow);
+    }
+    public static void mid(String s, float cx, float cy, int color, float scale) {
+        centered(s, cx, cy, color, scale, false);
+    }
+
+    public static void left(String s, float x, float cy, int color, float scale, boolean shadow) {
+        if (s == null || s.isEmpty()) return;
+        float th = font().FONT_HEIGHT * scale;
+        text(s, x, cy - th / 2f, color, scale, shadow);
+    }
+
+    public static void right(String s, float rx, float cy, int color, float scale, boolean shadow) {
+        if (s == null || s.isEmpty()) return;
+        float tw = font().getStringWidth(s) * scale;
+        float th = font().FONT_HEIGHT * scale;
+        text(s, rx - tw, cy - th / 2f, color, scale, shadow);
+    }
+
+    public static String fit(String s, float maxW, float scale, boolean bold) {
+        if (s == null) return "";
+        if (w(s, scale, bold) <= maxW) return s;
+        String ell = "...";
+        while (s.length() > 0 && w(s + ell, scale, bold) > maxW) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s + ell;
+    }
+
+    public static List<String> wrap(String s, float maxW, float scale, boolean bold) {
+        List<String> lines = new ArrayList<String>();
+        if (s == null || s.isEmpty()) return lines;
+        String[] words = s.split(" ");
+        StringBuilder cur = new StringBuilder();
+        for (String word : words) {
+            String test = cur.length() == 0 ? word : cur + " " + word;
+            if (w(test, scale, bold) > maxW && cur.length() > 0) {
+                lines.add(cur.toString());
+                cur = new StringBuilder(word);
+            } else {
+                cur = new StringBuilder(test);
+            }
+        }
+        if (cur.length() > 0) lines.add(cur.toString());
+        return lines;
+    }
+
+    public static void plexusBackground(int w, int h, float maxAlpha) {
+        long t = System.currentTimeMillis() / 50L;
+        int n = Math.min(60, Math.max(20, (w * h) / 12000));
+        for (int i = 0; i < n; i++) {
+            float x1 = ((i * 97L + t) % (w + 40)) - 20;
+            float y1 = ((i * 53L - t / 2) % (h + 40)) - 20;
+            if (y1 < 0) y1 += h + 40;
+            float x2 = ((i * 71L + t * 2) % (w + 40)) - 20;
+            float y2 = ((i * 31L - t) % (h + 40)) - 20;
+            if (y2 < 0) y2 += h + 40;
+            line(x1, y1, x2, y2, 1f, alpha(Theme.accent(), maxAlpha * 0.35f));
+        }
+    }
+}
+''')
+
+
+# ===========================================================================
+# 2) UiButton.java — بازطراحی کامل با اندازه‌گذاری درست آیکون
+# ===========================================================================
+write(UI / "UiButton.java", r'''package com.oryvex.kbclient.ui;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
+import org.lwjgl.input.Mouse;
+
+/**
+ * Modern flat button with:
+ *  - Correct icon sizing (never exceeds button height)
+ *  - Smooth hover / press / toggle animations
+ *  - Staggered intro animation
+ *  - Multiple styles: NORMAL, PRIMARY, DANGER, TAB, TOGGLE, GHOST
+ */
+public class UiButton extends GuiButton {
+    public static final int NORMAL  = 0;
+    public static final int PRIMARY = 1;
+    public static final int DANGER  = 2;
+    public static final int TAB     = 3;
+    public static final int TOGGLE  = 4;
+    public static final int GHOST   = 5;
+
+    public int style = NORMAL;
+    public int icon = Draw.ICON_NONE;
+    public boolean selected;
+    public boolean on;
+    public long delay;
+    public boolean left;
+    public float textSize = Theme.T_MD;
+
+    private final Anim hover = new Anim(), press = new Anim(), knob = new Anim();
+    private final long born = System.currentTimeMillis();
+    private long lastNs = System.nanoTime();
+    private float spin;
+
+    public UiButton(int id, int x, int y, int w, int h, String text) {
+        super(id, x, y, w, h, text);
+    }
+
+    public UiButton style(int s) { this.style = s; return this; }
+    public UiButton icon(int i) { this.icon = i; return this; }
+    public UiButton delay(long d) { this.delay = d; return this; }
+    public UiButton left() { this.left = true; return this; }
+    public UiButton size(float s) { this.textSize = s; return this; }
+
+    @Override
+    public void drawButton(Minecraft mc, int mouseX, int mouseY) {
+        if (!this.visible) return;
+        this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition
+                && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
+
+        long nowN = System.nanoTime();
+        float dt = Math.min(0.1f, (nowN - lastNs) / 1.0e9f);
+        lastNs = nowN;
+
+        boolean act = this.hovered && this.enabled;
+        float hv = hover.to(act ? 1f : 0f, 18f);
+        float pr = press.to(act && Mouse.isButtonDown(0) ? 1f : 0f, 34f);
+        float kn = knob.to(on ? 1f : 0f, 20f);
+        spin = (spin + dt * (28f + 260f * hv)) % 360f;
+
+        float ap = Draw.easeOut((System.currentTimeMillis() - born - delay) / 360f);
+        if (ap <= 0.01f) return;
+        if (!enabled) ap *= 0.55f;
+
+        // press feedback: shift down 1px and reduce height 1px
+        float x = xPosition + pr * 0.5f;
+        float y = yPosition + pr * 0.5f + (1f - ap) * 8f;
+        float w = width - pr;
+        float h = height - pr;
+        float r = Math.min(h / 2f, style == TAB ? 4f : 6f);
+        float cy = y + h / 2f;
+
+        int accent  = Theme.accent();
+        int accent2 = Theme.accent2();
+        int textCol;
+
+        switch (style) {
+            case PRIMARY: {
+                int c1 = Draw.lerp(Draw.shade(accent, 0.75f), accent, hv);
+                int c2 = Draw.lerp(Draw.shade(accent2, 0.75f), accent2, hv);
+                Draw.roundRect(x, y, w, h, r, Draw.fade(c1, ap));
+                Draw.roundRect(x, y + h * 0.4f, w, h * 0.6f, r, Draw.fade(c2, ap));
+                Draw.roundOutline(x, y, w, h, r, 1f, Draw.fade(0x33FFFFFF, ap));
+                textCol = 0xFFFFFFFF;
+                break;
+            }
+            case DANGER: {
+                int fill = Draw.lerp(0x22FB7185, 0x55FB7185, hv);
+                Draw.roundRect(x, y, w, h, r, Draw.fade(fill, ap));
+                Draw.roundOutline(x, y, w, h, r, 1f,
+                        Draw.fade(Draw.lerp(0x44FB7185, 0xFFFB7185, hv), ap));
+                textCol = Draw.lerp(0xFFFCA5A5, 0xFFFFFFFF, hv);
+                break;
+            }
+            case TAB: {
+                Draw.roundRect(x, y, w, h, r,
+                        Draw.fade(selected ? Theme.FILL_HI : Draw.lerp(0x00FFFFFF, Theme.FILL, hv), ap));
+                textCol = selected ? Theme.TEXT : Draw.lerp(Theme.MUTED, Theme.TEXT, hv);
+                break;
+            }
+            case TOGGLE: {
+                Draw.roundRect(x, y, w, h, r,
+                        Draw.fade(Draw.lerp(Theme.FILL, Theme.FILL_HI, hv * 0.7f), ap));
+                Draw.roundOutline(x, y, w, h, r, 1f,
+                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.5f), hv), ap));
+                textCol = Draw.lerp(Theme.SOFT, Theme.TEXT, Math.max(hv, kn * 0.5f));
+                break;
+            }
+            case GHOST: {
+                Draw.roundRect(x, y, w, h, r,
+                        Draw.fade(Draw.lerp(0x00FFFFFF, Theme.FILL, hv), ap));
+                textCol = Draw.lerp(Theme.MUTED, Theme.TEXT, hv);
+                break;
+            }
+            default: {
+                Draw.roundRect(x, y, w, h, r,
+                        Draw.fade(Draw.lerp(Theme.FILL, Theme.FILL_HI, hv), ap));
+                Draw.roundOutline(x, y, w, h, r, 1f,
+                        Draw.fade(Draw.lerp(Theme.STROKE, Draw.alpha(accent, 0.65f), hv), ap));
+                textCol = Draw.lerp(Theme.SOFT, Theme.TEXT, hv);
+            }
+        }
+
+        textCol = Draw.fade(textCol, ap);
+
+        if (style == TOGGLE) {
+            // label on left, switch on right
+            float sw = 22f, sh = 12f;
+            float sx = x + w - sw - 10f;
+            Draw.left(Draw.fit(displayString, w - sw - 26f, textSize, false),
+                    x + 10f, cy, textCol, textSize, false);
+            drawToggleSwitch(sx, cy - sh / 2f, sw, sh, kn, ap);
+            return;
+        }
+
+        // ---- icon sizing: icon diameter = min(button height * 0.55, 12) ----
+        boolean hasIcon = icon != Draw.ICON_NONE;
+        float iconSize = Math.min(h * 0.55f, 12f);
+        float gap = 6f;
+
+        String label = Draw.fit(displayString,
+                w - (hasIcon ? iconSize + gap + 20f : 20f), textSize, false);
+        float tw = Draw.w(label, textSize, false);
+
+        float contentW = hasIcon ? iconSize + gap + tw : tw;
+        float startX;
+        if (left) startX = x + 12f;
+        else      startX = x + (w - contentW) / 2f;
+
+        if (hasIcon) {
+            float icx = startX + iconSize / 2f;
+            int ic = (style == PRIMARY) ? textCol
+                    : Draw.fade(Draw.lerp(Theme.SOFT, accent, hv), ap);
+            if (style == DANGER) ic = textCol;
+            Draw.icon(icon, icx, cy, iconSize, ic);
+            startX += iconSize + gap;
+        }
+
+        if (left) {
+            Draw.left(label, startX, cy, textCol, textSize, style == PRIMARY);
         } else {
-            rect(cx - h, cy - h, size, size, color);
+            Draw.left(label, startX, cy, textCol, textSize, style == PRIMARY);
+        }
+
+        if (style == TAB && selected) {
+            Draw.roundRect(x + 8f, y + h - 2f, w - 16f, 2f, 1f, Draw.fade(accent, ap));
         }
     }
 
-'''
-txt = txt[:old_icon_start] + new_icon + txt[old_icon_end:]
-
-DRAW.write_text(txt, encoding="utf-8")
-print(f"  [PATCH] {DRAW.relative_to(ROOT)}  (new gear + icon)")
-
-
-# ===========================================================================
-# 3) UiButton.java — استفاده از امضاى جديد gear() + طراحى بهتر
-# ===========================================================================
-BUTTON = UI / "UiButton.java"
-txt = BUTTON.read_text(encoding="utf-8")
-
-# پیدا کردن فراخوانی gear با hole argument
-txt = txt.replace(
-    "if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic, 0);",
-    "if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic);"
-)
-BUTTON.write_text(txt, encoding="utf-8")
-print(f"  [PATCH] {BUTTON.relative_to(ROOT)}")
+    private void drawToggleSwitch(float sx, float sy, float sw, float sh, float knob, float ap) {
+        int off = Draw.fade(0x30FFFFFF, ap);
+        int onC = Draw.fade(Theme.accent(), ap);
+        int track = Draw.lerp(off, onC, knob);
+        Draw.roundRect(sx, sy, sw, sh, sh / 2f, track);
+        float kx = sx + sh / 2f + (sw - sh) * knob;
+        Draw.circle(kx, sy + sh / 2f, sh / 2f - 1.5f, Draw.fade(0xFFFFFFFF, ap));
+    }
+}
+''')
 
 
 # ===========================================================================
-# 4) KBClientMod — override mc.fontRendererObj با ModernFontRenderer
-#    (اینجا **هم** چت از فونت فارسى پشتیبانى مى‌کنه)
+# 3) GuiModernMenu — Layout جدید و تمیزتر
 # ===========================================================================
-MOD = JAVA / "KBClientMod.java"
-txt = MOD.read_text(encoding="utf-8")
+write(UI / "GuiModernMenu.java", r'''package com.oryvex.kbclient.ui;
 
-# حذف بلوک قدیمى که فقط modernFont رو مى‌ساخت
-import re
-txt = re.sub(
-    r"\n\s*try\s*\{\s*\n\s*Minecraft mcFont = Minecraft\.getMinecraft\(\);\s*\n\s*modernFont = new com\.oryvex\.kbclient\.font\.ModernFontRenderer.*?\n\s*\}\s*catch \(Throwable t\) \{\s*\n\s*logger\.error\(\"\[KBClient\] ModernFontRenderer failed.*?\n\s*\}",
-    "", txt, flags=re.S,
-)
+import com.oryvex.kbclient.KBClientMod;
+import com.oryvex.kbclient.KBTracker;
+import com.oryvex.kbclient.kb.KBProfile;
+import java.io.IOException;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiMultiplayer;
+import net.minecraft.client.gui.GuiSelectWorld;
 
-# اضافه کردن بلوک جدید در init
-anchor = "installLoading();"
-if anchor in txt and "ModernFontRenderer attached to mc.fontRendererObj" not in txt:
-    inject = (
-        anchor + "\n"
-        "          try {\n"
-        "              Minecraft mcF = Minecraft.getMinecraft();\n"
-        "              modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(\n"
-        "                      mcF.gameSettings,\n"
-        "                      new net.minecraft.util.ResourceLocation(\"textures/font/ascii.png\"),\n"
-        "                      mcF.renderEngine, false);\n"
-        "              mcF.fontRendererObj = modernFont;\n"
-        "              logger.info(\"[KBClient] ModernFontRenderer attached to mc.fontRendererObj\");\n"
-        "          } catch (Throwable t) {\n"
-        "              logger.error(\"[KBClient] ModernFontRenderer failed: \" + t);\n"
-        "          }"
-    )
-    txt = txt.replace(anchor, inject, 1)
+public class GuiModernMenu extends FadeScreen {
+    private final KBTracker tracker;
+    private int sidebarW;
 
-MOD.write_text(txt, encoding="utf-8")
-print(f"  [PATCH] {MOD.relative_to(ROOT)}  (mc.fontRendererObj overridden)")
+    public GuiModernMenu(KBTracker tracker) {
+        this.tracker = tracker;
+    }
+
+    @Override
+    public void initGui() {
+        this.buttonList.clear();
+
+        // responsive sidebar: ~30% width, min 200, max 320
+        sidebarW = Math.max(200, Math.min(320, (int)(this.width * 0.30f)));
+
+        int padding = 24;
+        int bw = sidebarW - padding * 2;
+        int bh = 26;
+        int gap = 8;
+
+        int totalH = 6 * bh + 5 * gap;
+        int top = Math.max(110, (this.height - totalH) / 2 + 20);
+
+        this.buttonList.add(new UiButton(1, padding, top,                       bw, bh, "Singleplayer").icon(Draw.ICON_PLAY).delay(60));
+        this.buttonList.add(new UiButton(2, padding, top + 1 * (bh + gap),      bw, bh, "Multiplayer").icon(Draw.ICON_GRAPH).delay(100));
+        this.buttonList.add(new UiButton(6, padding, top + 2 * (bh + gap),      bw, bh, "Alt Manager").icon(Draw.ICON_USER).delay(140));
+        this.buttonList.add(new UiButton(3, padding, top + 3 * (bh + gap),      bw, bh, "Analyzer").style(UiButton.PRIMARY).icon(Draw.ICON_GEAR).delay(180));
+        this.buttonList.add(new UiButton(4, padding, top + 4 * (bh + gap),      bw, bh, "Options").icon(Draw.ICON_GEAR).delay(220));
+        this.buttonList.add(new UiButton(5, padding, top + 5 * (bh + gap),      bw, bh, "Quit").style(UiButton.DANGER).icon(Draw.ICON_CLOSE).delay(260));
+    }
+
+    @Override
+    protected void actionPerformed(GuiButton b) throws IOException {
+        switch (b.id) {
+            case 1: closeTo(new GuiSelectWorld(this)); break;
+            case 2: closeTo(new GuiMultiplayer(this)); break;
+            case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
+            case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+            case 6: closeTo(new GuiAltManager(this)); break;
+            case 5:
+                closeThen(new Runnable() { @Override public void run() { mc.shutdown(); } });
+                break;
+            default: break;
+        }
+    }
+
+    @Override
+    protected void onKey(char c, int key) throws IOException {
+        // main menu cannot be closed with ESC
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
+
+        // ambient particles
+        if (Settings.particles && Settings.density > 0) {
+            Draw.plexusBackground(this.width, this.height, 0.35f);
+        }
+
+        // sidebar panel
+        Draw.rect(0, 0, sidebarW, this.height, Theme.PANEL);
+        Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
+
+        // ---- Title ----
+        float titleScale = Math.max(1.6f, Math.min(2.4f, sidebarW / 130f));
+        Draw.centered("ORYVEX", sidebarW / 2f, 55f, Theme.TEXT, titleScale, true);
+
+        float subScale = 0.9f;
+        float subY = 55f + Draw.lineH(titleScale) + 8f;
+        Draw.centered("KB Client v" + KBClientMod.VERSION, sidebarW / 2f, subY, Theme.ACCENT, subScale, false);
+
+        // divider
+        int divY = (int)(subY + Draw.lineH(subScale) + 12f);
+        Draw.rect(40, divY, sidebarW - 80, 1, Theme.BORDER);
+
+        // ---- Profile chip (top-right) ----
+        KBProfile p = tracker.getProfile();
+        if (p.hasData && this.width > sidebarW + 160) {
+            String s = p.summary();
+            int w = Draw.width(s, 0.85f) + 48;
+            int px = this.width - w - 18;
+            int py = 18;
+            Draw.roundRect(px, py, w, 26, 6f, Theme.PANEL2);
+            Draw.roundOutline(px, py, w, 26, 6f, 1f, Theme.BORDER);
+            Draw.circle(px + 14, py + 13, 4f, Theme.GOOD);
+            Draw.left("Profile", px + 26, py + 8, Theme.MUTED, 0.7f, false);
+            Draw.left(s,       px + 26, py + 18, Theme.TEXT, 0.85f, false);
+        }
+
+        // ---- User card (bottom-left) ----
+        int userY = this.height - 36;
+        Draw.rect(40, userY - 18, sidebarW - 80, 1, Theme.BORDER);
+
+        // avatar circle
+        int avX = 34, avY = userY - 8;
+        Draw.roundRect(avX, avY, 22, 22, 11f, Theme.PANEL3);
+        Draw.icon(Draw.ICON_USER, avX + 11f, avY + 11f, 12f, Theme.SOFT);
+
+        Draw.left("Logged in as", 64, userY - 2, Theme.MUTED, 0.72f, false);
+        String name = mc.getSession().getUsername();
+        String nameF = Draw.fit(name, sidebarW - 80, 0.9f, false);
+        Draw.left(nameF, 64, userY + 8, Theme.TEXT, 0.9f, false);
+
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        drawFade();
+    }
+}
+''')
+
+
+# ===========================================================================
+# 4) GuiKbOptions — Layout جدید
+# ===========================================================================
+write(UI / "GuiKbOptions.java", r'''package com.oryvex.kbclient.ui;
+
+import com.oryvex.kbclient.KBTracker;
+import java.io.IOException;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiOptions;
+import net.minecraft.client.gui.GuiScreen;
+
+public class GuiKbOptions extends FadeScreen {
+    private final KBTracker tracker;
+    private final GuiScreen parent;
+    private UiButton bHud, bPart, bToast, bLoad, bFade, bDisc;
+    private int cardX, cardY, cardW, cardH;
+
+    public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
+        this.tracker = tracker;
+        this.parent = parent;
+    }
+
+    @Override
+    public void initGui() {
+        this.buttonList.clear();
+        int bw = Math.min(280, this.width - 80);
+        int bh = 24;
+        int gap = 6;
+        int cx = this.width / 2;
+
+        int rows = 6;
+        int innerH = rows * (bh + gap) + gap + 2 * (bh + gap) + 12;
+        cardW = bw + 48;
+        cardH = innerH + 90;
+        cardX = cx - cardW / 2;
+        cardY = Math.max(24, (this.height - cardH) / 2);
+
+        int y = cardY + 74;
+        int bx = cx - bw / 2;
+
+        bHud   = new UiButton(1, bx, y,                          bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+        bPart  = new UiButton(2, bx, y + 1 * (bh + gap),         bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(100);
+        bToast = new UiButton(3, bx, y + 2 * (bh + gap),         bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(140);
+        bLoad  = new UiButton(4, bx, y + 3 * (bh + gap),         bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(180);
+        bDisc  = new UiButton(8, bx, y + 4 * (bh + gap),         bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(220);
+        bFade  = new UiButton(5, bx, y + 5 * (bh + gap),         bw, bh, "").delay(260);
+
+        this.buttonList.add(bHud);
+        this.buttonList.add(bPart);
+        this.buttonList.add(bToast);
+        this.buttonList.add(bLoad);
+        this.buttonList.add(bDisc);
+        this.buttonList.add(bFade);
+
+        int y2 = y + 6 * (bh + gap) + 12;
+        this.buttonList.add(new UiButton(6, bx, y2,                 bw, bh, "Minecraft Options...").icon(Draw.ICON_GEAR).delay(300));
+        this.buttonList.add(new UiButton(7, bx, y2 + bh + gap,      bw, bh, "Done").style(UiButton.PRIMARY).icon(Draw.ICON_CHECK).delay(340));
+
+        sync();
+    }
+
+    private void sync() {
+        bHud.on = Settings.hud;
+        bPart.on = Settings.particles;
+        bToast.on = Settings.toasts;
+        bLoad.on = Settings.customLoading;
+        bDisc.on = Settings.discordRpc;
+        bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
+    }
+
+    @Override
+    protected void actionPerformed(GuiButton b) throws IOException {
+        switch (b.id) {
+            case 1: Settings.hud = !Settings.hud; break;
+            case 2: Settings.particles = !Settings.particles; break;
+            case 3: Settings.toasts = !Settings.toasts; break;
+            case 4: Settings.customLoading = !Settings.customLoading; break;
+            case 8: Settings.discordRpc = !Settings.discordRpc; com.oryvex.kbclient.DiscordRPC.apply(); break;
+            case 5: Settings.fade = (Settings.fade + 1) % 4; break;
+            case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
+            case 7: Settings.save(); closeTo(parent); return;
+            default: break;
+        }
+        Settings.save();
+        sync();
+    }
+
+    @Override
+    protected void onKey(char c, int key) throws IOException {
+        if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) { Settings.save(); closeTo(parent); }
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        drawBackdrop(mouseX, mouseY);
+        Draw.panel(cardX, cardY, cardW, cardH, 10, Theme.GLASS, Theme.BORDER);
+
+        float cx = this.width / 2f;
+        Draw.centered("OPTIONS", cx, cardY + 26, Theme.TEXT, 1.8f, true);
+        Draw.centered("KB Client preferences", cx, cardY + 50, Theme.MUTED, 0.9f, false);
+
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        drawFade();
+    }
+}
+''')
+
+
+# ===========================================================================
+# 5) Ui.java — toggle switch بازطراحی
+# ===========================================================================
+write(UI / "Ui.java", r'''package com.oryvex.kbclient.ui;
+
+import java.util.List;
+
+public final class Ui {
+    private Ui() {}
+
+    public static int onAccent() {
+        int c = Theme.accentMid();
+        float lum = (0.299f * ((c >> 16) & 255) + 0.587f * ((c >> 8) & 255) + 0.114f * (c & 255)) / 255f;
+        return lum > 0.66f ? 0xFF0A0C14 : 0xFFFFFFFF;
+    }
+
+    public static void toggle(float x, float cy, float knob, float alpha) {
+        float w = 22f, h = 12f, y = cy - h / 2f;
+        int off = Draw.fade(0x30FFFFFF, alpha);
+        int onC = Draw.fade(Theme.accent(), alpha);
+        int track = Draw.lerp(off, onC, knob);
+        Draw.roundRect(x, y, w, h, h / 2f, track);
+        float kx = x + h / 2f + (w - h) * knob;
+        Draw.circle(kx, cy, h / 2f - 1.5f, Draw.fade(0xFFFFFFFF, alpha));
+    }
+
+    public static void slider(float x, float cy, float w, float frac, boolean active, float alpha) {
+        frac = Draw.clamp(frac);
+        Draw.roundRect(x, cy - 2f, w, 4f, 2f, Draw.fade(0x30FFFFFF, alpha));
+        float fw = Math.max(4f, w * frac);
+        Draw.roundRect(x, cy - 2f, fw, 4f, 2f, Draw.fade(Theme.accent(), alpha));
+        float kx = x + w * frac;
+        Draw.circle(kx, cy, active ? 5.4f : 4.6f, Draw.fade(0xFFFFFFFF, alpha));
+    }
+
+    public static float chip(String text, float x, float cy, float size, int bg, int fg, boolean bold) {
+        float tw = Draw.w(text, size, bold);
+        float h = size * 9 + 5f;
+        float w = tw + 10f;
+        Draw.roundRect(x, cy - h / 2f, w, h, h / 2f, bg);
+        Draw.centered(text, x + w / 2f, cy, fg, size, bold);
+        return w;
+    }
+
+    public static void scrollbar(float x, float y, float h, float contentH, float viewH, float scroll) {
+        if (contentH <= viewH + 0.5f) return;
+        Draw.roundRect(x, y, 2.5f, h, 1.25f, 0x14FFFFFF);
+        float th = Math.max(14f, h * viewH / contentH);
+        float max = contentH - viewH;
+        float ty = y + (h - th) * Draw.clamp(scroll / max);
+        Draw.roundRect(x, ty, 2.5f, th, 1.25f, Draw.alpha(Theme.accent(), 0.75f));
+    }
+
+    public static void tooltip(String title, String body, int mx, int my, int sw, int sh) {
+        float maxW = Math.min(180f, sw - 20f);
+        List<String> lines = Draw.wrap(body, maxW, Theme.T_SM, false);
+        float tw = title == null ? 0 : Draw.w(title, Theme.T_MD, true);
+        for (String l : lines) tw = Math.max(tw, Draw.w(l, Theme.T_SM, false));
+        float w = tw + 16f;
+        float h = 10f + (title == null ? 0 : 13f) + lines.size() * (Draw.lineH(Theme.T_SM) + 2f);
+        float x = mx + 10f, y = my + 12f;
+        if (x + w > sw - 4) x = mx - w - 8f;
+        if (y + h > sh - 4) y = my - h - 8f;
+        if (x < 4) x = 4;
+        if (y < 4) y = 4;
+        Draw.panel(x, y, w, h, 5f, 0xF2080A11, Theme.STROKE_HI);
+        float ty = y + 8f;
+        if (title != null) {
+            Draw.left(title, x + 8f, ty + Draw.lineH(Theme.T_MD) / 2f, Theme.TEXT, Theme.T_MD, true);
+            ty += 13f;
+        }
+        for (String l : lines) {
+            Draw.left(l, x + 8f, ty + Draw.lineH(Theme.T_SM) / 2f, Theme.SOFT, Theme.T_SM, false);
+            ty += Draw.lineH(Theme.T_SM) + 2f;
+        }
+    }
+}
+''')
 
 
 print()
-print("Done.  Rebuild:  .\\gradlew clean build")
-print("اگر چت هنوز فارسى رو درست نشون نمى‌ده، در تنظیمات گرافیکى Minecraft گزینه Force Unicode Font رو روشن کن.")
+print("Done. Rebuild:  .\\gradlew clean build")

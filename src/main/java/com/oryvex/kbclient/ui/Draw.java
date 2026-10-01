@@ -4,17 +4,39 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
+import org.lwjgl.opengl.GL11;
+
 import java.util.ArrayList;
 import java.util.List;
 
+/** Immediate-mode drawing toolkit. All icons are vector-based. */
 public final class Draw {
     private Draw() {}
 
-    public static final int ICON_NONE = 0, ICON_GEAR = 1, ICON_ARROW = 2;
+    // Icon IDs
+    public static final int ICON_NONE    = 0;
+    public static final int ICON_GEAR    = 1;
+    public static final int ICON_ARROW   = 2;
+    public static final int ICON_PLUS    = 3;
+    public static final int ICON_MINUS   = 4;
+    public static final int ICON_COPY    = 5;
+    public static final int ICON_SAVE    = 6;
+    public static final int ICON_TRASH   = 7;
+    public static final int ICON_REFRESH = 8;
+    public static final int ICON_CLOSE   = 9;
+    public static final int ICON_CHECK   = 10;
+    public static final int ICON_HOME    = 11;
+    public static final int ICON_PLAY    = 12;
+    public static final int ICON_GRAPH   = 13;
+    public static final int ICON_CODE    = 14;
+    public static final int ICON_USER    = 15;
+    public static final int ICON_STAR    = 16;
 
+    // ---- math ----
     public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
     public static float ease(float t) { t = clamp(t); return t * t * (3f - 2f * t); }
     public static float easeOut(float t) { t = clamp(t); return 1f - (1f - t) * (1f - t); }
+    public static float easeInOut(float t) { t = clamp(t); return t < 0.5f ? 2f*t*t : 1f-(float)Math.pow(-2f*t+2f,2f)/2f; }
     public static float lerp(float a, float b, float t) { return a + (b - a) * clamp(t); }
 
     public static int lerp(int a, int b, float t) {
@@ -52,6 +74,7 @@ public final class Draw {
                         : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
     }
 
+    // ---- GL state ----
     public static void blend() {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
@@ -63,6 +86,7 @@ public final class Draw {
         GlStateManager.disableBlend();
     }
 
+    // ---- primitives ----
     public static void rect(float x, float y, float w, float h, int color) {
         Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), color);
     }
@@ -92,6 +116,7 @@ public final class Draw {
         if (((color >>> 24) & 255) <= 4) return;
         r = Math.min(r, Math.min(w, h) / 2f);
         int ir = (int) Math.ceil(r);
+        if (ir <= 0) { Gui.drawRect((int)x, (int)y, (int)(x+w), (int)(y+h), color); return; }
         Gui.drawRect((int)x,       (int)(y + r), (int)(x + w), (int)(y + h - r), color);
         Gui.drawRect((int)(x + r), (int)y,       (int)(x + w - r), (int)(y + r),   color);
         Gui.drawRect((int)(x + r), (int)(y + h - r), (int)(x + w - r), (int)(y + h), color);
@@ -156,41 +181,52 @@ public final class Draw {
         }
     }
 
-    public static void shadow(float x, float y, float w, float h, float r, int color, float spread) {
-        glow(x, y, w, h, r, color, spread);
-    }
-
-    public static void radial(float cx, float cy, float r, int color, boolean fill) {
-        circle(cx, cy, r, color);
-    }
-
+    // ---- ICONS (vector, correct size) ----
     /**
-     * Pixel-perfect vector gear icon, drawn with GL lines + triangles.
-     * Looks the same at any size — the old roundRect-based version broke
-     * on small buttons (see issue with Options button).
+     * Draws a vector icon centred at (cx, cy).
+     * "size" is the full bounding-box size (diameter for circular icons).
+     * Icons never exceed the given size.
      */
-    public static void gear(float cx, float cy, float r, float angle, int color) {
+    public static void icon(int type, float cx, float cy, float size, int color) {
         if (((color >>> 24) & 255) <= 4) return;
-        if (r < 1.5f) return;
+        float h = size / 2f;
+        switch (type) {
+            case ICON_GEAR:    drawGear(cx, cy, h, 0f, color); break;
+            case ICON_ARROW:   drawArrow(cx, cy, h, color); break;
+            case ICON_PLUS:    drawPlus(cx, cy, h, color); break;
+            case ICON_MINUS:   drawMinus(cx, cy, h, color); break;
+            case ICON_CLOSE:   drawClose(cx, cy, h, color); break;
+            case ICON_CHECK:   drawCheck(cx, cy, h, color); break;
+            case ICON_COPY:    drawCopy(cx, cy, h, color); break;
+            case ICON_SAVE:    drawSave(cx, cy, h, color); break;
+            case ICON_TRASH:   drawTrash(cx, cy, h, color); break;
+            case ICON_REFRESH: drawRefresh(cx, cy, h, color); break;
+            case ICON_HOME:    drawHome(cx, cy, h, color); break;
+            case ICON_PLAY:    drawPlay(cx, cy, h, color); break;
+            case ICON_GRAPH:   drawGraph(cx, cy, h, color); break;
+            case ICON_CODE:    drawCode(cx, cy, h, color); break;
+            case ICON_USER:    drawUser(cx, cy, h, color); break;
+            case ICON_STAR:    drawStar(cx, cy, h, color); break;
+            default:           rect(cx - h, cy - h, size, size, color); break;
+        }
+    }
 
-        float or = r;          // outer radius (tooth tip)
-        float ir = r * 0.62f;  // inner radius (body)
-        float tr = r * 0.28f;  // tooth width
+    /** Rotating gear with 8 teeth, radius r. Bounded to 2r diameter. */
+    public static void drawGear(float cx, float cy, float r, float angle, int color) {
+        if (r < 0.5f) return;
+        float or_ = r;               // tooth tip radius
+        float ir  = r * 0.66f;       // body radius
+        float tr  = r * 0.22f;       // half tooth width
         int teeth = 8;
 
-        float ar = (float) Math.toRadians(angle);
+        double ar = Math.toRadians(angle);
 
         GlStateManager.disableTexture2D();
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        setGLColor(color);
 
-        float rr = ((color >> 16) & 255) / 255f;
-        float gg = ((color >> 8)  & 255) / 255f;
-        float bb = ( color        & 255) / 255f;
-        float aa = ((color >>> 24)      ) / 255f;
-        GlStateManager.color(rr, gg, bb, aa);
-
-        // --- teeth as quads ---
+        // teeth quads (built as two triangles each)
         for (int i = 0; i < teeth; i++) {
             double a0 = ar + (2 * Math.PI * i) / teeth;
             double a1 = a0 + (2 * Math.PI / teeth) * 0.55;
@@ -203,109 +239,227 @@ public final class Draw {
             float dx = x1 - x0, dy = y1 - y0;
             float len = (float)Math.sqrt(dx * dx + dy * dy);
             if (len < 0.001f) continue;
-            float nx = -dy / len * (tr * 0.5f);
-            float ny =  dx / len * (tr * 0.5f);
+            float nx = -dy / len * tr;
+            float ny =  dx / len * tr;
 
-            float tx0 = x0 + nx, ty0 = y0 + ny;
-            float tx1 = x1 + nx, ty1 = y1 + ny;
-            float tx2 = x1 - nx, ty2 = y1 - ny;
-            float tx3 = x0 - nx, ty3 = y0 - ny;
+            float ex0 = cx + (float)Math.cos(a0) * or_;
+            float ey0 = cy + (float)Math.sin(a0) * or_;
+            float ex1 = cx + (float)Math.cos(a1) * or_;
+            float ey1 = cy + (float)Math.sin(a1) * or_;
 
-            float ex0 = cx + (float)Math.cos(a0) * or;
-            float ey0 = cy + (float)Math.sin(a0) * or;
-            float ex1 = cx + (float)Math.cos(a1) * or;
-            float ey1 = cy + (float)Math.sin(a1) * or;
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 + nx, y0 + ny);
+            GL11.glVertex2f(x1 + nx, y1 + ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
-            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x1 + nx, y1 + ny);
+            GL11.glVertex2f(x1 - nx, y1 - ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
-            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x1 - nx, y1 - ny);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(ex0,      ey0);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
-            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(x0 + nx, y0 + ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glEnd();
 
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
-            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
-            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
-            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
-            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
-            org.lwjgl.opengl.GL11.glEnd();
+            GL11.glBegin(GL11.GL_TRIANGLES);
+            GL11.glVertex2f(x0 - nx, y0 - ny);
+            GL11.glVertex2f(ex1,      ey1);
+            GL11.glVertex2f(ex0,      ey0);
+            GL11.glEnd();
         }
 
-        // --- inner disc ---
-        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
-        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
-        for (int i = 0; i <= 32; i++) {
-            double a = ar + (2 * Math.PI * i) / 32;
-            org.lwjgl.opengl.GL11.glVertex2f(
-                cx + (float)Math.cos(a) * ir,
-                cy + (float)Math.sin(a) * ir);
+        // body disc
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 40; i++) {
+            double a = ar + (2 * Math.PI * i) / 40;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * ir, cy + (float)Math.sin(a) * ir);
         }
-        org.lwjgl.opengl.GL11.glEnd();
-
-        // --- centre hole ---
-        int bg = 0;
-        try {
-            bg = (org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_BLEND) != 0) ? 0x00000000 : 0x00000000;
-        } catch (Throwable ignored) {}
-        org.lwjgl.opengl.GL11.glColor4f(0f, 0f, 0f, 0f);
-        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
-        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
-        for (int i = 0; i <= 24; i++) {
-            double a = (2 * Math.PI * i) / 24;
-            org.lwjgl.opengl.GL11.glVertex2f(
-                cx + (float)Math.cos(a) * (r * 0.24f),
-                cy + (float)Math.sin(a) * (r * 0.24f));
-        }
-        org.lwjgl.opengl.GL11.glEnd();
+        GL11.glEnd();
 
         GlStateManager.color(1f, 1f, 1f, 1f);
         GlStateManager.enableTexture2D();
     }
 
-    /** Legacy signature (angle + hole). Kept so old callers keep compiling. */
-    public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
-        gear(cx, cy, r, angle, color);
+    private static void drawArrow(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        float w = h * 0.85f;
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx - w * 0.55f, cy - h * 0.75f);
+        GL11.glVertex2f(cx - w * 0.55f, cy + h * 0.75f);
+        GL11.glVertex2f(cx + w * 0.95f, cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
     }
 
-    public static void icon(int type, float cx, float cy, float size, int color) {
-        float h = size / 2f;
-        if (type == ICON_ARROW) {
-            GlStateManager.disableTexture2D();
-            GlStateManager.enableBlend();
-            float rr = ((color >> 16) & 255) / 255f;
-            float gg = ((color >> 8)  & 255) / 255f;
-            float bb = ( color        & 255) / 255f;
-            float aa = ((color >>> 24)      ) / 255f;
-            GlStateManager.color(rr, gg, bb, aa);
-            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLES);
-            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy - h);
-            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy + h);
-            org.lwjgl.opengl.GL11.glVertex2f(cx + h * 0.9f, cy);
-            org.lwjgl.opengl.GL11.glEnd();
-            GlStateManager.color(1f, 1f, 1f, 1f);
-            GlStateManager.enableTexture2D();
-        } else if (type == ICON_GEAR) {
-            gear(cx, cy, h, 0, color);
-        } else {
-            rect(cx - h, cy - h, size, size, color);
+    private static void drawPlus(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.32f);
+        rect(cx - h,      cy - t / 2f, h * 2f, t, color);
+        rect(cx - t / 2f, cy - h,      t, h * 2f, color);
+    }
+
+    private static void drawMinus(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.32f);
+        rect(cx - h, cy - t / 2f, h * 2f, t, color);
+    }
+
+    private static void drawClose(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.28f);
+        line(cx - h, cy - h, cx + h, cy + h, t, color);
+        line(cx + h, cy - h, cx - h, cy + h, t, color);
+    }
+
+    private static void drawCheck(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.28f);
+        line(cx - h,       cy,        cx - h * 0.3f, cy + h * 0.7f, t, color);
+        line(cx - h * 0.3f, cy + h * 0.7f, cx + h,    cy - h * 0.75f, t, color);
+    }
+
+    private static void drawCopy(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        roundOutline(cx - h * 0.55f, cy - h * 0.85f, h * 1.05f, h * 1.35f, 2f, t, color);
+        roundOutline(cx - h * 0.15f, cy - h * 0.4f,  h * 1.05f, h * 1.35f, 2f, t, color);
+    }
+
+    private static void drawSave(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        roundOutline(cx - h * 0.85f, cy - h * 0.85f, h * 1.7f, h * 1.7f, 2f, t, color);
+        rect(cx - h * 0.45f, cy - h * 0.85f, h * 0.9f, h * 0.55f, color);
+        rect(cx - h * 0.55f, cy + h * 0.15f, h * 1.1f, h * 0.65f, color);
+    }
+
+    private static void drawTrash(float cx, float cy, float h, int color) {
+        rect(cx - h * 0.7f, cy - h * 0.4f, h * 1.4f, h * 1.25f, color);
+        rect(cx - h * 0.85f, cy - h * 0.7f, h * 1.7f, h * 0.2f, color);
+        rect(cx - h * 0.3f,  cy - h * 0.95f, h * 0.6f, h * 0.2f, color);
+    }
+
+    private static void drawRefresh(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.22f);
+        int segs = 20;
+        for (int i = 0; i < segs; i++) {
+            double a0 = -Math.PI * 0.35 + (i / (double)segs) * (Math.PI * 1.7);
+            double a1 = -Math.PI * 0.35 + ((i + 1) / (double)segs) * (Math.PI * 1.7);
+            float x0 = cx + (float)Math.cos(a0) * h * 0.7f;
+            float y0 = cy + (float)Math.sin(a0) * h * 0.7f;
+            float x1 = cx + (float)Math.cos(a1) * h * 0.7f;
+            float y1 = cy + (float)Math.sin(a1) * h * 0.7f;
+            line(x0, y0, x1, y1, t, color);
         }
+        // arrow head
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        float ah = h * 0.4f;
+        float ax = cx + h * 0.7f;
+        float ay = cy - h * 0.1f;
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(ax - ah * 0.5f, ay - ah);
+        GL11.glVertex2f(ax + ah * 0.5f, ay - ah);
+        GL11.glVertex2f(ax,             ay + ah * 0.4f);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
     }
 
-    /** فونت UI ما: ModernFontRenderer اگر آماده باشد، وگرنه vanilla */
+    private static void drawHome(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx,          cy - h);
+        GL11.glVertex2f(cx - h,      cy);
+        GL11.glVertex2f(cx + h,      cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+        rect(cx - h * 0.65f, cy, h * 1.3f, h * 0.85f, color);
+    }
+
+    private static void drawPlay(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLES);
+        GL11.glVertex2f(cx - h * 0.55f, cy - h * 0.8f);
+        GL11.glVertex2f(cx - h * 0.55f, cy + h * 0.8f);
+        GL11.glVertex2f(cx + h * 0.85f, cy);
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void drawGraph(float cx, float cy, float h, int color) {
+        float t = Math.max(1f, h * 0.18f);
+        float base = cy + h * 0.85f;
+        rect(cx - h * 0.75f, cy - h * 0.4f,  h * 0.35f, h * 1.25f, color);
+        rect(cx - h * 0.15f, cy - h * 0.85f, h * 0.35f, h * 1.7f,  color);
+        rect(cx + h * 0.45f, cy - h * 0.2f,  h * 0.35f, h * 1.05f, color);
+        rect(cx - h * 0.85f, base, h * 1.7f, t, color);
+    }
+
+    private static void drawCode(float cx, float cy, float h, int color) {
+        float t = Math.max(1.2f, h * 0.22f);
+        line(cx - h * 0.2f, cy - h * 0.7f,  cx - h * 0.85f, cy,          t, color);
+        line(cx - h * 0.85f, cy,             cx - h * 0.2f, cy + h * 0.7f, t, color);
+        line(cx + h * 0.2f, cy - h * 0.7f,  cx + h * 0.85f, cy,          t, color);
+        line(cx + h * 0.85f, cy,             cx + h * 0.2f, cy + h * 0.7f, t, color);
+    }
+
+    private static void drawUser(float cx, float cy, float h, int color) {
+        circle(cx, cy - h * 0.4f, h * 0.38f, color);
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy + h * 0.55f);
+        for (int i = 0; i <= 24; i++) {
+            double a = Math.PI + (Math.PI * i) / 24;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * h * 0.75f, cy + h * 0.75f + (float)Math.sin(a) * h * 0.55f);
+        }
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void drawStar(float cx, float cy, float h, int color) {
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        setGLColor(color);
+        GL11.glBegin(GL11.GL_TRIANGLE_FAN);
+        GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 10; i++) {
+            double a = -Math.PI / 2 + (Math.PI * 2 * i) / 10;
+            float rr = (i % 2 == 0) ? h : h * 0.42f;
+            GL11.glVertex2f(cx + (float)Math.cos(a) * rr, cy + (float)Math.sin(a) * rr);
+        }
+        GL11.glEnd();
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void setGLColor(int color) {
+        float r = ((color >> 16) & 255) / 255f;
+        float g = ((color >> 8)  & 255) / 255f;
+        float b = ( color        & 255) / 255f;
+        float a = ((color >>> 24)      ) / 255f;
+        GlStateManager.color(r, g, b, a);
+    }
+
+    // ---- text ----
     public static FontRenderer font() {
         try {
             com.oryvex.kbclient.font.ModernFontRenderer mf = com.oryvex.kbclient.KBClientMod.modernFont;
@@ -337,7 +491,6 @@ public final class Draw {
     public static void mid(String s, float cx, float cy, int color, float scale, boolean shadow) {
         centered(s, cx, cy, color, scale, shadow);
     }
-
     public static void mid(String s, float cx, float cy, int color, float scale) {
         centered(s, cx, cy, color, scale, false);
     }
