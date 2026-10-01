@@ -89,7 +89,7 @@ public class GuiAltManager extends FadeScreen {
     }
 
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+    protected void onKey(char typedChar, int keyCode) throws IOException {
         if (nameField.isFocused()) {
             nameField.textboxKeyTyped(typedChar, keyCode);
             if (keyCode == Keyboard.KEY_RETURN) login(nameField.getText());
