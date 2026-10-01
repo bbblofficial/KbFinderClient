@@ -23,9 +23,8 @@ import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
 
-/** Collects knockback samples (main thread only), keeps a live profile and an imported reference. */
 public class KBTracker {
-    public static final int MAX_SAMPLES = 120;
+    public static final int MAX_SAMPLES = 200;
     private final List<KBSample> samples = new ArrayList<KBSample>();
     private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
     private KBProfile profile = new KBProfile();
@@ -43,7 +42,6 @@ public class KBTracker {
         profile.notes.add("Waiting for knockback - get hit by another player.");
     }
 
-    /** per client tick: remember the last 3 ticks of every player's sprint flag */
     public synchronized void tick() {
         tick++;
         Minecraft mc = Minecraft.getMinecraft();
@@ -88,20 +86,18 @@ public class KBTracker {
         reset();
         goal = Math.max(1, hits);
         recording = true;
-        chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
+        chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits.");
     }
 
-    // ---- YAML reference ------------------------------------------------------
     public synchronized KBYaml.Result importYaml(String text) {
         KBYaml.Result r = KBYaml.parse(text);
         if (r.parsed > 0) {
             reference = r.profile;
             lastImport = r.summary();
             chat(Theme.S + "a[KB] Imported: " + Theme.S + "f" + r.summary());
-            if (!r.unknown.isEmpty()) chat(Theme.S + "7Ignored unknown keys: " + r.unknown);
         } else {
             lastImport = "nothing imported";
-            chat(Theme.S + "c[KB] No knockback keys found. Copy a YAML config first.");
+            chat(Theme.S + "c[KB] No knockback keys found.");
         }
         return r;
     }
@@ -111,21 +107,22 @@ public class KBTracker {
         lastImport = "";
     }
 
-    /** Must be called on the client main thread, BEFORE the packet is applied. */
-    public synchronized void capture(int rawX, int rawY, int rawZ) {
+    /** Captures knockback using PRE-CALCULATED old motion to avoid packet application race conditions */
+    public synchronized void capture(int rawX, int rawY, int rawZ, double oldX, double oldY, double oldZ, boolean oldGround, boolean oldSprint) {
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayerSP me = mc.thePlayer;
         if (!recording || me == null || mc.theWorld == null) return;
 
         double vx = rawX / 8000.0, vy = rawY / 8000.0, vz = rawZ / 8000.0;
         double h = Math.sqrt(vx * vx + vz * vz);
+        if (h < 0.001 && Math.abs(vy) < 0.001) return;
 
         EntityPlayer attacker = null;
         double bestScore = -1.0e9;
         for (EntityPlayer e : mc.theWorld.playerEntities) {
             if (e == me || e.isDead) continue;
             double dist = me.getDistanceToEntity(e);
-            if (dist > 7.0) continue;
+            if (dist > 6.0) continue;
             double dx = me.posX - e.posX, dz = me.posZ - e.posZ;
             double dh = Math.sqrt(dx * dx + dz * dz);
             double score = -dist * 0.05;
@@ -144,7 +141,7 @@ public class KBTracker {
             double dh = Math.sqrt(dx * dx + dz * dz);
             if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
             else if (h > 0.001) { ux = vx / h; uz = vz / h; }
-
+            
             Integer bits = sprintBits.get(attacker.getEntityId());
             if (bits == null) state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
             else if (bits == 0x7) state = KBSample.SPRINT;
@@ -156,17 +153,20 @@ public class KBTracker {
             dist = me.getDistanceToEntity(attacker);
         }
 
+        // Use the safely captured old motion
         KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
-                me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
+                oldX, oldY, oldZ, oldSprint, oldGround,
                 has, state, kb, ux, uz, dist, name);
+                
         samples.add(s);
         while (samples.size() > MAX_SAMPLES) samples.remove(0);
         last = s;
+        
         profile = KBEstimator.calculate(samples);
 
         String tag = !has ? "no attacker" : (state == KBSample.AMBIGUOUS ? "W-TAP?" : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
         int col = !has ? Theme.DIM : (state == KBSample.AMBIGUOUS ? Theme.DIM : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
-        Hud.push("Hit #" + s.id + "  H " + KBProfile.f(h, 4) + "  V " + KBProfile.f(vy, 4) + "  " + tag, col);
+        Hud.push("Hit #" + s.id + "  H:" + KBProfile.f(h, 4) + "  V:" + KBProfile.f(vy, 4) + "  [" + tag + "]", col);
 
         if (goal > 0) {
             sessionHits++;
@@ -191,7 +191,6 @@ public class KBTracker {
         chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V) + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
         chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F) + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
         chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue + g + " (override " + p.damageTicksOverride + ")");
-        chat(Theme.S + "aOpen the analyzer with [Right Shift] or /kb");
     }
 
     public synchronized File export() throws IOException {
@@ -200,22 +199,6 @@ public class KBTracker {
         String ts = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
         File yml = new File(dir, "knockback-" + ts + ".yml");
         Files.write(yml.toPath(), (profile.toYaml() + "\n").getBytes(StandardCharsets.UTF_8));
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,attacker,sprintState,attackerKb,distance,ux,uz\n");
-        for (KBSample k : samples) {
-            sb.append(k.id).append(',').append(k.tick).append(',')
-              .append(KBProfile.f(k.vx, 5)).append(',').append(KBProfile.f(k.vy, 5)).append(',')
-              .append(KBProfile.f(k.vz, 5)).append(',').append(KBProfile.f(k.h, 5)).append(',')
-              .append(KBProfile.f(k.px, 5)).append(',').append(KBProfile.f(k.py, 5)).append(',')
-              .append(KBProfile.f(k.pz, 5)).append(',').append(KBProfile.f(k.pH, 5)).append(',')
-              .append(k.victimSprint).append(',').append(k.victimGround).append(',')
-              .append(k.attacker.replace(',', '_')).append(',').append(k.sprintState).append(',')
-              .append(k.attackerKb).append(',').append(KBProfile.f(k.distance, 3)).append(',')
-              .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append('\n');
-        }
-        File csv = new File(dir, "knockback-" + ts + "-samples.csv");
-        Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
         return yml;
     }
 }

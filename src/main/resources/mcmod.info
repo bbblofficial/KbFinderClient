@@ -3,7 +3,7 @@
   "modid": "kbclient",
   "name": "KB Client",
   "description": "Modern-UI client with a live Carbon/Spigot knockback profile detector.",
-  "version": "${version}",
+  "version": "1.0.0",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
