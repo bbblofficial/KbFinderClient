@@ -1,60 +1,58 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-adder.py - full cleanup for KB Client
-
-* Draw.java          -> rewritten from scratch, no icons, guaranteed to compile
-* UiButton.java      -> flat, no icon code at all
-* GuiModernMenu.java -> no icon(...) calls
-* GuiKbOptions.java  -> no icon(...) calls
-* TransparentOverlays-> scoreboard + tab list, no backgrounds
-* KBClientMod.java   -> stop replacing mc.fontRendererObj (fixes the ▏ glyphs)
-
-Run from the project root (where build.gradle is):
-    python adder.py
+adder.py - defensive rewrite
+============================
+Deletes and recreates the UI files from scratch so no leftover
+half-edited version can survive. Verifies brace balance and prints
+SHA1 for each file so you can confirm what got pushed.
 """
 
-import os, sys, shutil, datetime
+import os, sys, hashlib, datetime
 
-ROOT  = os.path.dirname(os.path.abspath(__file__))
-SRC   = os.path.join(ROOT, "src", "main", "java", "com", "oryvex", "kbclient")
-UI    = os.path.join(SRC, "ui")
-STAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-
-def backup(p):
-    if os.path.isfile(p):
-        shutil.copy2(p, p + ".bak_" + STAMP)
+ROOT = os.path.dirname(os.path.abspath(__file__))
+SRC  = os.path.join(ROOT, "src", "main", "java", "com", "oryvex", "kbclient")
+UI   = os.path.join(SRC, "ui")
 
 
-def write(p, content):
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    backup(p)
-    with open(p, "w", encoding="utf-8") as f:
-        f.write(content)
-    print("  write ", os.path.relpath(p, ROOT))
+def sha1(text):
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
 
 
-def patch(path, pairs):
-    if not os.path.isfile(path):
-        print("  miss  ", os.path.relpath(path, ROOT)); return
-    with open(path, "r", encoding="utf-8") as f:
-        txt = f.read()
-    orig = txt
-    for old, new in pairs:
-        if old not in txt:
-            print("  warn  ", "pattern not found in", os.path.basename(path))
-            continue
-        txt = txt.replace(old, new, 1)
-    if txt != orig:
-        backup(path)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(txt)
-        print("  patch ", os.path.relpath(path, ROOT))
+def check_balance(name, text):
+    """Very cheap brace balance check - ignores strings/comments crudely,
+    but good enough to catch a missing/extra } in hand-written code."""
+    o = text.count("{")
+    c = text.count("}")
+    if o != c:
+        print(f"  !! {name}: {{={o}  }}={c}  NOT BALANCED")
+        return False
+    return True
+
+
+def fresh_write(path, text):
+    """Delete the file first, then write. Prevents any stale content."""
+    name = os.path.basename(path)
+    if not check_balance(name, text):
+        print("  ABORT: refusing to write unbalanced file", name)
+        sys.exit(1)
+
+    # keep a timestamped copy of whatever is there now
+    if os.path.isfile(path):
+        stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        try:
+            os.replace(path, path + ".old_" + stamp)
+        except OSError:
+            os.remove(path)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    print(f"  write {os.path.relpath(path, ROOT)}  sha1={sha1(text)}")
 
 
 # =====================================================================
-#  Draw.java  -  clean, no icons, no unused code
+#  Draw.java  (clean, no icon drawing)
 # =====================================================================
 DRAW = r'''package com.oryvex.kbclient.ui;
 
@@ -66,11 +64,11 @@ import net.minecraft.client.renderer.GlStateManager;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Minimal drawing toolkit. Icons have been removed entirely. */
+/** Minimal immediate-mode drawing toolkit. Icons have been removed. */
 public final class Draw {
     private Draw() {}
 
-    /* ---- icon IDs (kept only so old source still compiles) ---- */
+    /* icon ids exist only so old source still compiles */
     public static final int ICON_NONE  = 0;
     public static final int ICON_GEAR  = 1;
     public static final int ICON_ARROW = 2;
@@ -87,7 +85,7 @@ public final class Draw {
     public static final int ICON_COPY  = 13;
     public static final int ICON_SAVE  = 14;
 
-    /* ================== math helpers ================== */
+    /* ---------------- math helpers ---------------- */
     public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
 
     public static float ease(float t) {
@@ -101,9 +99,7 @@ public final class Draw {
         return 1f - u * u * u;
     }
 
-    public static float lerp(float a, float b, float t) {
-        return a + (b - a) * clamp(t);
-    }
+    public static float lerp(float a, float b, float t) { return a + (b - a) * clamp(t); }
 
     public static int lerp(int a, int b, float t) {
         t = clamp(t);
@@ -129,7 +125,7 @@ public final class Draw {
                         : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
     }
 
-    /* ================== GL state ================== */
+    /* ---------------- GL state ---------------- */
     public static void blend() {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
@@ -141,14 +137,12 @@ public final class Draw {
         GlStateManager.disableBlend();
     }
 
-    /* ================== primitives ================== */
+    /* ---------------- primitives ---------------- */
     public static void rect(float x, float y, float w, float h, int color) {
         Gui.drawRect((int) x, (int) y, (int)(x + w), (int)(y + h), color);
     }
 
-    public static void vgradient(int w, int h, int top, int bottom) {
-        rect(0, 0, w, h, top);
-    }
+    public static void vgradient(int w, int h, int top, int bottom) { rect(0, 0, w, h, top); }
 
     public static void vgrad(float x, float y, float w, float h, int top, int bottom) {
         rect(x, y, w, h, top);
@@ -212,8 +206,7 @@ public final class Draw {
         }
     }
 
-    public static void line(float x1, float y1, float x2, float y2,
-                            float width, int color) {
+    public static void line(float x1, float y1, float x2, float y2, float width, int color) {
         if (((color >>> 24) & 255) <= 4) return;
         float dx = x2 - x1, dy = y2 - y1;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
@@ -221,8 +214,7 @@ public final class Draw {
         int steps = (int) Math.ceil(len);
         for (int i = 0; i <= steps; i++) {
             float t = i / (float) steps;
-            rect(x1 + dx * t - width / 2f, y1 + dy * t - width / 2f,
-                 width, width, color);
+            rect(x1 + dx * t - width / 2f, y1 + dy * t - width / 2f, width, width, color);
         }
     }
 
@@ -244,34 +236,34 @@ public final class Draw {
         }
     }
 
-    /* ================== icons: NO-OP ================== */
-    /** Kept so existing call sites still compile - draws nothing. */
-    public static void icon(int type, float cx, float cy, float size, int color) {
-        /* icons removed from the design */
-    }
+    /* ---------------- icons are a no-op ---------------- */
+    public static void icon(int type, float cx, float cy, float size, int color) { }
 
-    /* ================== text ================== */
+    /* ---------------- text ---------------- */
     public static FontRenderer font() {
         try {
             com.oryvex.kbclient.font.ModernFontRenderer mf =
                     com.oryvex.kbclient.KBClientMod.modernFont;
             if (mf != null) return mf;
-        } catch (Throwable ignored) { }
+        } catch (Throwable ignored) {
+            // fall through to vanilla font
+        }
         return Minecraft.getMinecraft().fontRendererObj;
     }
 
     public static int width(String s, float scale) {
         return (int)(font().getStringWidth(s) * scale);
     }
+
     public static int w(String s, float scale, boolean bold) {
         return width(s, scale);
     }
+
     public static float lineH(float scale) {
         return font().FONT_HEIGHT * scale;
     }
 
-    public static void text(String s, float x, float y,
-                            int color, float scale, boolean shadow) {
+    public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
         if (s == null || s.isEmpty()) return;
         if (((color >>> 24) & 255) <= 4) return;
         GlStateManager.pushMatrix();
@@ -280,33 +272,28 @@ public final class Draw {
         GlStateManager.popMatrix();
     }
 
-    public static void centered(String s, float cx, float cy,
-                                int color, float scale, boolean shadow) {
+    public static void centered(String s, float cx, float cy, int color, float scale, boolean shadow) {
         if (s == null || s.isEmpty()) return;
         float tw = font().getStringWidth(s) * scale;
         float th = font().FONT_HEIGHT * scale;
         text(s, cx - tw / 2f, cy - th / 2f, color, scale, false);
     }
 
-    public static void mid(String s, float cx, float cy,
-                           int color, float scale, boolean shadow) {
+    public static void mid(String s, float cx, float cy, int color, float scale, boolean shadow) {
         centered(s, cx, cy, color, scale, false);
     }
 
-    public static void mid(String s, float cx, float cy,
-                           int color, float scale) {
+    public static void mid(String s, float cx, float cy, int color, float scale) {
         centered(s, cx, cy, color, scale, false);
     }
 
-    public static void left(String s, float x, float cy,
-                            int color, float scale, boolean shadow) {
+    public static void left(String s, float x, float cy, int color, float scale, boolean shadow) {
         if (s == null || s.isEmpty()) return;
         float th = font().FONT_HEIGHT * scale;
         text(s, x, cy - th / 2f, color, scale, false);
     }
 
-    public static void right(String s, float rx, float cy,
-                             int color, float scale, boolean shadow) {
+    public static void right(String s, float rx, float cy, int color, float scale, boolean shadow) {
         if (s == null || s.isEmpty()) return;
         float tw = font().getStringWidth(s) * scale;
         float th = font().FONT_HEIGHT * scale;
@@ -345,14 +332,14 @@ public final class Draw {
 
 
 # =====================================================================
-#  UiButton.java  -  no icons at all
+#  UiButton.java
 # =====================================================================
 UIBUTTON = r'''package com.oryvex.kbclient.ui;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 
-/** Flat, minimal button. No icons anywhere. */
+/** Flat button, no icons. */
 public class UiButton extends GuiButton {
     public static final int NORMAL  = 0;
     public static final int PRIMARY = 1;
@@ -361,12 +348,11 @@ public class UiButton extends GuiButton {
     public static final int TOGGLE  = 4;
     public static final int GHOST   = 5;
 
-    /* compatibility aliases - they draw nothing */
     public static final int ICON_NONE = 0;
     public static final int ICON_GEAR = 0;
 
     public int style = NORMAL;
-    public int icon  = 0;          /* kept only for source compatibility */
+    public int icon  = 0;
     public boolean selected;
     public boolean on;
     public long delay;
@@ -381,7 +367,7 @@ public class UiButton extends GuiButton {
     }
 
     public UiButton style(int s)  { this.style = s; return this; }
-    public UiButton icon(int i)   { return this; }   /* no-op */
+    public UiButton icon(int i)   { return this; }
     public UiButton delay(long d) { this.delay = d; return this; }
     public UiButton left()        { this.left = true; return this; }
     public UiButton size(float s) { this.textSize = s; return this; }
@@ -475,242 +461,7 @@ public class UiButton extends GuiButton {
 
 
 # =====================================================================
-#  GuiModernMenu.java  -  no icon() calls
-# =====================================================================
-GUI_MODERN_MENU = r'''package com.oryvex.kbclient.ui;
-
-import com.oryvex.kbclient.KBClientMod;
-import com.oryvex.kbclient.KBTracker;
-import com.oryvex.kbclient.kb.KBProfile;
-import java.io.IOException;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiMultiplayer;
-import net.minecraft.client.gui.GuiSelectWorld;
-
-public class GuiModernMenu extends FadeScreen {
-    private final KBTracker tracker;
-    private int sidebarW;
-
-    public GuiModernMenu(KBTracker tracker) { this.tracker = tracker; }
-
-    @Override
-    public void initGui() {
-        this.buttonList.clear();
-        sidebarW = Math.max(200, Math.min(320, (int)(this.width * 0.30f)));
-
-        int pad = 22;
-        int bw  = sidebarW - pad * 2;
-        int bh  = 26;
-        int gap = 8;
-        int totalH = 6 * bh + 5 * gap;
-        int top = Math.max(110, (this.height - totalH) / 2 + 16);
-
-        buttonList.add(new UiButton(1, pad, top,                bw, bh, "Singleplayer").delay(40));
-        buttonList.add(new UiButton(2, pad, top + 1*(bh+gap),   bw, bh, "Multiplayer").delay(70));
-        buttonList.add(new UiButton(6, pad, top + 2*(bh+gap),   bw, bh, "Alt Manager").delay(100));
-        buttonList.add(new UiButton(3, pad, top + 3*(bh+gap),   bw, bh, "Analyzer")
-                .style(UiButton.PRIMARY).delay(130));
-        buttonList.add(new UiButton(4, pad, top + 4*(bh+gap),   bw, bh, "Options").delay(160));
-        buttonList.add(new UiButton(5, pad, top + 5*(bh+gap),   bw, bh, "Quit")
-                .style(UiButton.DANGER).delay(190));
-    }
-
-    @Override
-    protected void actionPerformed(GuiButton b) throws IOException {
-        switch (b.id) {
-            case 1: closeTo(new GuiSelectWorld(this)); break;
-            case 2: closeTo(new GuiMultiplayer(this)); break;
-            case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
-            case 4: closeTo(new GuiKbOptions(tracker, this)); break;
-            case 6: closeTo(new GuiAltManager(this)); break;
-            case 5: closeThen(new Runnable() { @Override public void run() { mc.shutdown(); } }); break;
-            default: break;
-        }
-    }
-
-    @Override
-    protected void onKey(char c, int key) { }
-
-    @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        Draw.rect(0, 0, this.width, this.height, Theme.BG0);
-        Draw.rect(0, 0, sidebarW, this.height, Theme.SURFACE);
-        Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
-
-        float tScale = Math.max(1.5f, Math.min(2.2f, sidebarW / 140f));
-        Draw.centered("ORYVEX", sidebarW / 2f, 52f, Theme.TEXT, tScale, false);
-
-        float sScale = 0.85f;
-        Draw.centered("KB Client v" + KBClientMod.VERSION, sidebarW / 2f,
-                      52f + Draw.lineH(tScale) + 6f, Theme.MUTED, sScale, false);
-
-        float divY = 52f + Draw.lineH(tScale) + Draw.lineH(sScale) + 16f;
-        Draw.rect(sidebarW * 0.2f, divY, sidebarW * 0.6f, 1f, Theme.BORDER);
-
-        KBProfile p = tracker.getProfile();
-        if (p.hasData && this.width > sidebarW + 160) {
-            String s = p.summary();
-            int w = Draw.width(s, 0.85f) + 46;
-            int px = this.width - w - 18;
-            int py = 18;
-            Draw.roundRect(px, py, w, 26, 6f, Theme.SURFACE2);
-            Draw.roundOutline(px, py, w, 26, 6f, 1f, Theme.BORDER);
-            Draw.circle(px + 14, py + 13, 4f, Theme.GOOD);
-            Draw.left("Profile", px + 26, py + 8,  Theme.MUTED, 0.72f, false);
-            Draw.left(s,         px + 26, py + 18, Theme.TEXT,  0.85f, false);
-        }
-
-        int userY = this.height - 34;
-        Draw.rect(sidebarW * 0.2f, userY - 18, sidebarW * 0.6f, 1f, Theme.BORDER);
-        int avX = 22, avY = userY - 8;
-        Draw.roundRect(avX, avY, 22, 22, 11f, Theme.SURFACE3);
-        Draw.circle(avX + 11f, avY + 11f, 6f, Theme.SOFT);
-
-        Draw.left("Logged in as", 52, userY - 2, Theme.MUTED, 0.72f, false);
-        String name = mc.getSession().getUsername();
-        Draw.left(Draw.fit(name, sidebarW - 70, 0.9f, false),
-                  52, userY + 8, Theme.TEXT, 0.9f, false);
-
-        super.drawScreen(mouseX, mouseY, partialTicks);
-        drawFade();
-    }
-}
-'''
-
-
-# =====================================================================
-#  GuiKbOptions.java  -  no icons
-# =====================================================================
-GUI_KB_OPTIONS = r'''package com.oryvex.kbclient.ui;
-
-import com.oryvex.kbclient.KBTracker;
-import java.io.IOException;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiOptions;
-import net.minecraft.client.gui.GuiScreen;
-
-public class GuiKbOptions extends FadeScreen {
-    private final KBTracker tracker;
-    private final GuiScreen parent;
-
-    private UiButton bHud, bToast, bLoad, bDisc, bFade;
-
-    private int cardX, cardY, cardW, cardH;
-
-    public GuiKbOptions(KBTracker tracker, GuiScreen parent) {
-        this.tracker = tracker;
-        this.parent  = parent;
-    }
-
-    @Override
-    public void initGui() {
-        this.buttonList.clear();
-
-        int cx = this.width / 2;
-        int bw = Math.min(300, this.width - 80);
-        int bh = 22;
-        int gap = 5;
-
-        int pad = 24, headerH = 88;
-        int togglesH = 5 * (bh + gap) - gap;
-        int actionsGap = 12, actionsH = bh, footerH = 40;
-
-        cardW = bw + pad * 2;
-        cardH = pad + headerH + togglesH + actionsGap + actionsH + footerH + pad;
-        cardX = cx - cardW / 2;
-        cardY = Math.max(16, (this.height - cardH) / 2);
-
-        int togglesY = cardY + pad + headerH;
-        int bx = cx - bw / 2;
-
-        bHud   = new UiButton(1, bx, togglesY,                bw, bh, "HUD overlay")
-                .style(UiButton.TOGGLE).delay(50);
-        bToast = new UiButton(3, bx, togglesY + 1*(bh+gap),   bw, bh, "Hit toasts")
-                .style(UiButton.TOGGLE).delay(90);
-        bLoad  = new UiButton(4, bx, togglesY + 2*(bh+gap),   bw, bh, "Custom loading screen")
-                .style(UiButton.TOGGLE).delay(130);
-        bDisc  = new UiButton(8, bx, togglesY + 3*(bh+gap),   bw, bh, "Discord Rich Presence")
-                .style(UiButton.TOGGLE).delay(170);
-        bFade  = new UiButton(5, bx, togglesY + 4*(bh+gap),   bw, bh, "").delay(210);
-
-        buttonList.add(bHud);
-        buttonList.add(bToast);
-        buttonList.add(bLoad);
-        buttonList.add(bDisc);
-        buttonList.add(bFade);
-
-        int actionY = togglesY + togglesH + actionsGap;
-        int ag    = 8;
-        int halfW = (bw - ag) / 2;
-
-        UiButton mcOpt = new UiButton(6, bx, actionY, halfW, bh, "MC Options").delay(250);
-        UiButton done  = new UiButton(7, bx + halfW + ag, actionY, halfW, bh, "Done")
-                .style(UiButton.PRIMARY).delay(290);
-
-        buttonList.add(mcOpt);
-        buttonList.add(done);
-
-        sync();
-    }
-
-    private void sync() {
-        bHud.on   = Settings.hud;
-        bToast.on = Settings.toasts;
-        bLoad.on  = Settings.customLoading;
-        bDisc.on  = Settings.discordRpc;
-        bFade.displayString = "Screen fades: " + Settings.FADE_NAMES[Settings.fade];
-    }
-
-    @Override
-    protected void actionPerformed(GuiButton b) throws IOException {
-        switch (b.id) {
-            case 1: Settings.hud           = !Settings.hud;           break;
-            case 3: Settings.toasts        = !Settings.toasts;        break;
-            case 4: Settings.customLoading = !Settings.customLoading; break;
-            case 8:
-                Settings.discordRpc = !Settings.discordRpc;
-                com.oryvex.kbclient.DiscordRPC.apply();
-                break;
-            case 5: Settings.fade = (Settings.fade + 1) % 4;          break;
-            case 6: closeTo(new GuiOptions(this, this.mc.gameSettings)); return;
-            case 7: Settings.save(); closeTo(parent);                    return;
-            default: break;
-        }
-        Settings.save();
-        sync();
-    }
-
-    @Override
-    protected void onKey(char c, int key) throws IOException {
-        if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) {
-            Settings.save();
-            closeTo(parent);
-        }
-    }
-
-    @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        Draw.rect(0, 0, this.width, this.height, Theme.BG0);
-        Draw.panel(cardX, cardY, cardW, cardH, 8f, Theme.SURFACE, Theme.BORDER);
-
-        float cx = this.width / 2f;
-        float titleCY = cardY + 44f;
-        Draw.centered("OPTIONS",               cx, titleCY,       Theme.TEXT,  1.8f,  false);
-        Draw.centered("KB Client preferences", cx, titleCY + 24f, Theme.MUTED, 0.85f, false);
-        Draw.rect(cx - 30f, titleCY + 42f, 60f, 1f, Theme.BORDER);
-
-        Draw.centered("KB Client 3.0  |  Forge 1.8.9",
-                      cx, cardY + cardH - 20f, Theme.DIM, 0.7f, false);
-
-        super.drawScreen(mouseX, mouseY, partialTicks);
-        drawFade();
-    }
-}
-'''
-
-
-# =====================================================================
-#  TransparentOverlays.java  -  scoreboard + tab only
+#  TransparentOverlays.java
 # =====================================================================
 TRANSPARENT = r'''package com.oryvex.kbclient;
 
@@ -734,13 +485,8 @@ import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Draws the scoreboard sidebar and the tab list WITHOUT any background panel.
- * The text / colours / positions are identical to vanilla - only the dark
- * rectangles behind them are removed.
- *
- * Chat is intentionally not touched: GuiNewChat.drawChat is not a portable
- * override on 1.8.9 (its `mc` field is private) and messing with it via
- * reflection produces more harm than good.
+ * Removes the dark background panel behind the scoreboard sidebar and
+ * the tab list. Text and colours stay exactly as vanilla.
  */
 public final class TransparentOverlays {
     private TransparentOverlays() {}
@@ -816,7 +562,7 @@ public final class TransparentOverlays {
                 String pts  = EnumChatFormatting.RED + "" + s.getScorePoints();
                 int y = y0 - j * lineH;
 
-                /* >>> no dark background rects - that is the whole point <<< */
+                /* no background rects on purpose */
                 this.mcRef.fontRendererObj.drawString(name, left, y, 553648127);
                 this.mcRef.fontRendererObj.drawString(
                         pts,
@@ -851,59 +597,89 @@ public final class TransparentOverlays {
 #  main
 # =====================================================================
 def main():
-    print("== KB Client - full cleanup ==")
+    print("== KB Client - defensive rewrite ==")
+    print("root:", ROOT)
     if not os.path.isdir(SRC):
         print("!! Run this from the project root (where build.gradle is).")
         sys.exit(1)
 
-    print("\n[1/6] Draw.java (clean, no icons)")
-    write(os.path.join(UI, "Draw.java"), DRAW)
+    # ---- 1. Draw.java -------------------------------------------------
+    print("\n[1/5] Draw.java")
+    fresh_write(os.path.join(UI, "Draw.java"), DRAW)
 
-    print("\n[2/6] UiButton.java (no icons)")
-    write(os.path.join(UI, "UiButton.java"), UIBUTTON)
+    # ---- 2. UiButton.java ---------------------------------------------
+    print("\n[2/5] UiButton.java")
+    fresh_write(os.path.join(UI, "UiButton.java"), UIBUTTON)
 
-    print("\n[3/6] GuiModernMenu.java (no icon calls)")
-    write(os.path.join(UI, "GuiModernMenu.java"), GUI_MODERN_MENU)
+    # ---- 3. TransparentOverlays.java ---------------------------------
+    print("\n[3/5] TransparentOverlays.java")
+    fresh_write(os.path.join(SRC, "TransparentOverlays.java"), TRANSPARENT)
 
-    print("\n[4/6] GuiKbOptions.java (no icon calls)")
-    write(os.path.join(UI, "GuiKbOptions.java"), GUI_KB_OPTIONS)
+    # ---- 4. Make GuiModernMenu / GuiKbOptions stop calling icon() ----
+    print("\n[4/5] GuiModernMenu / GuiKbOptions - remove icon() calls")
+    for name in ("GuiModernMenu.java", "GuiKbOptions.java"):
+        p = os.path.join(UI, name)
+        if not os.path.isfile(p):
+            print("  skip ", name, "(missing)")
+            continue
+        with open(p, "r", encoding="utf-8") as f:
+            txt = f.read()
+        # strip `.icon(Draw.ICON_...)`  and  `.icon(UiButton.ICON_...)`
+        import re
+        new = re.sub(r"\.icon\(\s*(?:Draw|UiButton)\.ICON_[A-Z]+\s*\)", "", txt)
+        if new != txt:
+            with open(p, "w", encoding="utf-8", newline="\n") as f:
+                f.write(new)
+            print("  patch", name)
+        else:
+            print("  ok   ", name, "(no icon() calls)")
 
-    print("\n[5/6] TransparentOverlays.java (scoreboard + tab)")
-    write(os.path.join(SRC, "TransparentOverlays.java"), TRANSPARENT)
-
-    print("\n[6/6] KBClientMod.java (do not replace mc.fontRendererObj)")
+    # ---- 5. KBClientMod: don't replace the vanilla font; install overlays
+    print("\n[5/5] KBClientMod.java")
     kbmod = os.path.join(SRC, "KBClientMod.java")
-    patch(kbmod, [
-        # Stop swapping the vanilla font - that's what broke the ▏ glyphs.
-        (
+    if not os.path.isfile(kbmod):
+        print("  miss  KBClientMod.java")
+    else:
+        with open(kbmod, "r", encoding="utf-8") as f:
+            src = f.read()
+        orig = src
+
+        # a) don't hijack mc.fontRendererObj (that's what killed the ▏ glyphs)
+        src = src.replace(
             "mcF.fontRendererObj = modernFont;",
-            "// mcF.fontRendererObj NOT replaced - only Draw.font() uses modernFont"
-        ),
-        # Install transparent overlays
-        (
-            "installLoading();\n            if (Settings.discordRpc) DiscordRPC.start();",
-            "installLoading();\n"
-            "            com.oryvex.kbclient.TransparentOverlays.install();\n"
-            "            if (Settings.discordRpc) DiscordRPC.start();"
-        ),
-        (
-            "installLoading();\n            DiscordRPC.start();",
-            "installLoading();\n"
-            "            com.oryvex.kbclient.TransparentOverlays.install();\n"
-            "            DiscordRPC.start();"
-        ),
-        (
-            "installLoading();\n            try {\n"
-            "                Minecraft mcF = Minecraft.getMinecraft();",
-            "installLoading();\n"
-            "            com.oryvex.kbclient.TransparentOverlays.install();\n"
-            "            try {\n"
-            "                Minecraft mcF = Minecraft.getMinecraft();"
-        ),
-    ])
+            "// modernFont stays for our own screens only - mc.fontRendererObj untouched"
+        )
+
+        # b) install transparent overlays before DiscordRPC / after loading
+        if "TransparentOverlays.install()" not in src:
+            for old, new in (
+                ("installLoading();\n            if (Settings.discordRpc) DiscordRPC.start();",
+                 "installLoading();\n            com.oryvex.kbclient.TransparentOverlays.install();\n            if (Settings.discordRpc) DiscordRPC.start();"),
+                ("installLoading();\n            DiscordRPC.start();",
+                 "installLoading();\n            com.oryvex.kbclient.TransparentOverlays.install();\n            DiscordRPC.start();"),
+                ("installLoading();\n            try {\n                Minecraft mcF = Minecraft.getMinecraft();",
+                 "installLoading();\n            com.oryvex.kbclient.TransparentOverlays.install();\n            try {\n                Minecraft mcF = Minecraft.getMinecraft();"),
+            ):
+                if old in src:
+                    src = src.replace(old, new, 1)
+                    break
+
+        if src != orig:
+            with open(kbmod, "w", encoding="utf-8", newline="\n") as f:
+                f.write(src)
+            print("  patch KBClientMod.java")
+        else:
+            print("  ok    KBClientMod.java (already patched)")
 
     print("\n== done ==")
-    print("Rebuild with:  ./gradlew build")
+    print()
+    print(">>> NOW COMMIT AND PUSH <<<")
+    print("    git status")
+    print("    git add -A")
+    print('    git commit -m "Simplify UI, transparent overlays, fix glyphs"')
+    print("    git push")
+    print()
+    print("The GitHub Action will then pick up the new files.")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ package com.oryvex.kbclient.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 
-/** Flat button, no icons. */
+/** Flat, minimal button.  No icons, no glow. */
 public class UiButton extends GuiButton {
     public static final int NORMAL  = 0;
     public static final int PRIMARY = 1;
@@ -12,6 +12,7 @@ public class UiButton extends GuiButton {
     public static final int TOGGLE  = 4;
     public static final int GHOST   = 5;
 
+    /* legacy names kept so older callers still compile */
     public static final int ICON_NONE = 0;
     public static final int ICON_GEAR = 0;
 
@@ -30,11 +31,11 @@ public class UiButton extends GuiButton {
         super(id, x, y, w, h, text);
     }
 
-    public UiButton style(int s)  { this.style = s; return this; }
-    public UiButton icon(int i)   { return this; }
-    public UiButton delay(long d) { this.delay = d; return this; }
-    public UiButton left()        { this.left = true; return this; }
-    public UiButton size(float s) { this.textSize = s; return this; }
+    public UiButton style(int s)   { this.style = s; return this; }
+    public UiButton icon(int i)    { return this; }          /* no-op */
+    public UiButton delay(long d)  { this.delay = d; return this; }
+    public UiButton left()         { this.left = true; return this; }
+    public UiButton size(float s)  { this.textSize = s; return this; }
 
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
@@ -43,15 +44,15 @@ public class UiButton extends GuiButton {
                 && mouseX < xPosition + width && mouseY < yPosition + height;
 
         float hv = hover.to((hovered && enabled) ? 1f : 0f, 24f);
-        float ap = Draw.easeOut((System.currentTimeMillis() - born - delay) / 220f);
+        float ap = Draw.easeOut((System.currentTimeMillis() - born - delay) / 240f);
         if (ap <= 0.01f) return;
         if (!enabled) ap *= 0.55f;
 
-        float x  = xPosition;
-        float y  = yPosition + (1f - ap) * 4f;
-        float w  = width;
-        float h  = height;
-        float r  = 4f;
+        float x = xPosition;
+        float y = yPosition + (1f - ap) * 5f;
+        float w = width;
+        float h = height;
+        float r = 4f;
         float cy = y + h / 2f;
 
         int bg, border, txt;
@@ -86,13 +87,10 @@ public class UiButton extends GuiButton {
                 border = Draw.lerp(Theme.BORDER, Theme.BORDER_HI, hv);
                 txt    = Draw.lerp(Theme.SOFT, Theme.TEXT, hv);
         }
-        bg     = Draw.fade(bg,     ap);
-        border = Draw.fade(border, ap);
-        txt    = Draw.fade(txt,    ap);
+        bg = Draw.fade(bg, ap); border = Draw.fade(border, ap); txt = Draw.fade(txt, ap);
 
         Draw.roundRect(x, y, w, h, r, bg);
-        if (((border >>> 24) & 255) > 4)
-            Draw.roundOutline(x, y, w, h, r, 1f, border);
+        if (((border >>> 24) & 255) > 4) Draw.roundOutline(x, y, w, h, r, 1f, border);
 
         if (style == TOGGLE) {
             float sw = 22f, sh = 12f;
@@ -113,8 +111,7 @@ public class UiButton extends GuiButton {
         }
     }
 
-    private void drawToggle(float sx, float sy, float sw, float sh,
-                            float knob, float ap) {
+    private void drawToggle(float sx, float sy, float sw, float sh, float knob, float ap) {
         int track = on ? Theme.ACCENT : 0x30FFFFFF;
         Draw.roundRect(sx, sy, sw, sh, sh / 2f, Draw.fade(track, ap));
         float kx = sx + sh / 2f + (sw - sh) * knob;
