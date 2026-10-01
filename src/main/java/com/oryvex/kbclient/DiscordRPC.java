@@ -4,7 +4,6 @@ import com.oryvex.kbclient.ui.GuiAnalyzer;
 import com.oryvex.kbclient.ui.Settings;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
@@ -18,14 +17,17 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 
 /**
- * Discord Rich Presence with automatic Server Icon fetching.
+ * Discord Rich Presence with safe background icon fetching.
+ * NOTE: Discord RPC requires pre-uploaded assets. 
+ * We download icons locally for caching/future use, but display a generic asset in RPC.
  */
 public final class DiscordRPC {
     public static final String APP_ID = "1554952903758716989";
     
-    // Default assets (Must exist in Discord Developer Portal)
-    private static final String LARGE_KEY = "oryvex"; 
-    private static final String SMALL_KEY = "minecraft";
+    // MUST UPLOAD THESE IN DISCORD DEV PORTAL > RICH PRESENCE > ART ASSETS
+    private static final String LARGE_KEY = "oryvex";      // Your main logo
+    private static final String SMALL_KEY = "minecraft";   // MC icon
+    private static final String SERVER_KEY = "server_generic"; // Generic globe/server icon for all MPs
 
     private static final long MIN_GAP_MS = 4000L;
     private static final long RETRY_MS = 10000L;
@@ -38,14 +40,12 @@ public final class DiscordRPC {
     private static Thread worker;
     private static int ticks;
     
-    // State tracking
     private static String curKey = "menu";
     private static long curStart;
     private static String lastServerIP = "";
 
     private DiscordRPC() {}
 
-    // ---- Public API ------------------------------------------------------------
     public static synchronized void start() {
         if (!Settings.discordRpc || active) return;
         if (!WINDOWS) {
@@ -78,10 +78,10 @@ public final class DiscordRPC {
         if (Settings.discordRpc) start(); else stop();
     }
 
-    /** Called every client tick (main thread) */
+    /** Called every client tick (Main Thread) - MUST BE LIGHTWEIGHT */
     public static void tick() {
         if (!active) return;
-        if (++ticks < 20) return; // Update every second
+        if (++ticks < 20) return;
         ticks = 0;
         
         try {
@@ -99,9 +99,7 @@ public final class DiscordRPC {
                 details = analyzing ? "Analyzing knockback" : "Playing Singleplayer";
                 String world = "world";
                 try { 
-                    if (mc.getIntegratedServer() != null) {
-                        world = mc.getIntegratedServer().getWorldName();
-                    } 
+                    if (mc.getIntegratedServer() != null) world = mc.getIntegratedServer().getWorldName(); 
                 } catch (Throwable ignored) { }
                 state = "World: " + world;
                 lastServerIP = "";
@@ -110,15 +108,17 @@ public final class DiscordRPC {
                 String ip = (sd != null && sd.serverIP != null) ? sd.serverIP : "unknown";
                 String name = (sd != null && sd.serverName != null) ? sd.serverName : ip;
                 
+                // Normalize IP for cache key
                 String cacheIp = ip.contains(":") && !ip.endsWith(":25565") ? ip : ip.split(":")[0];
                 
                 key = "mp:" + cacheIp;
                 details = analyzing ? "Analyzing knockback" : "Playing on " + name;
-                state = ip;
+                state = ip; // Show IP in status line
                 
+                // Trigger download ONLY in background thread, never block main thread
                 if (!cacheIp.equalsIgnoreCase(lastServerIP) && !"unknown".equals(cacheIp)) {
                     lastServerIP = cacheIp;
-                    fetchServerIcon(cacheIp);
+                    fetchServerIconAsync(cacheIp);
                 }
             }
 
@@ -161,10 +161,7 @@ public final class DiscordRPC {
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
-                    if (pipe != null) { 
-                        pipe.close(); 
-                        pipe = null; 
-                    }
+                    if (pipe != null) { pipe.close(); pipe = null; }
                     if (!warned) {
                         log("Discord not reachable (" + e.getMessage() + "), retrying...");
                         warned = true;
@@ -202,8 +199,8 @@ public final class DiscordRPC {
                 + "\"assets\":{"
                     + "\"large_image\":\"" + LARGE_KEY + "\","
                     + "\"large_text\":\"" + esc("KB Client " + KBClientMod.VERSION) + "\","
-                    + "\"small_image\":\"" + SMALL_KEY + "\","
-                    + "\"small_text\":\"Minecraft 1.8.9\""
+                    + "\"small_image\":\"" + SERVER_KEY + "\"," // Use generic server icon for MP
+                    + "\"small_text\":\"" + esc(state) + "\""
                 + "}"
             + "}},\"nonce\":\"" + UUID.randomUUID() + "\"}";
         }
@@ -244,32 +241,30 @@ public final class DiscordRPC {
             String n = ManagementFactory.getRuntimeMXBean().getName();
             int at = n.indexOf('@');
             return at > 0 ? Long.parseLong(n.substring(0, at)) : 1234L;
-        } catch (Throwable t) { 
-            return 1234L; 
-        }
+        } catch (Throwable t) { return 1234L; }
     }
 
     private static void log(String s) {
-        try { 
-            if (KBClientMod.logger != null) KBClientMod.logger.info("[KB-RPC] " + s); 
-        } catch (Throwable ignored) { }
+        try { if (KBClientMod.logger != null) KBClientMod.logger.info("[KB-RPC] " + s); } 
+        catch (Throwable ignored) { }
     }
     
-    private static void fetchServerIcon(final String ip) {
+    /** SAFE BACKGROUND DOWNLOAD - Never call this on Main Thread */
+    private static void fetchServerIconAsync(final String ip) {
         Thread t = new Thread(() -> {
             try {
+                // Using mc-heads API which supports both IP and Hostname
                 URL url = new URL("https://api.mc-heads.net/favicon/" + ip);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) KBClient/1.0");
+                conn.setRequestProperty("User-Agent", "KBClient/1.0");
                 conn.setConnectTimeout(3000);
                 conn.setReadTimeout(3000);
-                conn.setRequestMethod("GET");
                 
                 if (conn.getResponseCode() == 200) {
                     File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
                     if (!dir.exists()) dir.mkdirs();
                     
-                    File outFile = new File(dir, "server-icon.png");
+                    File outFile = new File(dir, "server-icon-" + ip.replace(':', '_') + ".png");
                     try (InputStream in = conn.getInputStream();
                          FileOutputStream out = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[4096];
@@ -278,10 +273,12 @@ public final class DiscordRPC {
                             out.write(buffer, 0, bytesRead);
                         }
                     }
-                    log("Server icon saved for: " + ip);
+                    log("Cached icon for: " + ip);
                 }
-            } catch (Exception ignored) { }
-        }, "KB-IconFetcher");
+            } catch (Exception ignored) { 
+                // Silently fail - icon fetching is non-critical
+            }
+        }, "KB-IconFetcher-" + ip.hashCode());
         t.setDaemon(true);
         t.start();
     }
@@ -289,10 +286,7 @@ public final class DiscordRPC {
     // ---- Discord IPC (Named Pipe) --------------------------------------------
     private static final class Pipe {
         private final RandomAccessFile file;
-        
-        private Pipe(RandomAccessFile file) { 
-            this.file = file; 
-        }
+        private Pipe(RandomAccessFile file) { this.file = file; }
         
         static Pipe open(String appId) throws IOException {
             for (int i = 0; i < 10; i++) {
@@ -304,39 +298,30 @@ public final class DiscordRPC {
                     p.handshake(appId);
                     return p;
                 } catch (IOException e) {
-                    if (f != null) {
-                        try { f.close(); } catch (IOException ignored) {}
-                    }
+                    if (f != null) try { f.close(); } catch (IOException ignored) {}
                 }
             }
-            throw new IOException("Discord client not detected on local named pipes");
+            throw new IOException("Discord client not detected");
         }
         
         private void handshake(String appId) throws IOException {
             write(0, "{\"v\":1,\"client_id\":\"" + appId + "\"}");
-            // Wait for Opcode 1 (FRAME) confirming READY
+            // FIXED: Discord sends Opcode 0 (READY) first, not Opcode 1
             for (int i = 0; i < 8; i++) {
                 Frame f = read();
-                if (f.op == 1) {
-                    return; // Ready
-                } else if (f.op == 3) {
-                    write(4, f.body); // Ping -> Pong
-                } else if (f.op == 2) {
-                    throw new IOException("Discord rejected connection");
-                }
+                if (f.op == 0) return;       // READY event
+                if (f.op == 3) write(4, f.body); // Ping -> Pong
+                if (f.op == 2) throw new IOException("Rejected");
             }
-            throw new IOException("Handshake timeout without READY event");
+            throw new IOException("Handshake timeout");
         }
         
         String send(String json) throws IOException {
             write(1, json);
             for (int i = 0; i < 8; i++) {
                 Frame f = read();
-                if (f.op == 3) {
-                    write(4, f.body);
-                    continue;
-                }
-                if (f.op == 2) throw new IOException("Discord pipe closed");
+                if (f.op == 3) { write(4, f.body); continue; }
+                if (f.op == 2) throw new IOException("Pipe closed");
                 return f.body;
             }
             return "";
@@ -355,23 +340,17 @@ public final class DiscordRPC {
             ByteBuffer hb = ByteBuffer.wrap(head).order(ByteOrder.LITTLE_ENDIAN);
             int op = hb.getInt();
             int len = hb.getInt();
-            if (len < 0 || len > (1 << 20)) throw new IOException("Invalid packet length: " + len);
+            if (len < 0 || len > (1 << 20)) throw new IOException("Bad len: " + len);
             byte[] body = new byte[len];
             file.readFully(body);
             return new Frame(op, new String(body, StandardCharsets.UTF_8));
         }
         
-        void close() {
-            try { file.close(); } catch (IOException ignored) { }
-        }
+        void close() { try { file.close(); } catch (IOException ignored) { } }
     }
     
     private static final class Frame {
-        final int op;
-        final String body;
-        Frame(int op, String body) {
-            this.op = op;
-            this.body = body;
-        }
+        final int op; final String body;
+        Frame(int op, String body) { this.op = op; this.body = body; }
     }
 }
