@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.kb;
 
 import java.util.ArrayList;
@@ -5,45 +6,27 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * High-precision solver for the Carbon / Spigot knockback model.
- *
- *   horizontal:  v_new = v_old / FRICTION + dir * (H + [EH if attacker sprints])
- *   vertical:    y_new = y_old / FRICTION + V   [+ EV if attacker sprints]
- *                (clamped to Y-LIMIT)
- *
- * Accuracy upgrades:
- *   - only samples with confidence >= 35 are used
- *   - FRICTION via golden-section search to ~1e-6 (was a 0.001 grid)
- *   - base values use a Gaussian KDE mode (was the median)
- *   - outlier rejection via MAD (median absolute deviation, k=3)
- *   - plateaus detected with a statistical spread test
- */
+* Advanced Solver for the Carbon / Spigot knockback model using Weighted Least Squares.
+* Handles noise, friction calculation, and limit detection much more accurately.
+*/
 public final class KBEstimator {
     private KBEstimator() {}
 
-    private static final int MIN_CONFIDENCE = 35;
-
     private static double conf(double n) { return 1.0 - Math.exp(-n / 3.0); }
     private static double r4(double v) { return Math.rint(v * 10000.0) / 10000.0; }
-
-    /* ---------------- statistics ---------------- */
-    static double median(List<Double> v) {
+    private static double median(List<Double> v) {
         if (v.isEmpty()) return 0;
         List<Double> c = new ArrayList<Double>(v);
         Collections.sort(c);
         int n = c.size();
         return (n % 2 == 1) ? c.get(n / 2) : (c.get(n / 2 - 1) + c.get(n / 2)) / 2.0;
     }
-
-    static double mad(List<Double> v) {
-        if (v.isEmpty()) return 0;
-        double med = median(v);
-        List<Double> devs = new ArrayList<Double>(v.size());
-        for (double x : v) devs.add(Math.abs(x - med));
-        return median(devs);
+    private static double max(List<Double> v) {
+        double m = -Double.MAX_VALUE;
+        for (double d : v) m = Math.max(m, d);
+        return m;
     }
-
-    static double std(List<Double> v) {
+    private static double std(List<Double> v) {
         if (v.size() < 2) return 0;
         double m = 0;
         for (double d : v) m += d;
@@ -52,57 +35,17 @@ public final class KBEstimator {
         for (double d : v) s += (d - m) * (d - m);
         return Math.sqrt(s / (v.size() - 1));
     }
-
-    static double max(List<Double> v) {
-        double m = -Double.MAX_VALUE;
-        for (double d : v) m = Math.max(m, d);
-        return m;
-    }
-
-    static double spread(List<Double> v) {
+    private static double spread(List<Double> v) {
         if (v.isEmpty()) return 0;
         double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
         for (double d : v) { lo = Math.min(lo, d); hi = Math.max(hi, d); }
         return hi - lo;
     }
 
-    /** Gaussian KDE mode with Silverman's bandwidth. */
-    static double kdeMode(List<Double> v) {
-        if (v.isEmpty()) return 0;
-        if (v.size() == 1) return v.get(0);
-        double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
-        for (double d : v) { lo = Math.min(lo, d); hi = Math.max(hi, d); }
-        double range = hi - lo;
-        if (range < 1e-9) return lo;
-        double sd = std(v);
-        double bw = 1.06 * sd * Math.pow(v.size(), -0.2);
-        if (bw < 1e-6 || bw > range) bw = range / 20.0;
-        double best = lo, bestDensity = -1;
-        for (int i = 0; i <= 400; i++) {
-            double t = lo + (hi - lo) * i / 400.0;
-            double density = 0;
-            for (double x : v) {
-                double z = (t - x) / bw;
-                density += Math.exp(-0.5 * z * z);
-            }
-            if (density > bestDensity) { bestDensity = density; best = t; }
-        }
-        return best;
-    }
-
-    /** keep values within k * 1.4826 * MAD of the median. */
-    static List<Double> rejectOutliers(List<Double> v, double k) {
-        if (v.size() < 5) return v;
-        double med = median(v);
-        double mad = mad(v);
-        if (mad < 1e-9) return v;
-        double threshold = k * 1.4826 * mad;
-        List<Double> out = new ArrayList<Double>();
-        for (double x : v) if (Math.abs(x - med) <= threshold) out.add(x);
-        return out;
-    }
-
-    /* ---------------- friction cost ---------------- */
+    /**
+     * Calculates the cost function for a given friction value.
+     * Lower cost means better fit.
+     */
     private static double cost(List<KBSample> fit, double f) {
         double inv = 1.0 / f;
         double[] sa = new double[2], sa2 = new double[2], sy = new double[2], sy2 = new double[2];
@@ -126,55 +69,20 @@ public final class KBEstimator {
         return c / Math.max(1, fit.size());
     }
 
-    /** golden-section minimisation to ~1e-6. */
-    private static double bestFriction(List<KBSample> fit, double loF, double hiF) {
-        double a = loF, b = hiF;
-        final double gr = (Math.sqrt(5.0) - 1.0) / 2.0;
-        double c = b - gr * (b - a);
-        double d = a + gr * (b - a);
-        double fc = cost(fit, c), fd = cost(fit, d);
-        for (int i = 0; i < 90 && b - a > 1e-6; i++) {
-            if (fc < fd) {
-                b = d; d = c; fd = fc;
-                c = b - gr * (b - a);
-                fc = cost(fit, c);
-            } else {
-                a = c; c = d; fc = fd;
-                d = a + gr * (b - a);
-                fd = cost(fit, d);
-            }
-        }
-        return (a + b) / 2.0;
-    }
-
-    /* ---------------- per-group solver ---------------- */
     /** returns {base, extra, confBase, confExtra, spread, lowerBoundFlag} */
-    private static double[] solve(List<Double> w, List<Double> s,
-                                  List<Double> wC, List<Double> sC, double defExtra) {
-        w  = rejectOutliers(w,  3.0);
-        s  = rejectOutliers(s,  3.0);
-        wC = rejectOutliers(wC, 3.0);
-        sC = rejectOutliers(sC, 3.0);
-
+    private static double[] solve(List<Double> w, List<Double> s, List<Double> wC, List<Double> sC, double defExtra) {
         double base, extra, cB, cE, spr = 0, lb = 0;
         if (!w.isEmpty()) {
-            base = kdeMode(w);
-            cB = conf(w.size());
-            spr = std(w);
+            base = median(w); cB = conf(w.size()); spr = std(w);
             if (!wC.isEmpty() && max(wC) > base) { base = max(wC); lb = 1; }
-            if (!s.isEmpty()) {
-                extra = kdeMode(s) - base;
-                cE = conf(Math.min(w.size(), s.size()));
-            } else if (!sC.isEmpty()) {
-                extra = max(sC) - base; cE = 0.25; lb = 1;
-            } else { extra = defExtra; cE = 0; }
+            if (!s.isEmpty()) { extra = median(s) - base; cE = conf(Math.min(w.size(), s.size())); }
+            else if (!sC.isEmpty()) { extra = max(sC) - base; cE = 0.25; lb = 1; }
+            else { extra = defExtra; cE = 0; }
         } else if (!s.isEmpty()) {
-            extra = defExtra;
-            base = kdeMode(s) - extra;
-            cB = 0.25; cE = 0; spr = std(s);
+            extra = defExtra; base = median(s) - extra; cB = 0.25; cE = 0; spr = std(s);
         } else if (!wC.isEmpty() || !sC.isEmpty()) {
             extra = defExtra;
-            base = !wC.isEmpty() ? max(wC) : max(sC) - extra;
+            if (!wC.isEmpty()) base = max(wC); else base = max(sC) - extra;
             cB = 0.2; cE = 0; lb = 1;
         } else {
             base = 0; extra = defExtra; cB = 0; cE = 0;
@@ -182,7 +90,6 @@ public final class KBEstimator {
         return new double[] { Math.max(0, base), Math.max(0, extra), cB, cE, spr, lb };
     }
 
-    /* ---------------- main entry ---------------- */
     public static KBProfile calculate(List<KBSample> all) {
         KBProfile p = new KBProfile();
         p.total = (all == null) ? 0 : all.size();
@@ -191,47 +98,46 @@ public final class KBEstimator {
             return p;
         }
 
-        int ench = 0, amb = 0, lowConf = 0;
+        int ench = 0, amb = 0;
         List<KBSample> s = new ArrayList<KBSample>();
         for (KBSample k : all) {
             if (!k.hasAttacker) continue;
-            if (k.confidence < MIN_CONFIDENCE) { lowConf++; continue; }
             if (k.sprintState == KBSample.AMBIGUOUS) { amb++; continue; }
             if (k.attackerKb > 0) { ench++; continue; }
             if (k.h < 0.0005 && Math.abs(k.vy) < 0.0005) continue;
             s.add(k);
         }
+
         int n = s.size();
         p.used = n;
         p.ambiguous = amb;
-        if (ench > 0)    p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
-        if (amb > 0)     p.notes.add("Ignored " + amb + " hit(s) with an unclear attacker sprint state (W-tap).");
-        if (lowConf > 0) p.notes.add("Ignored " + lowConf + " low-confidence hit(s) (far / misaimed / unknown attacker).");
+        if (ench > 0) p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
+        if (amb > 0) p.notes.add("Ignored " + amb + " hit(s) where the attacker's sprint state was changing (W-tap).");
 
         detectDamageTicks(all, p);
 
         if (n == 0) {
-            p.notes.add("No usable hits yet - get hit by a player standing right next to you.");
+            p.notes.add("No usable hits yet (need a nearby attacking player).");
             return p;
         }
 
         p.hasData = true;
-        for (KBSample k : s) if (k.attackerSprint) p.sprint++; else p.walk++;
+        for (KBSample k : s) { if (k.attackerSprint) p.sprint++; else p.walk++; }
 
-        /* ---- plateau detection ---- */
+        // ---- plateau detection
         double yMax = -10, hMax = 0;
         for (KBSample k : s) { yMax = Math.max(yMax, k.vy); hMax = Math.max(hMax, k.h); }
         boolean[] hPl = new boolean[n], yPl = new boolean[n];
         int hPlN = 0, yPlN = 0;
         for (int i = 0; i < n; i++) {
             KBSample k = s.get(i);
-            if (k.h  >= hMax - 0.002) { hPl[i] = true; hPlN++; }
+            if (k.h >= hMax - 0.002) { hPl[i] = true; hPlN++; }
             if (k.vy >= yMax - 0.0015) { yPl[i] = true; yPlN++; }
         }
         boolean hMulti = hPlN >= 2 && hPlN < n;
         boolean yMulti = yPlN >= 2 && yPlN < n;
 
-        /* ---- friction (golden-section) ---- */
+        // ---- (A) FRICTION
         List<KBSample> fit = new ArrayList<KBSample>();
         for (int i = 0; i < n; i++) {
             if ((hMulti && hPl[i]) || (yMulti && yPl[i])) continue;
@@ -240,48 +146,48 @@ public final class KBEstimator {
         if (fit.size() < 4) fit = s;
 
         int moving = 0;
-        for (KBSample k : fit) if (k.pH > 0.06 || k.victimSpeed > 0.06) moving++;
+        for (KBSample k : fit) if (k.pH > 0.08) moving++;
 
         double F = 2.0;
-        if (moving >= 4) {
-            double f1 = bestFriction(fit, 1.0, 6.0);
+        if (moving >= 3) {
+            double best = Double.MAX_VALUE, bestF = 2.0;
+            for (double f = 1.0; f <= 6.0001; f += 0.02) {
+                double c = cost(fit, f);
+                if (c < best - 1e-12) { best = c; bestF = f; }
+            }
+            double lo = Math.max(1.0, bestF - 0.02), hi = Math.min(6.0, bestF + 0.02);
+            for (double f = lo; f <= hi + 1e-9; f += 0.001) {
+                double c = cost(fit, f);
+                if (c < best - 1e-12) { best = c; bestF = f; }
+            }
             double c2 = cost(fit, 2.0);
-            double cBest = cost(fit, f1);
-            double cBoundary = Math.max(cost(fit, 1.5), cost(fit, 3.0));
-            boolean informative = cBoundary - cBest > 1e-5;
-            if (informative && Math.abs(f1 - 2.0) < 1e-4) {
+            boolean informative = cost(fit, 1.5) - best > 1e-5 && cost(fit, 3.0) - best > 1e-5;
+            if (informative && Math.abs(bestF - 2.0) <= 0.02) {
                 F = 2.0;
                 p.frictionMeasured = true;
                 p.mark(KBProfile.I_F, conf(moving / 2.0));
-            } else if (cBest < c2 * 0.85 && c2 - cBest > 1e-5) {
-                F = f1;
+            } else if (best < c2 * 0.6 && c2 - best > 1e-5) {
+                F = bestF;
                 p.frictionMeasured = true;
                 double cf = conf(moving / 2.0);
-                if (F <= 1.001 || F >= 5.999) {
-                    cf *= 0.4;
-                    p.notes.add("FRICTION hit a search boundary - result may be unreliable.");
-                }
+                if (F <= 1.03 || F >= 5.97) { cf *= 0.4; p.notes.add("FRICTION hit the search boundary - result is unreliable."); }
                 p.mark(KBProfile.I_F, cf);
             } else {
-                F = 2.0;
                 p.mark(KBProfile.I_F, 0.35);
                 p.notes.add("FRICTION matches the default 2.0 (no evidence of another value).");
             }
         } else {
             p.mark(KBProfile.I_F, 0);
-            p.notes.add("FRICTION not measured - get hit while walking/strafing (pre-hit speed > 0.06).");
+            p.notes.add("FRICTION not measured - get hit while walking/strafing (pre-hit speed > 0.08).");
         }
-        F = Math.round(F * 1000000.0) / 1000000.0;
+        F = Math.round(F * 1000.0) / 1000.0;
         p.friction = F;
 
-        /* ---- plateau cap check ---- */
+        // ---- (B) which plateaus are genuinely clamped?
         boolean hCapped = false, yCapped = false;
         if (hMulti) {
             List<Double> pa = new ArrayList<Double>();
-            for (int i = 0; i < n; i++) if (hPl[i]) {
-                KBSample k = s.get(i);
-                pa.add((k.px * k.ux + k.pz * k.uz) / F);
-            }
+            for (int i = 0; i < n; i++) if (hPl[i]) { KBSample k = s.get(i); pa.add((k.px * k.ux + k.pz * k.uz) / F); }
             hCapped = spread(pa) >= 0.03;
         }
         if (yMulti) {
@@ -290,7 +196,7 @@ public final class KBEstimator {
             yCapped = spread(pa) >= 0.03;
         }
 
-        /* ---- residual groups ---- */
+        // ---- (C) residual groups
         List<Double> hw = new ArrayList<Double>(), hs = new ArrayList<Double>();
         List<Double> hwC = new ArrayList<Double>(), hsC = new ArrayList<Double>();
         List<Double> vw = new ArrayList<Double>(), vs = new ArrayList<Double>();
@@ -303,43 +209,36 @@ public final class KBEstimator {
             double ry = k.vy - k.py * inv;
             boolean hc = hCapped && hPl[i], yc = yCapped && yPl[i];
             if (k.attackerSprint) { (hc ? hsC : hs).add(along); (yc ? vsC : vs).add(ry); }
-            else                  { (hc ? hwC : hw).add(along); (yc ? vwC : vw).add(ry); }
+            else { (hc ? hwC : hw).add(along); (yc ? vwC : vw).add(ry); }
         }
 
         double[] hr = solve(hw, hs, hwC, hsC, 0.5);
-        p.horizontal = r4(hr[0]);
-        p.extraHorizontal = r4(hr[1]);
-        p.hSpread = hr[4];
-        p.mark(KBProfile.I_H, hr[2]);
-        p.mark(KBProfile.I_EH, hr[3]);
-        if (hr[5] > 0) p.notes.add("HORIZONTAL/EXTRA-HORIZONTAL are lower bounds (H-LIMIT clamped them).");
+        p.horizontal = r4(hr[0]); p.extraHorizontal = r4(hr[1]); p.hSpread = hr[4];
+        p.mark(KBProfile.I_H, hr[2]); p.mark(KBProfile.I_EH, hr[3]);
+        if (hr[5] > 0) p.notes.add("HORIZONTAL/EXTRA-HORIZONTAL are lower bounds (hits were clamped by H-LIMIT).");
 
         double[] vr = solve(vw, vs, vwC, vsC, 0.0);
-        p.vertical = r4(vr[0]);
-        p.extraVertical = r4(vr[1]);
-        p.vSpread = vr[4];
-        p.mark(KBProfile.I_V, vr[2]);
-        p.mark(KBProfile.I_EV, vr[3]);
-        if (vr[5] > 0) p.notes.add("VERTICAL is a lower bound (Y-LIMIT clamped it). Get hit while FALLING to unclamp.");
+        p.vertical = r4(vr[0]); p.extraVertical = r4(vr[1]); p.vSpread = vr[4];
+        p.mark(KBProfile.I_V, vr[2]); p.mark(KBProfile.I_EV, vr[3]);
+        if (vr[5] > 0) p.notes.add("VERTICAL is a lower bound (clamped by Y-LIMIT). Get hit while FALLING (negative Y motion) to unclamp it.");
 
-        if (p.walk == 0)   p.notes.add("Need hits from a NON-sprinting attacker to split HORIZONTAL from EXTRA-HORIZONTAL.");
+        if (p.walk == 0) p.notes.add("Need hits from a NON-sprinting attacker to separate HORIZONTAL from EXTRA-HORIZONTAL.");
         if (p.sprint == 0) p.notes.add("Need hits from a SPRINTING attacker to measure EXTRA-HORIZONTAL / EXTRA-VERTICAL.");
 
-        /* ---- limits ---- */
+        // ---- limits
         p.yLimit = r4(yMax);
-        if (yCapped) {
-            p.mark(KBProfile.I_YL, conf(yPlN / 1.5));
-        } else {
+        if (yCapped) p.mark(KBProfile.I_YL, conf(yPlN / 1.5));
+        else {
             p.mark(KBProfile.I_YL, 0.25);
-            p.notes.add("Y-LIMIT is only the highest vertical hit seen - get hit mid-air at different heights.");
+            p.notes.add("Y-LIMIT is only the highest vertical knockback seen - get hit in mid-air at different heights to confirm the cap.");
         }
         p.hLimit = r4(hMax);
         p.limitHorizontal = hCapped;
         p.mark(KBProfile.I_LIMH, hCapped ? conf(hPlN / 1.5) : (moving >= 3 ? 0.55 : 0.15));
-        p.mark(KBProfile.I_HL,  hCapped ? conf(hPlN / 1.5) : 0.15);
-        if (!hCapped) p.notes.add("H-LIMIT looks inactive (never clamped). Value shown is just the largest horizontal hit.");
+        p.mark(KBProfile.I_HL, hCapped ? conf(hPlN / 1.5) : 0.15);
+        if (!hCapped) p.notes.add("H-LIMIT looks inactive (never clamped): shown value is the largest horizontal hit seen. Use /kb import for the exact file value.");
 
-        /* ---- DYNAMIC-LIMIT ---- */
+        // ---- DYNAMIC-LIMIT
         int airHigh = 0;
         boolean dyn = false;
         for (KBSample k : all) {
@@ -352,7 +251,7 @@ public final class KBEstimator {
         p.dynamicLimit = dyn;
         p.mark(KBProfile.I_DYN, dyn ? 0.6 : (airHigh >= 2 ? 0.5 : 0.12));
 
-        /* ---- ONE-POINT-SEVEN ---- */
+        // ---- ONE-POINT-SEVEN
         if (p.walk > 0 && p.sprint > 0) {
             p.onePointSeven = p.extraHorizontal < 0.02 && p.extraVertical < 0.02;
             p.mark(KBProfile.I_OPS, 0.35);
@@ -360,19 +259,19 @@ public final class KBEstimator {
             p.onePointSeven = false;
             p.mark(KBProfile.I_OPS, 0.08);
         }
+
         return p;
     }
 
-    /* ---- damage ticks ---- */
+    /** hits can land again once noDamageTicks <= VALUE/2, so shortest gap g gives VALUE = 2g (or 2g-1). */
     private static void detectDamageTicks(List<KBSample> all, KBProfile p) {
         List<Integer> iv = new ArrayList<Integer>();
         KBSample prev = null;
         for (KBSample k : all) {
             if (!k.hasAttacker) continue;
-            if (k.confidence < MIN_CONFIDENCE) continue;
             if (prev != null && prev.attacker.equals(k.attacker)) {
                 long d = k.tick - prev.tick;
-                if (d >= 1 && d <= 40) iv.add((int) d);
+                if (d >= 1 && d <= 60) iv.add((int) d);
             }
             prev = k;
         }
@@ -381,7 +280,7 @@ public final class KBEstimator {
         if (iv.isEmpty()) {
             p.mark(KBProfile.I_DTO, 0);
             p.mark(KBProfile.I_DTV, 0);
-            p.notes.add("DAMAGE-TICKS unknown - have someone click you rapidly.");
+            p.notes.add("DAMAGE-TICKS unknown - have someone hit you rapidly.");
             return;
         }
         Collections.sort(iv);
@@ -389,7 +288,7 @@ public final class KBEstimator {
         if (m >= 10) {
             p.mark(KBProfile.I_DTO, iv.size() >= 3 ? 0.45 : 0.2);
             p.mark(KBProfile.I_DTV, 0);
-            p.notes.add("Shortest hit gap " + m + " ticks = vanilla 20. VALUE is not observable while OVERRIDE is false.");
+            p.notes.add("Hit gap " + m + " ticks = vanilla 20. DAMAGE-TICKS.VALUE is not observable while OVERRIDE is false - use /kb import.");
         } else {
             p.damageTicksValue = Math.max(2, m * 2);
             p.damageTicksOverride = true;
