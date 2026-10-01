@@ -42,40 +42,32 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
 
 @Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
-     acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
 public class KBClientMod {
     public static final String MODID = "kbclient";
     public static final String NAME = "KB Client";
     public static final String VERSION = "3.0.0";
     private static final String HOOK = "kb_client_handler";
-
     private static KBClientMod instance;
     public static Logger logger;
-
-      /** فونت مدرن فقط برای UI خودمون — mc.fontRendererObj دست‌نخورده می‌مونه تا چت سالم بمونه. */
-      public static com.oryvex.kbclient.font.ModernFontRenderer modernFont;
-
+    /** فونت مدرن فقط برای UI خودمون — mc.fontRendererObj دست‌نخورده می‌مونه تا چت سالم بمونه. */
+    public static com.oryvex.kbclient.font.ModernFontRenderer modernFont;
     private final KBTracker tracker = new KBTracker();
     private KeyBinding openKey;
     private Channel hookedChannel;
     private boolean pendingOpen;
     private Object lastWorld;
-    
     public static net.minecraft.client.multiplayer.ServerData lastServerData;
     public static KBLoading customLoadingScreen;
-
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
-
     public void requestOpenAnalyzer() { pendingOpen = true; }
-
     @EventHandler
     public void preInit(FMLPreInitializationEvent e) {
         logger = e.getModLog();
         instance = this;
         Settings.load();
     }
-
     @EventHandler
     public void init(FMLInitializationEvent e) {
         com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
@@ -86,27 +78,24 @@ public class KBClientMod {
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
-          try {
-              Minecraft mcF = Minecraft.getMinecraft();
-              modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(
-                      mcF.gameSettings,
-                      new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
-                      mcF.renderEngine, false);
-              logger.info("[KBClient] ModernFontRenderer loaded (used only by KB Client UI)");
-          } catch (Throwable t) {
-              logger.error("[KBClient] ModernFontRenderer failed: " + t);
-          }
+        try {
+            Minecraft mcF = Minecraft.getMinecraft();
+            modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(
+            mcF.gameSettings,
+            new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
+            mcF.renderEngine, false);
+            logger.info("[KBClient] ModernFontRenderer loaded (used only by KB Client UI)");
+        } catch (Throwable t) {
+            logger.error("[KBClient] ModernFontRenderer failed: " + t);
+        }
         DiscordRPC.start();
-
     }
-
     private void installLoading() {
         final Minecraft mc = Minecraft.getMinecraft();
         customLoadingScreen = new KBLoading(mc);
         try {
             ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, customLoadingScreen, "loadingScreen", "field_71461_s");
             logger.info("[KBClient] custom loading screen installed");
-            
             // Persistent thread to intercept singleplayer load which aggressively resets loadingScreen to dirt
             Thread loadingThemer = new Thread(new Runnable() {
                 @Override
@@ -127,15 +116,12 @@ public class KBClientMod {
             logger.error("[KBClient] could not install loading screen: " + t);
         }
     }
-
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
-        
         if (e.gui instanceof GuiMainMenu) {
             e.gui = new GuiModernMenu(tracker);
         }
-
         if (e.gui == null) {
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
@@ -144,38 +130,33 @@ public class KBClientMod {
             Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
         }
     }
-
     @SubscribeEvent
     public void onDrawScreenPre(GuiScreenEvent.DrawScreenEvent.Pre e) {
         GuiScreen g = e.gui;
         if (g == null) return;
-        
         // Take complete control of these screens before vanilla draws the dirt
         if (Settings.customLoading) {
             if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
-                e.setCanceled(true); 
+                e.setCanceled(true);
                 LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
                 Fade.screen.draw(g.width, g.height);
             } else if (g instanceof GuiDownloadTerrain) {
-                e.setCanceled(true); 
+                e.setCanceled(true);
                 LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
                 Fade.screen.draw(g.width, g.height);
             }
         }
     }
-
     @SubscribeEvent
     public void onDrawScreenPost(GuiScreenEvent.DrawScreenEvent.Post e) {
         GuiScreen g = e.gui;
         if (g == null || g instanceof FadeScreen) return;
-        
         // Skip fade overlay if we already handled it in Pre
         if (Settings.customLoading && (g instanceof net.minecraft.client.multiplayer.GuiConnecting || g instanceof GuiDownloadTerrain)) {
-            return; 
+            return;
         }
         Fade.screen.draw(g.width, g.height);
     }
-
     @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
         if (e.gui instanceof GuiIngameMenu) {
@@ -196,7 +177,6 @@ public class KBClientMod {
             }
         }
     }
-
     @SubscribeEvent
     public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
         if (e.gui instanceof GuiIngameMenu && e.button.id == 0) {
@@ -209,7 +189,6 @@ public class KBClientMod {
             }
         }
     }
-
     @SubscribeEvent
     public void onOverlay(RenderGameOverlayEvent.Post e) {
         if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
@@ -218,22 +197,17 @@ public class KBClientMod {
         if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
         Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
     }
-
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
-        
         if (mc.getCurrentServerData() != null) lastServerData = mc.getCurrentServerData();
-        
         tracker.tick();
         DiscordRPC.tick();
-
         if (mc.theWorld != lastWorld) {
             lastWorld = mc.theWorld;
             if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
         }
-
         while (openKey.isPressed()) {
             if (mc.currentScreen == null) pendingOpen = true;
         }
@@ -241,13 +215,11 @@ public class KBClientMod {
             pendingOpen = false;
             mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
         }
-
         if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
             NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
             if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
         }
     }
-
     private void inject(Minecraft mc, Channel ch) {
         hookedChannel = ch;
         try {
@@ -255,16 +227,14 @@ public class KBClientMod {
             if (pl.get(HOOK) != null) pl.remove(HOOK);
             if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
             else pl.addLast(HOOK, new VelocityHook());
-
             String name = mc.isSingleplayer() ? "Singleplayer"
-                    : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+            : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
             tracker.onConnect(name);
             logger.info("[KBClient] velocity hook installed on " + name);
         } catch (Throwable t) {
             logger.error("[KBClient] hook failed: " + t);
         }
     }
-
     private static class VelocityHook extends ChannelDuplexHandler {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

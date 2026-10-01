@@ -11,10 +11,8 @@ public class UiButton extends GuiButton {
     public static final int TAB     = 3;
     public static final int TOGGLE  = 4;
     public static final int GHOST   = 5;
-
     public static final int ICON_NONE = 0;
     public static final int ICON_GEAR = 0;
-
     public int style = NORMAL;
     public int icon  = 0;
     public boolean selected;
@@ -22,38 +20,31 @@ public class UiButton extends GuiButton {
     public long delay;
     public boolean left;
     public float textSize = 1f;
-
     private final Anim hover = new Anim();
     private final long born = System.currentTimeMillis();
-
     public UiButton(int id, int x, int y, int w, int h, String text) {
         super(id, x, y, w, h, text);
     }
-
     public UiButton style(int s)  { this.style = s; return this; }
     public UiButton icon(int i)   { return this; }
     public UiButton delay(long d) { this.delay = d; return this; }
     public UiButton left()        { this.left = true; return this; }
     public UiButton size(float s) { this.textSize = s; return this; }
-
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
         if (!this.visible) return;
         this.hovered = mouseX >= xPosition && mouseY >= yPosition
-                && mouseX < xPosition + width && mouseY < yPosition + height;
-
+        && mouseX < xPosition + width && mouseY < yPosition + height;
         float hv = hover.to((hovered && enabled) ? 1f : 0f, 24f);
         float ap = Draw.easeOut((System.currentTimeMillis() - born - delay) / 220f);
         if (ap <= 0.01f) return;
         if (!enabled) ap *= 0.55f;
-
         float x  = xPosition;
         float y  = yPosition + (1f - ap) * 4f;
         float w  = width;
         float h  = height;
         float r  = 4f;
         float cy = y + h / 2f;
-
         int bg, border, txt;
         switch (style) {
             case PRIMARY:
@@ -89,32 +80,27 @@ public class UiButton extends GuiButton {
         bg     = Draw.fade(bg,     ap);
         border = Draw.fade(border, ap);
         txt    = Draw.fade(txt,    ap);
-
         Draw.roundRect(x, y, w, h, r, bg);
         if (((border >>> 24) & 255) > 4)
-            Draw.roundOutline(x, y, w, h, r, 1f, border);
-
+        Draw.roundOutline(x, y, w, h, r, 1f, border);
         if (style == TOGGLE) {
             float sw = 22f, sh = 12f;
             float sx = x + w - sw - 10f;
             Draw.left(Draw.fit(displayString, w - sw - 26f, textSize, false),
-                      x + 12f, cy, txt, textSize, false);
+            x + 12f, cy, txt, textSize, false);
             drawToggle(sx, cy - sh / 2f, sw, sh, on ? 1f : 0f, ap);
             return;
         }
-
         String label = Draw.fit(displayString, w - 20f, textSize, false);
         float tw = Draw.w(label, textSize, false);
         float startX = left ? x + 12f : x + (w - tw) / 2f;
         Draw.left(label, startX, cy, txt, textSize, false);
-
         if (style == TAB && selected) {
             Draw.rect(x + 8f, y + h - 2f, w - 16f, 2f, Theme.ACCENT);
         }
     }
-
     private void drawToggle(float sx, float sy, float sw, float sh,
-                            float knob, float ap) {
+    float knob, float ap) {
         int track = on ? Theme.ACCENT : 0x30FFFFFF;
         Draw.roundRect(sx, sy, sw, sh, sh / 2f, Draw.fade(track, ap));
         float kx = sx + sh / 2f + (sw - sh) * knob;

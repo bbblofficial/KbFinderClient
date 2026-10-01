@@ -1,4 +1,3 @@
-
 package com.oryvex.kbclient.ui;
 
 import java.io.IOException;
@@ -16,9 +15,7 @@ public abstract class FadeScreen extends GuiScreen {
     private long closeDur;
     private Runnable after;
     private boolean finished;
-
     public boolean isClosing() { return closing; }
-
     /** Called every time this screen is displayed (also when a parent screen is re-opened via Back). */
     @Override
     public void setWorldAndResolution(Minecraft mc, int width, int height) {
@@ -30,14 +27,12 @@ public abstract class FadeScreen extends GuiScreen {
         }
         super.setWorldAndResolution(mc, width, height);
     }
-
     public void closeTo(final GuiScreen next) {
         closeThen(new Runnable() {
             @Override
             public void run() { Minecraft.getMinecraft().displayGuiScreen(next); }
         });
     }
-
     public void closeThen(Runnable r) {
         if (closing) return;
         long ms = Fade.ms();
@@ -47,7 +42,6 @@ public abstract class FadeScreen extends GuiScreen {
         closeDur = ms;
         after = r;
     }
-
     @Override
     public void updateScreen() {
         super.updateScreen();
@@ -58,7 +52,6 @@ public abstract class FadeScreen extends GuiScreen {
             r.run();
         }
     }
-
     /** 0..1 eased "how open is this screen" - use it to scale / fade panels in and out */
     protected final float openAnim() {
         long ms = Fade.ms();
@@ -67,7 +60,6 @@ public abstract class FadeScreen extends GuiScreen {
         if (closing) a = Math.min(a, 1f - Draw.ease((now - closeAt) / (float) closeDur));
         return a;
     }
-
     /** call as the LAST step of drawScreen */
     protected final void drawFade() {
         long ms = Fade.ms();
@@ -78,33 +70,27 @@ public abstract class FadeScreen extends GuiScreen {
         if (a > 0.004f) Gui.drawRect(0, 0, this.width, this.height, ((int) (a * 255f)) << 24);
         Draw.resetColor();
     }
-
     protected void drawBackdrop(int mx, int my) {
         Background.draw(this.width, this.height, mx, my, this.mc != null && this.mc.theWorld != null, 1f);
     }
-
     @Override
     protected void mouseClicked(int x, int y, int b) throws IOException {
         if (closing) return;
         super.mouseClicked(x, y, b);
     }
-
     @Override
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int d = Mouse.getEventDWheel();
         if (d != 0 && !closing) onScroll(d > 0 ? -1 : 1);
     }
-
     /** mouse wheel: -1 = up, +1 = down */
     protected void onScroll(int dir) { }
-
     @Override
     protected final void keyTyped(char c, int key) throws IOException {
         if (closing) return;
         onKey(c, key);
     }
-
     protected void onKey(char c, int key) throws IOException {
         if (key == Keyboard.KEY_ESCAPE) closeTo(null);
     }

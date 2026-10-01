@@ -8,9 +8,7 @@ import net.minecraft.client.Minecraft;
 
 public final class Settings {
     private Settings() {}
-
     public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
-
     public static boolean hud = true;
     public static boolean watermark = true;
     public static boolean particles = false;   // kept for compat, unused
@@ -21,26 +19,21 @@ public final class Settings {
     public static int fade = 1;                // default: Fast
     public static int theme = 0;
     public static int density = 0;             // unused
-
     public static File dir() {
         File d = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
         if (!d.exists()) d.mkdirs();
         return d;
     }
-
     private static File file() { return new File(dir(), "settings.properties"); }
-
     private static int num(Properties p, String k, int def, int lo, int hi) {
         try {
             int v = Integer.parseInt(p.getProperty(k, String.valueOf(def)).trim());
             return Math.max(lo, Math.min(hi, v));
         } catch (Throwable t) { return def; }
     }
-
     private static boolean flag(Properties p, String k, boolean def) {
         return Boolean.parseBoolean(p.getProperty(k, String.valueOf(def)).trim());
     }
-
     public static void load() {
         try {
             File f = file();
@@ -56,7 +49,6 @@ public final class Settings {
             fade = num(p, "fade", 1, 0, 3);
         } catch (Throwable ignored) { }
     }
-
     public static void save() {
         try {
             Properties p = new Properties();

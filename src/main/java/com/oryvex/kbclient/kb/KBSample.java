@@ -1,9 +1,7 @@
 package com.oryvex.kbclient.kb;
 
-/** One knockback event (velocity packet) plus the context it happened in. */
 public final class KBSample {
     public static final int WALK = 0, SPRINT = 1, AMBIGUOUS = 2;
-
     public final int id;
     public final long tick;
     public final double vx, vy, vz, h;
@@ -24,13 +22,9 @@ public final class KBSample {
                     double ux, double uz, double distance, String attacker) {
         this.id = id;
         this.tick = tick;
-        this.vx = vx;
-        this.vy = vy;
-        this.vz = vz;
+        this.vx = vx; this.vy = vy; this.vz = vz;
         this.h = Math.sqrt(vx * vx + vz * vz);
-        this.px = px;
-        this.py = py;
-        this.pz = pz;
+        this.px = px; this.py = py; this.pz = pz;
         this.pH = Math.sqrt(px * px + pz * pz);
         this.victimSprint = victimSprint;
         this.victimGround = victimGround;
@@ -38,8 +32,7 @@ public final class KBSample {
         this.sprintState = sprintState;
         this.attackerSprint = sprintState == SPRINT;
         this.attackerKb = attackerKb;
-        this.ux = ux;
-        this.uz = uz;
+        this.ux = ux; this.uz = uz;
         this.distance = distance;
         this.attacker = attacker == null ? "?" : attacker;
     }
