@@ -74,7 +74,7 @@ public final class TransparentOverlays {
             if (list.isEmpty()) return;
 
             int w = this.mcRef.fontRendererObj.getStringWidth(
-                    objective.getDisplayName());
+                    objective.getDisplayName().getFormattedText());
             for (Score s : list) {
                 Team t = sb.getPlayersTeam(s.getPlayerName());
                 String line = ScorePlayerTeam.formatPlayerName(t, s.getPlayerName())
@@ -105,7 +105,7 @@ public final class TransparentOverlays {
                         y, 553648127);
 
                 if (j == list.size()) {
-                    String title = objective.getDisplayName();
+                    String title = objective.getDisplayName().getFormattedText();
                     this.mcRef.fontRendererObj.drawString(
                             title,
                             left + w / 2
