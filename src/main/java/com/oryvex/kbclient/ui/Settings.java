@@ -1,4 +1,3 @@
-
 package com.oryvex.kbclient.ui;
 
 import java.io.File;
@@ -11,6 +10,7 @@ public final class Settings {
     private Settings() {}
 
     public static final String[] FADE_NAMES = { "Off", "Fast", "Normal", "Slow" };
+
     public static boolean hud = true;
     public static boolean watermark = true;
     public static boolean particles = true;
@@ -24,9 +24,9 @@ public final class Settings {
     public static int density = 60;
 
     public static File dir() {
-        File dir = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
-        if (!dir.exists()) dir.mkdirs();
-        return dir;
+        File d = new File(Minecraft.getMinecraft().mcDataDir, "kbclient");
+        if (!d.exists()) d.mkdirs();
+        return d;
     }
 
     private static File file() { return new File(dir(), "settings.properties"); }
@@ -35,9 +35,7 @@ public final class Settings {
         try {
             int v = Integer.parseInt(p.getProperty(k, String.valueOf(def)).trim());
             return Math.max(lo, Math.min(hi, v));
-        } catch (Throwable t) {
-            return def;
-        }
+        } catch (Throwable t) { return def; }
     }
 
     private static boolean flag(Properties p, String k, boolean def) {

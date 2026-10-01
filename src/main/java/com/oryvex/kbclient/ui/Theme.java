@@ -1,4 +1,3 @@
-
 package com.oryvex.kbclient.ui;
 
 /** Colour palette + selectable accent themes (Settings.theme). */
@@ -22,23 +21,25 @@ public final class Theme {
     public static final int WARN = 0xFFFBBF24;
     public static final int BAD = 0xFFFB7185;
 
-    // ---- text ----------------------------------------------------------------
+    // ---- text --------------------------------------------------------------
     public static final int TEXT = 0xFFF4F6FB;
     public static final int SOFT = 0xFFB4BCCF;
     public static final int MUTED = 0xFF7C86A2;
     public static final int DIM = 0xFF4A5169;
 
-    // ---- type scale (GUI pixels) --------------------------------------------
-    public static final float T_XS = 7f;
-    public static final float T_SM = 8f;
-    public static final float T_MD = 9f;
-    public static final float T_LG = 11f;
-    public static final float T_XL = 14f;
+    // ---- type scale (MULTIPLIERS on the vanilla 9px font) ------------------
+    // These were pixel sizes before (7f / 8f / 9f / 11f / 14f) which made
+    // Draw.mid() render text at 9x scale.  Keep them as scale multipliers.
+    public static final float T_XS = 0.75f;
+    public static final float T_SM = 0.85f;
+    public static final float T_MD = 1.00f;
+    public static final float T_LG = 1.25f;
+    public static final float T_XL = 1.60f;
 
     /** Minecraft colour-code prefix (chat only). */
     public static final String S = "\u00a7";
 
-    // ---- accent themes ------------------------------------------------------
+    // ---- accent themes -----------------------------------------------------
     public static final String[] THEME_NAMES = { "Ocean", "Violet", "Sunset", "Mint", "Rose", "Mono" };
     private static final int[][] PAL = {
         { 0xFF38BDF8, 0xFF6366F1 },
@@ -58,7 +59,7 @@ public final class Theme {
     public static int accent2() { return PAL[idx()][1]; }
     public static int accentMid() { return Draw.lerp(accent(), accent2(), 0.5f); }
 
-    /** accent -> accent2 -> accent ping-pong that slowly flows over time; offset 0..1 shifts the phase. */
+    /** accent -> accent2 -> accent ping-pong that slowly flows over time. */
     public static int flow(float offset) {
         float p = ((System.currentTimeMillis() % 7000L) / 7000f + offset) % 1f;
         if (p < 0f) p += 1f;
@@ -67,6 +68,8 @@ public final class Theme {
     }
 
     public static float phase() { return (System.currentTimeMillis() % 7000L) / 7000f; }
+
+    // ---- legacy aliases (used by older screens) ----------------------------
     public static final int PANEL = 0xFF121A29;
     public static final int PANEL2 = 0xFF182235;
     public static final int PANEL3 = 0xFF22304A;

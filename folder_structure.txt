@@ -6275,6 +6275,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843127 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843976 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844300 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845523 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845696 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846880 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │   └── refs
 │   │       ├── heads
 │   │       │   └── main
@@ -6316,6 +6319,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843127 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843976 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844300 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845523 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845696 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+  f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846880 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
 │   │       └── remotes
 │   │           └── origin
 │   │               └── main
@@ -6355,6 +6361,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843144 +0330	update by push
   11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843987 +0330	update by push
   bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844314 +0330	update by push
+  d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845538 +0330	update by push
+  7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845708 +0330	update by push
+  f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846891 +0330	update by push
 │   ├── objects
 │   │   ├── 00
 │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
@@ -6569,8 +6578,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
   [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
 │   │   ├── 21
-│   │   │   └── 419a4751472fb93ff3b691279c1e72b09da349
+│   │   │   ├── 419a4751472fb93ff3b691279c1e72b09da349
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── b6ed485ebe826191e8a98a6a5eac93dafec643
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 22
 │   │   │   ├── 501dbfc8218db505990928e09b14e8e7a3d6a8
   [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
@@ -6721,6 +6732,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── b14361258f204c3d6e50dc700b2f35d095f7ee
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 3d
+│   │   │   ├── 3b142f3068336de0a5663fff684ed5cdf3e829
+  [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
 │   │   │   ├── 566d94f93833d382e9aea79ec4278678e2a265
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── ba2b12eb67f97ed7fcee5acea62eec91b955db
@@ -6783,8 +6796,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 45
 │   │   │   ├── 922f1da06253003a6b89dee496698677f73fdc
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-│   │   │   └── d2a3e957ff81c5beae2926e88c24c462270385
+│   │   │   ├── d2a3e957ff81c5beae2926e88c24c462270385
   [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+│   │   │   └── e9edaf846cd7eabc5d57ff778387da59ae46c1
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
 │   │   ├── 46
 │   │   │   └── 216d1eb927958af988a4ee33996834d35b26d6
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -6808,6 +6823,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── ef0efe30d502475d3950362d5c999522bd045a
   [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
 │   │   ├── 4b
+│   │   │   ├── 0dc7dbd1c0ce2df67cb4f786d400f615851bc3
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 4907400e0f793d2cc25fd8a369954559bee21e
   [Error: 'utf-8' codec can't decode byte 0x8f in position 5: invalid start byte]
 │   │   │   ├── 825dc642cb6eb9a060e54bf8d69288fbee4904
@@ -6886,6 +6903,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 57
 │   │   │   ├── 5a4bdbd53514587ec08f2397c08168bc211844
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 76b365358b67959df71fdf08ee2f84128c9f9a
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── b4f3f67027e81b5976d1657a0bbb5d19c9749b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7000,6 +7019,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 761a287091540f3031413138713b297f6fdf56
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── 6d
+│   │   │   ├── 467b06a64612951cf8e7f5fdd0c5d7fdec0062
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
 │   │   │   ├── 85b0a084027f1e308475f0af9cbd70f02e9580
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
 │   │   │   └── 949951d7f09a39cd9c075428c0301357d8d47c
@@ -7086,18 +7107,28 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 7c
 │   │   │   ├── 4fa3ede533a2f2857966b67e99a0411284879b
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── 6061e997fe88e98055a108e1059f16eca4d44f
+│   │   │   ├── 6061e997fe88e98055a108e1059f16eca4d44f
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   ├── 853a9eba9900763a2d7f0a2eeac499990653ef
+  [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   │   └── ae69e2065b944c600e90182da507ef03c0aba0
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   ├── 7d
 │   │   │   ├── 1c40eb319b8aea614bbaabba5da54032906903
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
 │   │   │   ├── 4ee91c78f230f5778add99ad5f8d5791bcdd51
   [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
+│   │   │   ├── 5b5581e73d0ae458bc308bf3d412bd945e4db0
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── ae42b0a4012051e2c8d0373e48085612ee0443
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── bb6091225070fc9132013c1894f65026147059
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── ceab50ce929cb9f2c98d4afec13ea537e9f950
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
 │   │   ├── 7e
+│   │   │   ├── 132c896b46a9285db7c6fdfb40feea818ff261
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 51984603a83a11e7d1a02676dbd7832546cc42
   [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
 │   │   │   ├── 6ba0dc149bbe0b066814e49eafaad7736cfa0e
@@ -7105,8 +7136,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 95b8283956d9be20fadf144f8fe59c46f2cf53
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 7f
-│   │   │   └── 94736b09be1eef916b506ac875c084acf7c047
+│   │   │   ├── 94736b09be1eef916b506ac875c084acf7c047
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   │   └── dec0c6de30aac3fa5d3dfa994b5844777f18ac
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   ├── 80
 │   │   │   ├── 8343cda2c4a69213216a041fed7d51438f931f
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -7191,6 +7224,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   └── cfda1f5af38b6fa2ae605b4738d3a039459fc8
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   ├── 8f
+│   │   │   └── 89a5de16324a8271035dc75f32719e718c5c21
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 90
 │   │   │   ├── 69f7482e8d6555efa38fbe7400fe3f74be1f94
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7234,6 +7270,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 96
 │   │   │   ├── 0dcaaf6ea8a84fc9797a7b76cf8f0f5762e20e
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+│   │   │   ├── 4af737a750b3e344a6808ce0f7b2340f9fbfd9
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+│   │   │   ├── a0afdaadd6f06738d642e3451cbe8ff6f2328b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── daca2af81da6e2999bbb207480f51f2bcf1309
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── 97
@@ -7281,7 +7321,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── ac73e50f02fbba40a68e2cd58b2262306c01ba
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-│   │   │   └── ce5aabbd0e08d082950bab3fff17f250135ee3
+│   │   │   ├── ce5aabbd0e08d082950bab3fff17f250135ee3
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── f10e063bd8d42011977b889469f87c0ce9cced
+  [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   └── f1232cb33001c47a5442b4203d3207bfe4b1d7
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── 9e
 │   │   │   ├── 16bc2a39d24a6475b538a2cec932423eaf4612
@@ -7291,6 +7335,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── 9f
 │   │   │   ├── 28a67611af011670d434467b3dab598ee14a3d
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 3b80ff69344fc5a3adf83817712f95dc6f0f12
+  [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
 │   │   │   ├── 6b3978a480f386f754f7ff5df37fda0e77a92e
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
 │   │   │   └── ce7c35da59a379d7e60ec05772492aadcbf62c
@@ -7301,6 +7347,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 3fa07dbb4670a0ce9995f196a7bea841e87dd2
   [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
 │   │   ├── a1
+│   │   │   ├── 262a2d6025085317a92f35850207addd685d0a
+  [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   └── a99253e502137a30aac1d27d86174e09f17f44
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
 │   │   ├── a2
@@ -7348,6 +7396,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── e3fdb05d68e73cd6b387f1cff8239c02d5f313
   [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
 │   │   ├── ac
+│   │   │   ├── 832d014e4bf306746c62f97a2196ff7c564d50
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── ab8bfb6d83a25ae622c455fa96bab3bd466ce9
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── f2a3b54aa05fbf24b6f692f5054f88d2bde8d2
@@ -7358,14 +7408,20 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── f9516b14360a18079f7c0cad30d0d931f36114
   [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
 │   │   ├── af
-│   │   │   └── 2baeca49c6c4e360c71fb3e05b1cfa06f95983
+│   │   │   ├── 2baeca49c6c4e360c71fb3e05b1cfa06f95983
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── 4f890b22a1f153860a5b2711571a17596d49d0
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b0
 │   │   │   ├── 43416bacf66acaf168c93e57fec3f5813147cf
   [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
 │   │   │   ├── 47ca6a1568d38e6b79a82f91fe839d636f9a25
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-│   │   │   └── bba24fa3fa063d1c6d412b34c36bedaab8560b
+│   │   │   ├── 8254ffcf3fb2a1e097a48553208ca10b086072
+  [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
+│   │   │   ├── bba24fa3fa063d1c6d412b34c36bedaab8560b
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   └── eb0ab3fee0cac0858f9b7a6544d30498ecd955
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── b1
 │   │   │   ├── 2bd5555ee82fc5ffbdc0e0c5f4a3269cb59b29
@@ -7378,6 +7434,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── 767594d80dca795b856665081702eb2f2193fd
   [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
 │   │   ├── b3
+│   │   │   ├── 12b180bde4891924991085f2c1baa4215aa041
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   │   ├── 7840b5c69bc2f00584c9df64a9de9da017112d
   [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
 │   │   │   ├── 7f98537855ae1bcb308d684455e190703adaba
@@ -7404,6 +7462,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── b9
 │   │   │   └── ea15cf830c29625b2513bff3b0bd5b46479837
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   ├── ba
+│   │   │   └── d8f155325eee1e5eb7ff591b415b463db44f08
+  [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
 │   │   ├── bb
 │   │   │   └── c5b24b4ce02eb91476fefa63058a5bfede1a61
   [Error: 'utf-8' codec can't decode byte 0xc5 in position 2: invalid continuation byte]
@@ -7425,8 +7486,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── f14aacae7250848755c16f6501d36d01a70a2f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── bf
-│   │   │   └── 0cdc5279c79f89ac874af1a5a8877923f32032
+│   │   │   ├── 0cdc5279c79f89ac874af1a5a8877923f32032
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+│   │   │   └── fbdc91a8be1fc2ca3d819f139ae37c66c3b867
+  [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
 │   │   ├── c0
 │   │   │   ├── 16d0828f5e055b06862e71d6b55ae9d82f5cac
   [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
@@ -7450,8 +7513,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── e561d8dddb063c29e44428c49d7e2851701704
   [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
 │   │   ├── c5
-│   │   │   └── 9082d7ea2e6a6d4679ec8fda473c9a84b6c230
+│   │   │   ├── 9082d7ea2e6a6d4679ec8fda473c9a84b6c230
   [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+│   │   │   └── fb7b66085824a09e38fd4743391c7a1720082e
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
 │   │   ├── c6
 │   │   │   └── 3d1803dfcb13c80d91fefc9ff61ff03c0542e5
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7472,6 +7537,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── 95568c77192ae4e2146541a0dcfd51bff3e235
   [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+│   │   │   ├── ef93578d7e1c504001ae913973ef263c4da388
+  [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
 │   │   │   └── f90a98f5b975ec882853a866b7d7ab8028015b
   [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
 │   │   ├── ca
@@ -7489,6 +7556,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
 │   │   │   ├── 6a5a61dc6098b88f8b3411016541fda48234ca
   [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+│   │   │   ├── c227e67967dc66fa8b1968009bfa6d8b745c24
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── cd8547fb2475315db09878218a5f70fa1caf56
   [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
 │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
@@ -7521,6 +7590,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── d0
 │   │   │   ├── 19d79ba28e99dad2e32eea4232b3b5e252f497
   [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
+│   │   │   ├── 95e60d5e5d2fc152581973f99180bbc4166f06
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── e79e4d4719b368b97be5b7f8c625abd765bb2f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── d2
@@ -7554,6 +7625,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── d6
 │   │   │   ├── 4f859a94801516821c84744b1ec02c40a5f46e
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+│   │   │   ├── cd95ec5fc94d570ba65cef883ba4169a18fb2a
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── fac41076412294ea7736bf369299aa352b09f6
   [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
 │   │   ├── d7
@@ -7585,6 +7658,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── b4a298248b0804fb8d5ffc1bb626a7aad11c5f
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── dc
+│   │   │   ├── 028d8dfdda870b31c6b6d6df35209545c86a39
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   └── e1b30f5252caf0c95c8c2910ae7e27340d0421
   [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── dd
@@ -7626,6 +7701,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── 37b6f2b17eaff9dd4a811839a0422037d4fe56
   [Error: 'utf-8' codec can't decode byte 0xd5 in position 2: invalid continuation byte]
+│   │   │   ├── 42740781cc8a1914fd0411615bf15f438a3509
+  [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
 │   │   │   └── cccda6b780031dd28971eb77595436f86871df
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   ├── e6
@@ -7670,6 +7747,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   ├── ed
 │   │   │   ├── 7b12e1e8a55c4db65e4f3854f7b4a8e2f1b506
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── 8571524dbb3b177790807acfea49fa40dd6cf8
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── ad20021b9b5bfe6696abaa923265ff38357b78
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── fe3ea0130269e104a407a65b1c0d6239554a72
@@ -7682,10 +7761,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   │   │   └── f3a15198e4f5242d85e58aa6e9daf101ea017f
   [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
 │   │   ├── ef
+│   │   │   ├── 6687e142e7a35fc3f8401b1ca6d9f1d41b0310
+  [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   ├── f32eff4baf82892f159b49818e7d7585443f0e
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── f675a9769a31efa0f80db2a1824fd09f6b24cb
   [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+│   │   ├── f0
+│   │   │   └── 33370d4b7e885575036e471a2e4af154710f85
+  [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
 │   │   ├── f2
 │   │   │   ├── b81286cd1530494bde3e9bcf9595ee68cd1478
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7710,6 +7794,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
 │   │   │   ├── b2c965a1e2bbe958841e7a4a0d1c065cea08a0
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+│   │   │   ├── c1406d9a1711a990578847cf3a9709c2b66ca8
+  [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
 │   │   │   ├── dc697a8bc5e7c82cf6e30a8dac59fb775d7f8f
   [Error: 'utf-8' codec can't decode bytes in position 2-3: invalid continuation byte]
 │   │   │   └── f89f6a013733f85ad18b8cb7256a4fcbcb93b9
@@ -7737,6 +7823,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
 │   │   │   └── 6b486f30cbef8999a6cbdd534799f870a27612
   [Error: 'utf-8' codec can't decode byte 0xb4 in position 8: invalid start byte]
+│   │   ├── fe
+│   │   │   └── 4e7c01550595f2b568ee78832fd98ce206154c
+  [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
 │   │   ├── ff
 │   │   │   ├── 46d504cda8dc00da4be1d727ccc7b33986eedd
   [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -7753,11 +7842,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
 │   └── refs
 │       ├── heads
 │       │   └── main
-  d37d7746346ca1c07a0a9f03e145a9e21678df43
+  dc028d8dfdda870b31c6b6d6df35209545c86a39
 │       ├── remotes
 │       │   └── origin
 │       │       └── main
-  d37d7746346ca1c07a0a9f03e145a9e21678df43
+  dc028d8dfdda870b31c6b6d6df35209545c86a39
 │       └── tags
 ├── .github
 │   └── workflows
@@ -14294,6 +14383,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843127 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843976 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844300 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845523 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845696 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846880 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   │   │   └── refs
   │   │       ├── heads
   │   │       │   └── main
@@ -14335,6 +14427,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843127 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843976 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
     bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844300 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845523 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845696 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
+    f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846880 +0330	commit: Initial commit: Knockback Client Mod 1.8.9
   │   │       └── remotes
   │   │           └── origin
   │   │               └── main
@@ -14374,6 +14469,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     c88b65fdc9c5610528536a35ee79de15aeffefb0 11fd5f07042eed391ac27688f773efb2c63220c2 muvixo <godarshia20@gmail.com> 1790843144 +0330	update by push
     11fd5f07042eed391ac27688f773efb2c63220c2 bf0cdc5279c79f89ac874af1a5a8877923f32032 muvixo <godarshia20@gmail.com> 1790843987 +0330	update by push
     bf0cdc5279c79f89ac874af1a5a8877923f32032 d37d7746346ca1c07a0a9f03e145a9e21678df43 muvixo <godarshia20@gmail.com> 1790844314 +0330	update by push
+    d37d7746346ca1c07a0a9f03e145a9e21678df43 7fdec0c6de30aac3fa5d3dfa994b5844777f18ac muvixo <godarshia20@gmail.com> 1790845538 +0330	update by push
+    7fdec0c6de30aac3fa5d3dfa994b5844777f18ac f6c1406d9a1711a990578847cf3a9709c2b66ca8 muvixo <godarshia20@gmail.com> 1790845708 +0330	update by push
+    f6c1406d9a1711a990578847cf3a9709c2b66ca8 dc028d8dfdda870b31c6b6d6df35209545c86a39 muvixo <godarshia20@gmail.com> 1790846891 +0330	update by push
   │   ├── objects
   │   │   ├── 00
   │   │   │   └── c925a2e038bb02627e92ef7204f21705c75274
@@ -14588,8 +14686,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── c7332fe84ff409870a96f9546f407526a082ca
     [Error: 'utf-8' codec can't decode byte 0xb7 in position 8: invalid start byte]
   │   │   ├── 21
-  │   │   │   └── 419a4751472fb93ff3b691279c1e72b09da349
+  │   │   │   ├── 419a4751472fb93ff3b691279c1e72b09da349
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── b6ed485ebe826191e8a98a6a5eac93dafec643
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   ├── 22
   │   │   │   ├── 501dbfc8218db505990928e09b14e8e7a3d6a8
     [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
@@ -14740,6 +14840,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── b14361258f204c3d6e50dc700b2f35d095f7ee
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 3d
+  │   │   │   ├── 3b142f3068336de0a5663fff684ed5cdf3e829
+    [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
   │   │   │   ├── 566d94f93833d382e9aea79ec4278678e2a265
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── ba2b12eb67f97ed7fcee5acea62eec91b955db
@@ -14802,8 +14904,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 45
   │   │   │   ├── 922f1da06253003a6b89dee496698677f73fdc
     [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   │   └── d2a3e957ff81c5beae2926e88c24c462270385
+  │   │   │   ├── d2a3e957ff81c5beae2926e88c24c462270385
     [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
+  │   │   │   └── e9edaf846cd7eabc5d57ff778387da59ae46c1
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
   │   │   ├── 46
   │   │   │   └── 216d1eb927958af988a4ee33996834d35b26d6
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
@@ -14827,6 +14931,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── ef0efe30d502475d3950362d5c999522bd045a
     [Error: 'utf-8' codec can't decode byte 0xb2 in position 8: invalid start byte]
   │   │   ├── 4b
+  │   │   │   ├── 0dc7dbd1c0ce2df67cb4f786d400f615851bc3
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── 4907400e0f793d2cc25fd8a369954559bee21e
     [Error: 'utf-8' codec can't decode byte 0x8f in position 5: invalid start byte]
   │   │   │   ├── 825dc642cb6eb9a060e54bf8d69288fbee4904
@@ -14905,6 +15011,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   ├── 57
   │   │   │   ├── 5a4bdbd53514587ec08f2397c08168bc211844
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 76b365358b67959df71fdf08ee2f84128c9f9a
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── b4f3f67027e81b5976d1657a0bbb5d19c9749b
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -15019,6 +15127,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 761a287091540f3031413138713b297f6fdf56
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   ├── 6d
+  │   │   │   ├── 467b06a64612951cf8e7f5fdd0c5d7fdec0062
+    [Error: 'utf-8' codec can't decode byte 0xcd in position 2: invalid continuation byte]
   │   │   │   ├── 85b0a084027f1e308475f0af9cbd70f02e9580
     [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
   │   │   │   └── 949951d7f09a39cd9c075428c0301357d8d47c
@@ -15105,18 +15215,28 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 7c
   │   │   │   ├── 4fa3ede533a2f2857966b67e99a0411284879b
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── 6061e997fe88e98055a108e1059f16eca4d44f
+  │   │   │   ├── 6061e997fe88e98055a108e1059f16eca4d44f
     [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   ├── 853a9eba9900763a2d7f0a2eeac499990653ef
+    [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   └── ae69e2065b944c600e90182da507ef03c0aba0
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   ├── 7d
   │   │   │   ├── 1c40eb319b8aea614bbaabba5da54032906903
     [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
   │   │   │   ├── 4ee91c78f230f5778add99ad5f8d5791bcdd51
     [Error: 'utf-8' codec can't decode byte 0xcf in position 19: invalid continuation byte]
+  │   │   │   ├── 5b5581e73d0ae458bc308bf3d412bd945e4db0
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── ae42b0a4012051e2c8d0373e48085612ee0443
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── bb6091225070fc9132013c1894f65026147059
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   │   └── ceab50ce929cb9f2c98d4afec13ea537e9f950
     [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
   │   │   ├── 7e
+  │   │   │   ├── 132c896b46a9285db7c6fdfb40feea818ff261
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── 51984603a83a11e7d1a02676dbd7832546cc42
     [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
   │   │   │   ├── 6ba0dc149bbe0b066814e49eafaad7736cfa0e
@@ -15124,8 +15244,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 95b8283956d9be20fadf144f8fe59c46f2cf53
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 7f
-  │   │   │   └── 94736b09be1eef916b506ac875c084acf7c047
+  │   │   │   ├── 94736b09be1eef916b506ac875c084acf7c047
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
+  │   │   │   └── dec0c6de30aac3fa5d3dfa994b5844777f18ac
+    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   ├── 80
   │   │   │   ├── 8343cda2c4a69213216a041fed7d51438f931f
     [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
@@ -15210,6 +15332,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   │   └── cfda1f5af38b6fa2ae605b4738d3a039459fc8
     [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   ├── 8f
+  │   │   │   └── 89a5de16324a8271035dc75f32719e718c5c21
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 90
   │   │   │   ├── 69f7482e8d6555efa38fbe7400fe3f74be1f94
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -15253,6 +15378,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 96
   │   │   │   ├── 0dcaaf6ea8a84fc9797a7b76cf8f0f5762e20e
     [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
+  │   │   │   ├── 4af737a750b3e344a6808ce0f7b2340f9fbfd9
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
+  │   │   │   ├── a0afdaadd6f06738d642e3451cbe8ff6f2328b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── daca2af81da6e2999bbb207480f51f2bcf1309
     [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
   │   │   ├── 97
@@ -15300,7 +15429,11 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── ac73e50f02fbba40a68e2cd58b2262306c01ba
     [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
-  │   │   │   └── ce5aabbd0e08d082950bab3fff17f250135ee3
+  │   │   │   ├── ce5aabbd0e08d082950bab3fff17f250135ee3
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── f10e063bd8d42011977b889469f87c0ce9cced
+    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
+  │   │   │   └── f1232cb33001c47a5442b4203d3207bfe4b1d7
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── 9e
   │   │   │   ├── 16bc2a39d24a6475b538a2cec932423eaf4612
@@ -15310,6 +15443,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── 9f
   │   │   │   ├── 28a67611af011670d434467b3dab598ee14a3d
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   ├── 3b80ff69344fc5a3adf83817712f95dc6f0f12
+    [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
   │   │   │   ├── 6b3978a480f386f754f7ff5df37fda0e77a92e
     [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
   │   │   │   └── ce7c35da59a379d7e60ec05772492aadcbf62c
@@ -15320,6 +15455,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 3fa07dbb4670a0ce9995f196a7bea841e87dd2
     [Error: 'utf-8' codec can't decode byte 0xad in position 2: invalid start byte]
   │   │   ├── a1
+  │   │   │   ├── 262a2d6025085317a92f35850207addd685d0a
+    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   │   └── a99253e502137a30aac1d27d86174e09f17f44
     [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
   │   │   ├── a2
@@ -15367,6 +15504,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── e3fdb05d68e73cd6b387f1cff8239c02d5f313
     [Error: 'utf-8' codec can't decode byte 0xca in position 3: invalid continuation byte]
   │   │   ├── ac
+  │   │   │   ├── 832d014e4bf306746c62f97a2196ff7c564d50
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   ├── ab8bfb6d83a25ae622c455fa96bab3bd466ce9
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   │   └── f2a3b54aa05fbf24b6f692f5054f88d2bde8d2
@@ -15377,14 +15516,20 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── f9516b14360a18079f7c0cad30d0d931f36114
     [Error: 'utf-8' codec can't decode byte 0xf0 in position 18: invalid continuation byte]
   │   │   ├── af
-  │   │   │   └── 2baeca49c6c4e360c71fb3e05b1cfa06f95983
+  │   │   │   ├── 2baeca49c6c4e360c71fb3e05b1cfa06f95983
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── 4f890b22a1f153860a5b2711571a17596d49d0
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── b0
   │   │   │   ├── 43416bacf66acaf168c93e57fec3f5813147cf
     [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
   │   │   │   ├── 47ca6a1568d38e6b79a82f91fe839d636f9a25
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── bba24fa3fa063d1c6d412b34c36bedaab8560b
+  │   │   │   ├── 8254ffcf3fb2a1e097a48553208ca10b086072
+    [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
+  │   │   │   ├── bba24fa3fa063d1c6d412b34c36bedaab8560b
+    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
+  │   │   │   └── eb0ab3fee0cac0858f9b7a6544d30498ecd955
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── b1
   │   │   │   ├── 2bd5555ee82fc5ffbdc0e0c5f4a3269cb59b29
@@ -15397,6 +15542,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── 767594d80dca795b856665081702eb2f2193fd
     [Error: 'utf-8' codec can't decode byte 0xdb in position 6: invalid continuation byte]
   │   │   ├── b3
+  │   │   │   ├── 12b180bde4891924991085f2c1baa4215aa041
+    [Error: 'utf-8' codec can't decode byte 0xbd in position 16: invalid start byte]
   │   │   │   ├── 7840b5c69bc2f00584c9df64a9de9da017112d
     [Error: 'utf-8' codec can't decode byte 0xb0 in position 7: invalid start byte]
   │   │   │   ├── 7f98537855ae1bcb308d684455e190703adaba
@@ -15423,6 +15570,9 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   ├── b9
   │   │   │   └── ea15cf830c29625b2513bff3b0bd5b46479837
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   ├── ba
+  │   │   │   └── d8f155325eee1e5eb7ff591b415b463db44f08
+    [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
   │   │   ├── bb
   │   │   │   └── c5b24b4ce02eb91476fefa63058a5bfede1a61
     [Error: 'utf-8' codec can't decode byte 0xc5 in position 2: invalid continuation byte]
@@ -15444,8 +15594,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── f14aacae7250848755c16f6501d36d01a70a2f
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
   │   │   ├── bf
-  │   │   │   └── 0cdc5279c79f89ac874af1a5a8877923f32032
+  │   │   │   ├── 0cdc5279c79f89ac874af1a5a8877923f32032
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
+  │   │   │   └── fbdc91a8be1fc2ca3d819f139ae37c66c3b867
+    [Error: 'utf-8' codec can't decode byte 0xe5 in position 2: invalid continuation byte]
   │   │   ├── c0
   │   │   │   ├── 16d0828f5e055b06862e71d6b55ae9d82f5cac
     [Error: 'utf-8' codec can't decode byte 0x85 in position 2: invalid start byte]
@@ -15469,8 +15621,10 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
   │   │   │   └── e561d8dddb063c29e44428c49d7e2851701704
     [Error: 'utf-8' codec can't decode byte 0xb5 in position 2: invalid start byte]
   │   │   ├── c5
-  │   │   │   └── 9082d7ea2e6a6d4679ec8fda473c9a84b6c230
+  │   │   │   ├── 9082d7ea2e6a6d4679ec8fda473c9a84b6c230
     [Error: 'utf-8' codec can't decode byte 0xa5 in position 2: invalid start byte]
+  │   │   │   └── fb7b66085824a09e38fd4743391c7a1720082e
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
   │   │   ├── c6
   │   │   │   └── 3d1803dfcb13c80d91fefc9ff61ff03c0542e5
     [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
@@ -15491,6 +15645,8 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
   │   │   │   ├── 95568c77192ae4e2146541a0dcfd51bff3e235
     [Error: 'utf-8' codec can't decode byte 0xcd in position 19: invalid continuation byte]
+  │   │   │   ├── ef93578d7e1c504001ae913973ef263c4da388
+    [Error: 'utf-8' codec can't decode byte 0xf0 in position 17: invalid continuation byte]
   │   │   │   └── f90a98f5b975ec882853a866b7d7ab8028015b
     [Error: 'utf-8' codec can't decode byte 0xb1 in position 8: invalid start byte]
   │   │   ├── ca
@@ -15508,91 +15664,6 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
   │   │   │   ├── 6a5a61dc6098b88f8b3411016541fda48234ca
     [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   │   ├── cd8547fb2475315db09878218a5f70fa1caf56
-    [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
-  │   │   │   └── e51767e86aa7a94c5f7651fbee0d17dc1a3094
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── cd
-  │   │   │   ├── 65cb323d80baa3ddee97ad228f8e30cc780477
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── 950a2177758adc66f78ca1f470c1c0e1611db5
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── bbb6d3661eeef0a0f8b538114e7c27a95498d2
-    [Error: 'utf-8' codec can't decode byte 0xcd in position 20: invalid continuation byte]
-  │   │   │   └── c7e9d56d49b061013af88e5ebc6fb59e491193
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── ce
-  │   │   │   ├── 10b2d3c805f5dd61e8d0d5bf57b1e12db43351
-    [Error: 'utf-8' codec can't decode byte 0xbd in position 2: invalid start byte]
-  │   │   │   └── ab6866d733f3b03e99aa0cbb7d23e8420211f1
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── cf
-  │   │   │   ├── 000e5aab13174be7c3a7082badec337647c737
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── 006386c23b6a8f0e7e3ed8ff552384fc54b9e9
-    [Error: 'utf-8' codec can't decode byte 0xcc in position 19: invalid continuation byte]
-  │   │   │   ├── 18419df586b049d925dc652875d43e7295787d
-    [Error: 'utf-8' codec can't decode byte 0xd7 in position 22: invalid continuation byte]
-  │   │   │   ├── 47257c6e3f38de634046bd83745a4671875209
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── c6f6c3fa8725858619779b89057b40f36375a6
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 18: invalid continuation byte]
-  │   │   ├── d0
-  │   │   │   ├── 19d79ba28e99dad2e32eea4232b3b5e252f497
-    [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
-  │   │   │   └── e79e4d4719b368b97be5b7f8c625abd765bb2f
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── d2
-  │   │   │   └── 0ca3827bc1f3e6f6cb6fc36c20ff2dff517bc0
-    [Error: 'utf-8' codec can't decode byte 0xb6 in position 9: invalid start byte]
-  │   │   ├── d3
-  │   │   │   ├── 7d7746346ca1c07a0a9f03e145a9e21678df43
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── c43322c0ad9bc8c94fad0c01d28c98c4a72ca5
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── fcc5c9541ab6c09e059e9460dcb45b3589e3eb
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── d4
-  │   │   │   ├── 0d2d64eacf5198fa811e4862762d5f6af5941e
-    [Error: 'utf-8' codec can't decode byte 0x9d in position 2: invalid start byte]
-  │   │   │   ├── b0c905c31b576bfc770689588f84b00c013ccf
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── d8a02f7b618be2d5998977f30c52ef54dc0fb6
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   └── f5bbf99f45e7cc2cdded9978834375b9fd14b3
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 21: invalid continuation byte]
-  │   │   ├── d5
-  │   │   │   ├── 01136f2707006ed9e1d538244acd47ebcff1aa
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 788f7fd85245f9267b92304ed70d62a03fc8fa
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   │   ├── a21d5a626ad123993a9959d3723c1cfc9f65b9
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   └── ea091a6246c71e5dbbf144f4e73d830da7b6e0
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   ├── d6
-  │   │   │   ├── 4f859a94801516821c84744b1ec02c40a5f46e
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   │   └── fac41076412294ea7736bf369299aa352b09f6
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── d7
-  │   │   │   ├── 651a59cf9e7e89b461536218df0bef5e5decf3
-    [Error: 'utf-8' codec can't decode byte 0x95 in position 2: invalid start byte]
-  │   │   │   ├── 75f0b5fa8cbb323167ebacff15795adc5b56d4
-    [Error: 'utf-8' codec can't decode byte 0xed in position 2: invalid continuation byte]
-  │   │   │   └── c8b8408b64154e7f94dc5db8708d1e6156b2b8
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   ├── d9
-  │   │   │   ├── b9b6160d63bf359ce75f0b80a6a3724aee92e8
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── c552b09f0ee462ed9503d837525e758e95ae50
-    [Error: 'utf-8' codec can't decode byte 0xc9 in position 19: invalid continuation byte]
-  │   │   │   └── e419f5781a77f79865cdfc93519c9184793de7
-    [Error: 'utf-8' codec can't decode byte 0x8d in position 2: invalid start byte]
-  │   │   ├── da
-  │   │   │   ├── 53e4081f5a541b7d985cd2ad1494ac7a57aa9a
-    [Error: 'utf-8' codec can't decode byte 0x85 in position 14: invalid start byte]
-  │   │   │   ├── 975cf81b4ea65839254d75d879efee66acfbb9
 ├── gradle
 │   └── wrapper
 │       └── gradle-wrapper.properties
@@ -16177,6 +16248,15 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           ClientRegistry.registerKeyBinding(openKey);
           installLoading();
           DiscordRPC.start();
+  
+          try {
+              Minecraft mc = Minecraft.getMinecraft();
+              mc.fontRendererObj = new com.oryvex.kbclient.font.ModernFontRenderer(mc.gameSettings, new net.minecraft.util.ResourceLocation("textures/font/ascii.png"), mc.renderEngine, false);
+              logger.info("[KBClient] ModernFontRenderer attached to client.");
+          } catch (Throwable t) {
+              logger.error("[KBClient] Failed to attach ModernFontRenderer: " + t);
+          }
+  
       }
   
       private void installLoading() {
@@ -16690,6 +16770,233 @@ C:\Users\nasle javan\Downloads\New folder\Client\KnockbackClientMod/
           File csv = new File(dir, "knockback-" + ts + "-samples.csv");
           Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
           return yml;
+      }
+  }
+        │               ├── font
+        │               │   └── ModernFontRenderer.java
+  package com.oryvex.kbclient.font;
+  
+  import java.awt.Color;
+  import java.awt.Font;
+  import java.awt.FontMetrics;
+  import java.awt.Graphics2D;
+  import java.awt.RenderingHints;
+  import java.awt.image.BufferedImage;
+  import java.io.InputStream;
+  import java.util.LinkedHashMap;
+  import java.util.Map;
+  import net.minecraft.client.gui.FontRenderer;
+  import net.minecraft.client.renderer.GlStateManager;
+  import net.minecraft.client.renderer.Tessellator;
+  import net.minecraft.client.renderer.WorldRenderer;
+  import net.minecraft.client.renderer.texture.TextureManager;
+  import net.minecraft.client.renderer.texture.TextureUtil;
+  import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+  import net.minecraft.client.settings.GameSettings;
+  import net.minecraft.util.ResourceLocation;
+  
+  public class ModernFontRenderer extends FontRenderer {
+      private Font inter, vazir;
+      private final int FONT_SIZE = 48; // Rendered at high-res internally, scaled dynamically
+      
+      // Custom color map to bypass Minecraft's private colorCode field
+      private static final int[] CUSTOM_COLOR_CODES = new int[32];
+      static {
+          for (int i = 0; i < 32; ++i) {
+              int j = (i >> 3 & 1) * 85;
+              int k = (i >> 2 & 1) * 170 + j;
+              int l = (i >> 1 & 1) * 170 + j;
+              int i1 = (i >> 0 & 1) * 170 + j;
+              if (i == 6) k += 85;
+              if (i >= 16) { k /= 4; l /= 4; i1 /= 4; }
+              CUSTOM_COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | i1 & 255;
+          }
+      }
+  
+      private static class StringTexture {
+          int id, width, height;
+          float scale;
+          StringTexture(int id, int width, int height, float scale) {
+              this.id = id; this.width = width; this.height = height; this.scale = scale;
+          }
+          void delete() {
+              GlStateManager.deleteTexture(id);
+          }
+      }
+      
+      private final LinkedHashMap<String, StringTexture> cache = new LinkedHashMap<String, StringTexture>(1000, 0.75f, true) {
+          @Override
+          protected boolean removeEldestEntry(Map.Entry<String, StringTexture> eldest) {
+              if (size() > 1000) {
+                  eldest.getValue().delete();
+                  return true;
+              }
+              return false;
+          }
+      };
+  
+      public ModernFontRenderer(GameSettings gameSettingsIn, ResourceLocation location, TextureManager textureManagerIn, boolean unicode) {
+          super(gameSettingsIn, location, textureManagerIn, unicode);
+          inter = loadFont("/fonts/Inter-Regular.ttf", FONT_SIZE);
+          vazir = loadFont("/fonts/Vazirmatn-Regular.ttf", FONT_SIZE);
+          if (inter == null) inter = new Font("SansSerif", Font.PLAIN, FONT_SIZE);
+          if (vazir == null) vazir = new Font("SansSerif", Font.PLAIN, FONT_SIZE);
+          this.FONT_HEIGHT = 9; // Forces vanilla layout compatibility 
+      }
+  
+      private Font loadFont(String path, float size) {
+          try {
+              InputStream is = ModernFontRenderer.class.getResourceAsStream(path);
+              if (is != null) {
+                  Font f = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(size);
+                  is.close();
+                  return f;
+              }
+          } catch (Exception e) {}
+          return null;
+      }
+  
+      private boolean hasPersian(String text) {
+          for (int i = 0; i < text.length(); i++) {
+              char c = text.charAt(i);
+              if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0x0750 && c <= 0x077F) || 
+                  (c >= 0x08A0 && c <= 0x08FF) || (c >= 0xFB50 && c <= 0xFDFF) || 
+                  (c >= 0xFE70 && c <= 0xFEFF)) return true;
+          }
+          return false;
+      }
+  
+      private StringTexture createTexture(String text) {
+          Font font = hasPersian(text) ? vazir : inter;
+          
+          BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+          Graphics2D g = img.createGraphics();
+          g.setFont(font);
+          FontMetrics fm = g.getFontMetrics();
+          int w = fm.stringWidth(text);
+          int h = fm.getHeight();
+          g.dispose();
+          
+          if (w <= 0) w = 1;
+          if (h <= 0) h = 1;
+          
+          img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+          g = img.createGraphics();
+          g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+          g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+          g.setFont(font);
+          g.setColor(Color.WHITE);
+          g.drawString(text, 0, fm.getAscent());
+          g.dispose();
+          
+          int id = TextureUtil.glGenTextures();
+          TextureUtil.uploadTextureImageAllocate(id, img, true, false);
+          
+          // Dynamically calculate the precise scale needed to perfectly match Minecraft's 9px font height
+          float scale = (float) this.FONT_HEIGHT / h;
+          return new StringTexture(id, w, h, scale);
+      }
+  
+      @Override
+      public int drawString(String text, float x, float y, int color, boolean dropShadow) {
+          if (text == null || text.isEmpty()) return (int) x;
+          if (dropShadow) renderText(text, x + 0.6f, y + 0.6f, color, true);
+          return renderText(text, x, y, color, false);
+      }
+  
+      private int renderText(String text, float x, float y, int color, boolean shadow) {
+          GlStateManager.enableBlend();
+          GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+          GlStateManager.enableTexture2D();
+          
+          float currentX = x;
+          String[] parts = text.split("(?=§)");
+          
+          int currentColor = color;
+          if ((currentColor & 0xFC000000) == 0) currentColor |= 0xFF000000;
+          if (shadow) currentColor = (currentColor & 16579836) >> 2 | currentColor & -16777216;
+  
+          for (String part : parts) {
+              if (part.isEmpty()) continue;
+              if (part.startsWith("§")) {
+                  if (part.length() > 1) {
+                      char code = part.charAt(1);
+                      int colorIndex = "0123456789abcdef".indexOf(Character.toLowerCase(code));
+                      if (colorIndex >= 0) {
+                          currentColor = CUSTOM_COLOR_CODES[colorIndex];
+                          if (shadow) {
+                              currentColor = (currentColor & 16579836) >> 2 | currentColor & -16777216;
+                          } else {
+                              currentColor |= 0xFF000000;
+                          }
+                      } else if (code == 'r' || code == 'R') {
+                          currentColor = color;
+                          if (shadow) currentColor = (currentColor & 16579836) >> 2 | currentColor & -16777216;
+                      }
+                  }
+                  part = part.substring(2);
+              }
+              if (part.isEmpty()) continue;
+              
+              StringTexture tex = cache.get(part);
+              if (tex == null) {
+                  tex = createTexture(part);
+                  cache.put(part, tex);
+              }
+              
+              GlStateManager.bindTexture(tex.id);
+              float r = (currentColor >> 16 & 255) / 255.0F;
+              float g = (currentColor >> 8 & 255) / 255.0F;
+              float b = (currentColor & 255) / 255.0F;
+              float a = (currentColor >> 24 & 255) / 255.0F;
+              GlStateManager.color(r, g, b, a);
+              
+              float scale = tex.scale;
+              float drawX = currentX / scale;
+              float drawY = y / scale;
+              
+              GlStateManager.pushMatrix();
+              GlStateManager.scale(scale, scale, 1.0f);
+              
+              Tessellator tessellator = Tessellator.getInstance();
+              WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+              worldrenderer.begin(7, DefaultVertexFormats.POSITION_TEX);
+              worldrenderer.pos(drawX, drawY + tex.height, 0.0D).tex(0.0D, 1.0D).endVertex();
+              worldrenderer.pos(drawX + tex.width, drawY + tex.height, 0.0D).tex(1.0D, 1.0D).endVertex();
+              worldrenderer.pos(drawX + tex.width, drawY, 0.0D).tex(1.0D, 0.0D).endVertex();
+              worldrenderer.pos(drawX, drawY, 0.0D).tex(0.0D, 0.0D).endVertex();
+              tessellator.draw();
+              
+              GlStateManager.popMatrix();
+              currentX += tex.width * scale;
+          }
+          
+          GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+          return (int) currentX;
+      }
+  
+      @Override
+      public int getStringWidth(String text) {
+          if (text == null || text.isEmpty()) return 0;
+          float width = 0;
+          String[] parts = text.split("(?=§)");
+          for (String part : parts) {
+              if (part.startsWith("§") && part.length() > 1) part = part.substring(2);
+              if (part.isEmpty()) continue;
+              
+              StringTexture tex = cache.get(part);
+              if (tex == null) {
+                  tex = createTexture(part);
+                  cache.put(part, tex);
+              }
+              width += tex.width * tex.scale;
+          }
+          return (int) Math.ceil(width);
+      }
+  
+      @Override
+      public int getCharWidth(char character) {
+          return getStringWidth(String.valueOf(character));
       }
   }
         │               ├── kb

@@ -1,4 +1,3 @@
-
 package com.oryvex.kbclient.ui;
 
 import com.oryvex.kbclient.KBClientMod;
@@ -20,15 +19,17 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        // FULLY RESPONSIVE CALCULATION
-        sidebarW = Math.max(220, Math.min(300, this.width / 4)); // Adapts to screen width perfectly
-        int padding = 24;
-        int bw = sidebarW - (padding * 2);
-        int bh = 28, gap = 8;
 
-        // Vertically center the buttons exactly
-        int totalHeight = (6 * bh) + (5 * gap);
-        int top = (this.height - totalHeight) / 2 + 10;
+        // Responsive sidebar: 26% of width, clamped.
+        sidebarW = Math.max(180, Math.min(300, (int) (this.width * 0.26f)));
+
+        int padding = Math.max(12, sidebarW / 10);
+        int bw = sidebarW - padding * 2;
+        int bh = Math.max(20, Math.min(28, this.height / 22));
+        int gap = Math.max(4, bh / 5);
+
+        int totalHeight = 6 * bh + 5 * gap;
+        int top = Math.max(72, (this.height - totalHeight) / 2 + 10);
 
         this.buttonList.add(new UiButton(1, padding, top, bw, bh, "Singleplayer").delay(100));
         this.buttonList.add(new UiButton(2, padding, top + (bh + gap), bw, bh, "Multiplayer").delay(150));
@@ -48,8 +49,7 @@ public class GuiModernMenu extends FadeScreen {
             case 6: closeTo(new GuiAltManager(this)); break;
             case 5:
                 closeThen(new Runnable() {
-                    @Override
-                    public void run() { mc.shutdown(); }
+                    @Override public void run() { mc.shutdown(); }
                 });
                 break;
             default: break;
@@ -63,56 +63,54 @@ public class GuiModernMenu extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        // Background
         Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
-        if (Settings.particles) {
-            // Draw.plexusBackground(this.width, this.height, 0.65f); // Beautiful dense plexus
-        }
 
-        // Sidebar Background
-        Draw.shadow(0, 0, sidebarW, this.height, 0f, 0xFF000000, 30f);
+        // Sidebar panel
         Draw.rect(0, 0, sidebarW, this.height, Theme.PANEL);
         Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
 
-        // Perfect Typography Logo
+        // -------- Title -------------------------------------------------
         String title = "ORYVEX";
-        float scale = 2.2f;
-        float titleW = Draw.font().getStringWidth(title) * scale;
-        Draw.text(title, (sidebarW - titleW) / 2f, 40, Theme.TEXT, scale, true);
+        float titleScale = Math.max(1.4f, Math.min(2.2f, sidebarW / 130f));
+        float titleW = Draw.font().getStringWidth(title) * titleScale;
+        float titleY = Math.max(24f, this.height * 0.09f);
+        Draw.text(title, (sidebarW - titleW) / 2f, titleY, Theme.TEXT, titleScale, true);
 
         String sub = "KB Client v" + KBClientMod.VERSION;
-        float subW = Draw.font().getStringWidth(sub) * 0.9f;
-        Draw.text(sub, (sidebarW - subW) / 2f, 65, Theme.ACCENT, 0.9f, false);
+        float subScale = 0.85f;
+        float subW = Draw.font().getStringWidth(sub) * subScale;
+        Draw.text(sub, (sidebarW - subW) / 2f, titleY + 26, Theme.ACCENT, subScale, false);
 
-        Draw.rect(30, 85, sidebarW - 60, 1, Theme.BORDER);
+        Draw.rect(20, titleY + 44, sidebarW - 40, 1, Theme.BORDER);
 
-        // Premium Floating Widget
+        // -------- Profile widget (top-right) ----------------------------
         KBProfile p = tracker.getProfile();
         if (p.hasData) {
-            String s = "Profile: " + p.summary();
-            int w = Draw.width(s, 0.85f) + 36;
-            int px = this.width - w - 20;
-            int py = 20;
-            Draw.shadow(px, py, w, 24, 6f, 0xFF000000, 12f);
-            Draw.roundRect(px, py, w, 24, 6f, Theme.PANEL2);
-            Draw.roundRect(px, py, w, 24, 6f, Theme.BORDER);
-            Draw.roundRect(px + 10, py + 9, 6, 6, 3f, Theme.GOOD);
-            Draw.shadow(px + 10, py + 9, 6, 6, 3f, Theme.GOOD, 5f);
-            Draw.text(s, px + 24, py + 8.5f, Theme.TEXT, 0.85f, false);
+            String s = "Profile:  " + p.summary();
+            int w = Draw.width(s, 0.85f) + 34;
+            int px = this.width - w - 14;
+            int py = 14;
+            if (px > sidebarW + 8) {
+                Draw.roundRect(px, py, w, 22, 6f, Theme.PANEL2);
+                Draw.roundOutline(px, py, w, 22, 6f, 1f, Theme.BORDER);
+                Draw.roundRect(px + 9, py + 8, 6, 6, 3f, Theme.GOOD);
+                Draw.text(s, px + 22, py + 7, Theme.TEXT, 0.85f, false);
+            }
         }
 
-        // Improved User Card
-        int userY = this.height - 45;
-        Draw.rect(30, userY - 15, sidebarW - 60, 1, Theme.BORDER);
-        // Avatar Circle Placeholder
-        Draw.roundRect(24, userY - 3, 22, 22, 11f, Theme.PANEL3);
-        Draw.text("L", 32, userY + 4, Theme.SOFT, 1.0f, false);
-        Draw.text("Logged in as", 56, userY, Theme.MUTED, 0.75f, false);
+        // -------- User card (bottom) -----------------------------------
+        int userY = this.height - Math.max(34, 40);
+        Draw.rect(20, userY - 12, sidebarW - 40, 1, Theme.BORDER);
+
+        Draw.roundRect(20, userY - 2, 20, 20, 10f, Theme.PANEL3);
+        Draw.centered("L", 30, userY + 4, Theme.SOFT, 1.0f, false);
+
+        Draw.text("Logged in as", 46, userY, Theme.MUTED, 0.75f, false);
         String name = mc.getSession().getUsername();
-        // Truncate name if too long
-        if (Draw.font().getStringWidth(name) > (sidebarW - 70)) {
-            name = name.substring(0, 10) + "...";
-        }
-        Draw.text(name, 56, userY + 9, Theme.TEXT, 0.95f, false);
+        int nameMax = sidebarW - 56;
+        String nameF = Draw.fit(name, nameMax, 0.95f, false);
+        Draw.text(nameF, 46, userY + 10, Theme.TEXT, 0.95f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();

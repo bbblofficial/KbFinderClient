@@ -218,12 +218,13 @@ public final class Draw {
     }
 
     public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
-        if (border != 0) {
-            glow(x, y, w, h, r, 0xFF000000, 8f);
+        if (((fill >>> 24) & 255) > 4) {
+            // Soft drop shadow (cheap, safe, works on all drivers).
+            roundRect(x + 1f, y + 2f, w, h, r, 0x44000000);
             roundRect(x, y, w, h, r, fill);
+        }
+        if (border != 0 && ((border >>> 24) & 255) > 4) {
             roundOutline(x, y, w, h, r, 1f, border);
-        } else {
-            roundRect(x, y, w, h, r, fill);
         }
     }
 
