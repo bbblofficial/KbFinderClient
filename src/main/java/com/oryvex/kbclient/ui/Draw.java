@@ -7,11 +7,23 @@ import net.minecraft.client.renderer.GlStateManager;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Minimal immediate-mode drawing toolkit. */
 public final class Draw {
     private Draw() {}
 
     public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
     
+    public static float ease(float t) {
+        t = clamp(t);
+        return t * t * (3f - 2f * t);
+    }
+
+    public static float easeOut(float t) {
+        t = clamp(t);
+        float u = 1f - t;
+        return 1f - u * u * u;
+    }
+
     public static int lerp(int a, int b, float t) {
         t = clamp(t);
         int aa = (a >>> 24) & 255, ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
@@ -21,6 +33,11 @@ public final class Draw {
 
     public static int alpha(int color, float a) { return ((int)(clamp(a) * 255f) << 24) | (color & 0xFFFFFF); }
     public static int fade(int color, float a) { return ((int)(((color >>> 24) & 255) * clamp(a)) << 24) | (color & 0xFFFFFF); }
+
+    public static int confColor(double c) {
+        float f = (float) Math.max(0, Math.min(1, c));
+        return f < 0.5f ? lerp(Theme.BAD, Theme.WARN, f * 2f) : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
+    }
 
     public static void blend() {
         GlStateManager.enableBlend();

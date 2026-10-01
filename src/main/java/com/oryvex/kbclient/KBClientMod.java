@@ -50,10 +50,7 @@ public class KBClientMod {
     private static final String HOOK = "kb_client_handler";
     private static KBClientMod instance;
     public static Logger logger;
-    
-    /** فونت مدرن فقط برای UI خودمون — mc.fontRendererObj دست‌نخورده می‌مونه تا چت سالم بمونه. */
     public static com.oryvex.kbclient.font.ModernFontRenderer modernFont;
-    
     private final KBTracker tracker = new KBTracker();
     private KeyBinding openKey;
     private Channel hookedChannel;
@@ -91,7 +88,7 @@ public class KBClientMod {
                 new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
                 mcF.renderEngine, false
             );
-            logger.info("[KBClient] ModernFontRenderer loaded (used only by KB Client UI)");
+            logger.info("[KBClient] ModernFontRenderer loaded");
         } catch (Throwable t) {
             logger.error("[KBClient] ModernFontRenderer failed: " + t);
         }
@@ -259,12 +256,29 @@ public class KBClientMod {
                 final int id = v.getEntityID();
                 final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
                 final Minecraft mc = Minecraft.getMinecraft();
+                
+                // Capture OLD motion BEFORE the packet is applied
+                final double oldX, oldY, oldZ;
+                final boolean oldGround, oldSprint;
+                if (mc.thePlayer != null && mc.thePlayer.getEntityId() == id) {
+                    oldX = mc.thePlayer.motionX;
+                    oldY = mc.thePlayer.motionY;
+                    oldZ = mc.thePlayer.motionZ;
+                    oldGround = mc.thePlayer.onGround;
+                    oldSprint = mc.thePlayer.isSprinting();
+                } else {
+                    oldX = oldY = oldZ = 0;
+                    oldGround = false;
+                    oldSprint = false;
+                }
+
                 mc.addScheduledTask(new Runnable() {
                     @Override
                     public void run() {
                         EntityPlayerSP p = mc.thePlayer;
                         if (p != null && p.getEntityId() == id) {
-                            KBClientMod.getInstance().getTracker().capture(x, y, z);
+                            // Pass all 8 arguments for high-precision extraction
+                            KBClientMod.getInstance().getTracker().capture(x, y, z, oldX, oldY, oldZ, oldGround, oldSprint);
                         }
                     }
                 });
