@@ -14,9 +14,9 @@ public final class KBProfile {
 
     /** flattened YAML paths, in file order */
     public static final String[] KEYS = {
-        "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZONTAL", "EXTRA-VERTICAL",
-        "FRICTION", "Y-LIMIT", "DAMAGE-TICKS.OVERRIDE", "DAMAGE-TICKS.VALUE",
-        "DYNAMIC-LIMIT", "LIMIT-HORIZONTAL", "H-LIMIT"
+            "ONE-POINT-SEVEN", "HORIZONTAL", "VERTICAL", "EXTRA-HORIZONTAL", "EXTRA-VERTICAL",
+            "FRICTION", "Y-LIMIT", "DAMAGE-TICKS.OVERRIDE", "DAMAGE-TICKS.VALUE",
+            "DYNAMIC-LIMIT", "LIMIT-HORIZONTAL", "H-LIMIT"
     };
 
     public boolean onePointSeven = false;
@@ -32,10 +32,8 @@ public final class KBProfile {
     public boolean limitHorizontal = false;
     public double hLimit = 0.45;
 
-    /** 0..1 confidence and source per key */
     public final double[] conf = new double[COUNT];
     public final int[] src = new int[COUNT];
-
     public int total, used, walk, sprint, ambiguous;
     public boolean hasData, frictionMeasured;
     public double hSpread, vSpread;
@@ -50,7 +48,6 @@ public final class KBProfile {
         return String.format(Locale.ROOT, "%." + decimals + "f", v);
     }
 
-    /** shortest exact decimal text: 0.3618, 2.0, 0.439 */
     public static String num(double v) {
         if (Double.isNaN(v) || Double.isInfinite(v)) return "0.0";
         String s = new BigDecimal(Double.toString(v)).toPlainString();
@@ -96,7 +93,6 @@ public final class KBProfile {
         }
     }
 
-    /** 0 = match, 1 = close, 2 = off, -1 = reference has no value for this key */
     public int compare(KBProfile ref, int i) {
         if (ref == null || ref.src[i] == SRC_NONE) return -1;
         double d = Math.abs(numeric(i) - ref.numeric(i));
@@ -105,7 +101,6 @@ public final class KBProfile {
         return d <= 0.02 ? 1 : 2;
     }
 
-    // ---- exact text setters (used by the YAML parser) -------------------------
     public static boolean parseBool(String v) {
         String s = v.trim().toLowerCase(Locale.ROOT);
         if (s.equals("true") || s.equals("yes") || s.equals("on")) return true;
@@ -123,9 +118,7 @@ public final class KBProfile {
 
     public static int parseI(String v) {
         String s = v.trim();
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException e) {
+        try { return Integer.parseInt(s); } catch (NumberFormatException e) {
             double d = parseD(s);
             if (d != Math.rint(d)) throw new NumberFormatException(v);
             return (int) d;
@@ -157,29 +150,18 @@ public final class KBProfile {
 
     public String toYaml() {
         StringBuilder sb = new StringBuilder();
-        sb.append("# Should we use 1.7 Knockback?\n");
-        sb.append("ONE-POINT-SEVEN: ").append(onePointSeven).append("\n\n");
-        sb.append("# Horizontal Multiplier\n");
-        sb.append("HORIZONTAL: ").append(num(horizontal)).append("\n\n");
-        sb.append("# Vertical Value\n");
-        sb.append("VERTICAL: ").append(num(vertical)).append("\n\n");
-        sb.append("# Add a certain value to horizontal/vertical before actual calculations\n");
+        sb.append("ONE-POINT-SEVEN: ").append(onePointSeven).append("\n");
+        sb.append("HORIZONTAL: ").append(num(horizontal)).append("\n");
+        sb.append("VERTICAL: ").append(num(vertical)).append("\n");
         sb.append("EXTRA-HORIZONTAL: ").append(num(extraHorizontal)).append("\n");
-        sb.append("EXTRA-VERTICAL: ").append(num(extraVertical)).append("\n\n");
-        sb.append("# Friction Value (Knockback is divided by this)\n");
-        sb.append("FRICTION: ").append(num(friction)).append("\n\n");
-        sb.append("# Y-Axis Limit for a player's velocity\n");
-        sb.append("Y-LIMIT: ").append(num(yLimit)).append("\n\n");
+        sb.append("EXTRA-VERTICAL: ").append(num(extraVertical)).append("\n");
+        sb.append("FRICTION: ").append(num(friction)).append("\n");
+        sb.append("Y-LIMIT: ").append(num(yLimit)).append("\n");
         sb.append("DAMAGE-TICKS:\n");
-        sb.append("  # Override vanilla damage ticks with carbon's\n");
         sb.append("  OVERRIDE: ").append(damageTicksOverride).append("\n");
-        sb.append("  # The delay between a player's ability to damage an entity\n");
-        sb.append("  VALUE: ").append(damageTicksValue).append("\n\n");
-        sb.append("# Should the vertical velocity be set to 0 after reaching limit?\n");
-        sb.append("DYNAMIC-LIMIT: ").append(dynamicLimit).append("\n\n");
-        sb.append("# Should we limit horizontal movement?\n");
-        sb.append("LIMIT-HORIZONTAL: ").append(limitHorizontal).append("\n\n");
-        sb.append("# X/Z-Axis Limit for a player's velocity\n");
+        sb.append("  VALUE: ").append(damageTicksValue).append("\n");
+        sb.append("DYNAMIC-LIMIT: ").append(dynamicLimit).append("\n");
+        sb.append("LIMIT-HORIZONTAL: ").append(limitHorizontal).append("\n");
         sb.append("H-LIMIT: ").append(num(hLimit));
         return sb.toString();
     }

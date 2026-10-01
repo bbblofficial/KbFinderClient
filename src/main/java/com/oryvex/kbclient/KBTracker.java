@@ -26,7 +26,6 @@ import net.minecraft.util.ChatComponentText;
 /** Collects knockback samples (main thread only), keeps a live profile and an imported reference. */
 public class KBTracker {
     public static final int MAX_SAMPLES = 120;
-
     private final List<KBSample> samples = new ArrayList<KBSample>();
     private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
     private KBProfile profile = new KBProfile();
@@ -139,16 +138,19 @@ public class KBTracker {
         int state = KBSample.WALK;
         int kb = 0;
         String name = "?";
+
         if (has) {
             double dx = me.posX - attacker.posX, dz = me.posZ - attacker.posZ;
             double dh = Math.sqrt(dx * dx + dz * dz);
             if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
             else if (h > 0.001) { ux = vx / h; uz = vz / h; }
+
             Integer bits = sprintBits.get(attacker.getEntityId());
             if (bits == null) state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
             else if (bits == 0x7) state = KBSample.SPRINT;
             else if (bits == 0) state = KBSample.WALK;
             else state = KBSample.AMBIGUOUS;
+
             try { kb = EnchantmentHelper.getKnockbackModifier(attacker); } catch (Throwable ignored) { }
             name = attacker.getName();
             dist = me.getDistanceToEntity(attacker);
@@ -157,7 +159,6 @@ public class KBTracker {
         KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
                 me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
                 has, state, kb, ux, uz, dist, name);
-
         samples.add(s);
         while (samples.size() > MAX_SAMPLES) samples.remove(0);
         last = s;

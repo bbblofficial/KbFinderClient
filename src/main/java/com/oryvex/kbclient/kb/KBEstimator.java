@@ -113,16 +113,20 @@ public final class KBEstimator {
             if (k.h < 0.0005 && Math.abs(k.vy) < 0.0005) continue;
             s.add(k);
         }
+
         int n = s.size();
         p.used = n;
         p.ambiguous = amb;
         if (ench > 0) p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
         if (amb > 0) p.notes.add("Ignored " + amb + " hit(s) where the attacker's sprint state was changing (W-tap).");
+
         detectDamageTicks(all, p);
+
         if (n == 0) {
             p.notes.add("No usable hits yet (need a nearby attacking player).");
             return p;
         }
+
         p.hasData = true;
         for (KBSample k : s) { if (k.attackerSprint) p.sprint++; else p.walk++; }
 
@@ -146,6 +150,7 @@ public final class KBEstimator {
             fit.add(s.get(i));
         }
         if (fit.size() < 4) fit = s;
+
         int moving = 0;
         for (KBSample k : fit) if (k.pH > 0.08) moving++;
 
@@ -233,6 +238,7 @@ public final class KBEstimator {
             p.mark(KBProfile.I_YL, 0.25);
             p.notes.add("Y-LIMIT is only the highest vertical knockback seen - get hit in mid-air at different heights to confirm the cap.");
         }
+
         p.hLimit = r4(hMax);
         p.limitHorizontal = hCapped;
         p.mark(KBProfile.I_LIMH, hCapped ? conf(hPlN / 1.5) : (moving >= 3 ? 0.55 : 0.15));
@@ -260,6 +266,7 @@ public final class KBEstimator {
             p.onePointSeven = false;
             p.mark(KBProfile.I_OPS, 0.08);
         }
+
         return p;
     }
 
@@ -275,6 +282,7 @@ public final class KBEstimator {
             }
             prev = k;
         }
+
         p.damageTicksValue = 20;
         p.damageTicksOverride = false;
         if (iv.isEmpty()) {
@@ -283,6 +291,7 @@ public final class KBEstimator {
             p.notes.add("DAMAGE-TICKS unknown - have someone hit you rapidly.");
             return;
         }
+
         Collections.sort(iv);
         int m = iv.size() >= 4 ? iv.get(1) : iv.get(0);
         if (m >= 10) {
