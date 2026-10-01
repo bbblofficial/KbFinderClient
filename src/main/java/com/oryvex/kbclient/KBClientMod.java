@@ -57,9 +57,9 @@ public class KBClientMod {
     private Channel hookedChannel;
     private boolean pendingOpen;
     private Object lastWorld;
-    private boolean loadingInstalled;
     
     public static net.minecraft.client.multiplayer.ServerData lastServerData;
+    public static KBLoading customLoadingScreen;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
@@ -87,12 +87,28 @@ public class KBClientMod {
     }
 
     private void installLoading() {
-        if (loadingInstalled) return;
-        Minecraft mc = Minecraft.getMinecraft();
+        final Minecraft mc = Minecraft.getMinecraft();
+        customLoadingScreen = new KBLoading(mc);
         try {
-            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
-            loadingInstalled = true;
+            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, customLoadingScreen, "loadingScreen", "field_71461_s");
             logger.info("[KBClient] custom loading screen installed");
+            
+            // Persistent thread to intercept singleplayer load which aggressively resets loadingScreen to dirt
+            Thread loadingThemer = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        try { Thread.sleep(2); } catch (Exception ignored) {}
+                        if (Settings.customLoading && mc.loadingScreen != null && mc.loadingScreen != customLoadingScreen) {
+                            try {
+                                ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, customLoadingScreen, "loadingScreen", "field_71461_s");
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            }, "KBClient-LoadingThemer");
+            loadingThemer.setDaemon(true);
+            loadingThemer.start();
         } catch (Throwable t) {
             logger.error("[KBClient] could not install loading screen: " + t);
         }
@@ -116,17 +132,32 @@ public class KBClientMod {
     }
 
     @SubscribeEvent
-    public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+    public void onDrawScreenPre(GuiScreenEvent.DrawScreenEvent.Pre e) {
+        GuiScreen g = e.gui;
+        if (g == null) return;
+        
+        // Take complete control of these screens before vanilla draws the dirt
+        if (Settings.customLoading) {
+            if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
+                e.setCanceled(true); 
+                LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
+                Fade.screen.draw(g.width, g.height);
+            } else if (g instanceof GuiDownloadTerrain) {
+                e.setCanceled(true); 
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
+                Fade.screen.draw(g.width, g.height);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onDrawScreenPost(GuiScreenEvent.DrawScreenEvent.Post e) {
         GuiScreen g = e.gui;
         if (g == null || g instanceof FadeScreen) return;
         
-        // Native override: Draw your design seamlessly over the ugly dirt background
-        if (Settings.customLoading) {
-            if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
-                LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
-            } else if (g instanceof GuiDownloadTerrain) {
-                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
-            }
+        // Skip fade overlay if we already handled it in Pre
+        if (Settings.customLoading && (g instanceof net.minecraft.client.multiplayer.GuiConnecting || g instanceof GuiDownloadTerrain)) {
+            return; 
         }
         Fade.screen.draw(g.width, g.height);
     }
@@ -144,7 +175,7 @@ public class KBClientMod {
             }
         } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected) {
             for (GuiButton b : e.buttonList) {
-                if (b.id == 0) { // Back button
+                if (b.id == 0) {
                     e.buttonList.add(new UiButton(999, b.xPosition, b.yPosition + b.height + 6, b.width, b.height, "Reconnect").style(UiButton.PRIMARY));
                     break;
                 }
