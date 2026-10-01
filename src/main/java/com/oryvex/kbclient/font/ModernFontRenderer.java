@@ -22,21 +22,14 @@ import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
 
 /**
- * Replaces Minecraft's font renderer with an AWT-backed one that:
- *   - uses TextLayout for correct Arabic/Persian shaping and BiDi (RTL),
- *   - measures and draws with the exact same scale so layout never drifts,
- *   - falls back to SansSerif if the bundled TTFs cannot be loaded.
- *
- * Added by fixer.py.
+ * AWT-backed font renderer with proper Arabic/Persian shaping via TextLayout.
+ * Width measurement and drawing use the same cached texture, so layout never drifts.
  */
 public class ModernFontRenderer extends FontRenderer {
 
-    /** Internal raster size — higher = crisper, slower to build the atlas. */
-    private static final int FONT_SIZE = 32;
-    /** On-screen line height (vanilla default). */
+    private static final int FONT_SIZE  = 32;
     private static final int BASE_HEIGHT = 9;
 
-    // Vanilla colour-code table (the field itself is private).
     private static final int[] COLOR_CODES = new int[32];
     static {
         for (int i = 0; i < 32; ++i) {
@@ -57,14 +50,16 @@ public class ModernFontRenderer extends FontRenderer {
     private static final class GlyphTex {
         final int id, width, height;
         final float scale;
-        GlyphTex(int id, int w, int h, float s) { this.id = id; this.width = w; this.height = h; this.scale = s; }
+        GlyphTex(int id, int w, int h, float s) {
+            this.id = id; this.width = w; this.height = h; this.scale = s;
+        }
     }
 
     private final Map<String, GlyphTex> cache = new LinkedHashMap<String, GlyphTex>(512, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, GlyphTex> eldest) {
             if (size() > 512) {
-                GlStateManager.deleteTexture(eldest.getValue().id);
+                try { GlStateManager.deleteTexture(eldest.getValue().id); } catch (Throwable ignored) {}
                 return true;
             }
             return false;
@@ -75,8 +70,8 @@ public class ModernFontRenderer extends FontRenderer {
         super(gs, loc, tm, unicode);
         Font i = load("/fonts/Inter-Regular.ttf");
         Font v = load("/fonts/Vazirmatn-Regular.ttf");
-        inter = (i != null) ? i : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
-        vazir = (v != null) ? v : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
+        this.inter = (i != null) ? i : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
+        this.vazir = (v != null) ? v : new Font("SansSerif", Font.PLAIN, FONT_SIZE);
         this.FONT_HEIGHT = BASE_HEIGHT;
     }
 
@@ -87,17 +82,14 @@ public class ModernFontRenderer extends FontRenderer {
             Font f = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont((float) FONT_SIZE);
             is.close();
             return f;
-        } catch (Throwable t) {
-            return null;
-        }
+        } catch (Throwable t) { return null; }
     }
 
-    /** True if the string contains Arabic / Persian / Hebrew code-points. */
     public static boolean hasRtl(String text) {
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if ((c >= 0x0590 && c <= 0x05FF)   // Hebrew
-             || (c >= 0x0600 && c <= 0x06FF)   // Arabic
+            if ((c >= 0x0590 && c <= 0x05FF)
+             || (c >= 0x0600 && c <= 0x06FF)
              || (c >= 0x0750 && c <= 0x077F)
              || (c >= 0x08A0 && c <= 0x08FF)
              || (c >= 0xFB1D && c <= 0xFDFF)
@@ -109,19 +101,18 @@ public class ModernFontRenderer extends FontRenderer {
     private GlyphTex bake(String text) {
         Font font = hasRtl(text) ? vazir : inter;
 
-        // TextLayout performs Arabic/Persian shaping + BiDi reordering.
         TextLayout layout = new TextLayout(text, font, frc);
-        Rectangle2D bounds = layout.getBounds();
+        Rectangle2D b = layout.getBounds();
         int pad = 2;
-        int w = Math.max(1, (int) Math.ceil(bounds.getWidth()) + pad * 2);
-        int h = Math.max(1, (int) Math.ceil(bounds.getHeight()) + pad * 2);
+        int w = Math.max(1, (int) Math.ceil(b.getWidth())  + pad * 2);
+        int h = Math.max(1, (int) Math.ceil(b.getHeight()) + pad * 2);
         int baseline = (int) Math.ceil(layout.getAscent()) + pad;
 
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,        RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,   RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,   RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setColor(Color.WHITE);
         layout.draw(g, pad, baseline);
         g.dispose();
@@ -129,7 +120,6 @@ public class ModernFontRenderer extends FontRenderer {
         int id = TextureUtil.glGenTextures();
         TextureUtil.uploadTextureImageAllocate(id, img, true, false);
 
-        // FONT_SIZE raster -> BASE_HEIGHT on screen.
         float scale = (float) BASE_HEIGHT / FONT_SIZE;
         return new GlyphTex(id, w, h, scale);
     }
@@ -156,7 +146,6 @@ public class ModernFontRenderer extends FontRenderer {
         if ((curColor & 0xFC000000) == 0) curColor |= 0xFF000000;
         if (shadow) curColor = (curColor & 0xFCFCFC) >> 2 | (curColor & 0xFF000000);
 
-        // Split on formatting codes so colours don't bleed into each glyph.
         int i = 0;
         final int n = text.length();
         while (i < n) {
@@ -174,7 +163,6 @@ public class ModernFontRenderer extends FontRenderer {
                 i += 2;
                 continue;
             }
-            // take until next §
             int j = i;
             while (j < n && text.charAt(j) != '\u00a7') j++;
             String piece = text.substring(i, j);
@@ -182,16 +170,13 @@ public class ModernFontRenderer extends FontRenderer {
             if (piece.isEmpty()) continue;
 
             GlyphTex tex = cache.get(piece);
-            if (tex == null) {
-                tex = bake(piece);
-                cache.put(piece, tex);
-            }
+            if (tex == null) { tex = bake(piece); cache.put(piece, tex); }
 
             GlStateManager.bindTexture(tex.id);
             float r = (curColor >> 16 & 255) / 255f;
-            float g = (curColor >> 8 & 255) / 255f;
-            float b = (curColor & 255) / 255f;
-            float a = (curColor >>> 24) / 255f;
+            float g = (curColor >> 8  & 255) / 255f;
+            float b = (curColor       & 255) / 255f;
+            float a = (curColor >>> 24      ) / 255f;
             GlStateManager.color(r, g, b, a);
 
             float s = tex.scale;
@@ -206,10 +191,10 @@ public class ModernFontRenderer extends FontRenderer {
             Tessellator t = Tessellator.getInstance();
             WorldRenderer wr = t.getWorldRenderer();
             wr.begin(7, DefaultVertexFormats.POSITION_TEX);
-            wr.pos(dx,     dy + dh, 0.0D).tex(0.0D, 1.0D).endVertex();
+            wr.pos(dx,      dy + dh, 0.0D).tex(0.0D, 1.0D).endVertex();
             wr.pos(dx + dw, dy + dh, 0.0D).tex(1.0D, 1.0D).endVertex();
-            wr.pos(dx + dw, dy,     0.0D).tex(1.0D, 0.0D).endVertex();
-            wr.pos(dx,     dy,      0.0D).tex(0.0D, 0.0D).endVertex();
+            wr.pos(dx + dw, dy,      0.0D).tex(1.0D, 0.0D).endVertex();
+            wr.pos(dx,      dy,      0.0D).tex(0.0D, 0.0D).endVertex();
             t.draw();
 
             GlStateManager.popMatrix();
@@ -234,19 +219,16 @@ public class ModernFontRenderer extends FontRenderer {
             i = j;
             if (piece.isEmpty()) continue;
             GlyphTex tex = cache.get(piece);
-            if (tex == null) {
-                tex = bake(piece);
-                cache.put(piece, tex);
-            }
+            if (tex == null) { tex = bake(piece); cache.put(piece, tex); }
             w += tex.width * tex.scale;
         }
         return (int) Math.ceil(w);
     }
 
     @Override
-    public int getCharWidth(char character) {
-        if (character == '\u00a7') return -1;
-        return getStringWidth(String.valueOf(character));
+    public int getCharWidth(char c) {
+        if (c == '\u00a7') return -1;
+        return getStringWidth(String.valueOf(c));
     }
 
     @Override
@@ -254,6 +236,6 @@ public class ModernFontRenderer extends FontRenderer {
 
     @Override
     public void onResourceManagerReload(net.minecraft.client.resources.IResourceManager rm) {
-        // Keep our custom fonts after a resource reload.
+        // keep our fonts across reloads
     }
 }

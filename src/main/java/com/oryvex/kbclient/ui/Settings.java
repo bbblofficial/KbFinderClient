@@ -20,7 +20,6 @@ public final class Settings {
     public static boolean discordRpc = true;
     public static int fade = 2;
     public static int theme = 0;
-    /** particle density 0..100 */
     public static int density = 60;
 
     public static File dir() {

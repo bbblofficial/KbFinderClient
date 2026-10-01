@@ -1,4 +1,3 @@
-
 package com.oryvex.kbclient.ui;
 
 import com.oryvex.kbclient.KBTracker;
@@ -21,28 +20,40 @@ public class GuiKbOptions extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        int bw = 216, bh = 20, gap = 6, cx = this.width / 2;
-        int y = Math.max(54, this.height / 2 - 93);
-        cardW = bw + 28;
-        cardX = cx - cardW / 2;
-        cardY = y - 42;
-        cardH = 8 * (bh + gap) + 62;
+        int bw = Math.min(260, this.width - 60);
+        int bh = 22;
+        int gap = 6;
+        int cx = this.width / 2;
 
-        bHud = new UiButton(1, cx - bw / 2, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
-        bPart = new UiButton(2, cx - bw / 2, y + (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(110);
-        bToast = new UiButton(3, cx - bw / 2, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(160);
-        bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
-        bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
-        bDisc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(285);
+        // ارتفاع کارت: عنوان (40) + 6 ردیف + دکمه‌ها + footer
+        int rows = 6;
+        int innerH = rows * (bh + gap) + gap + 2 * (bh + gap) + 8;
+        cardW = bw + 40;
+        cardH = innerH + 70;
+        cardX = cx - cardW / 2;
+        cardY = Math.max(20, (this.height - cardH) / 2);
+
+        int y = cardY + 58;
+        int bx = cx - bw / 2;
+
+        bHud   = new UiButton(1, bx, y, bw, bh, "HUD overlay").style(UiButton.TOGGLE).delay(60);
+        bPart  = new UiButton(2, bx, y + 1 * (bh + gap), bw, bh, "Menu particles").style(UiButton.TOGGLE).delay(100);
+        bToast = new UiButton(3, bx, y + 2 * (bh + gap), bw, bh, "Hit toasts").style(UiButton.TOGGLE).delay(140);
+        bLoad  = new UiButton(4, bx, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(180);
+        bDisc  = new UiButton(8, bx, y + 4 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(220);
+        bFade  = new UiButton(5, bx, y + 5 * (bh + gap), bw, bh, "").delay(260);
 
         this.buttonList.add(bHud);
         this.buttonList.add(bPart);
         this.buttonList.add(bToast);
         this.buttonList.add(bLoad);
-        this.buttonList.add(bFade);
         this.buttonList.add(bDisc);
-        this.buttonList.add(new UiButton(6, cx - bw / 2, y + 6 * (bh + gap) + 8, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(310));
-        this.buttonList.add(new UiButton(7, cx - bw / 2, y + 7 * (bh + gap) + 8, bw, bh, "Done").style(UiButton.PRIMARY).delay(360));
+        this.buttonList.add(bFade);
+
+        int y2 = y + 6 * (bh + gap) + 10;
+        this.buttonList.add(new UiButton(6, bx, y2, bw, bh, "Minecraft Options...").icon(UiButton.ICON_GEAR).delay(300));
+        this.buttonList.add(new UiButton(7, bx, y2 + bh + gap, bw, bh, "Done").style(UiButton.PRIMARY).delay(340));
+
         sync();
     }
 
@@ -81,8 +92,12 @@ public class GuiKbOptions extends FadeScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawBackdrop(mouseX, mouseY);
         Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
-        Draw.centered("OPTIONS", this.width / 2f, cardY + 10, Theme.TEXT, 1.6f, true);
-        Draw.centered("KB Client preferences", this.width / 2f, cardY + 26, Theme.MUTED, 0.8f, false);
+
+        float cx = this.width / 2f;
+
+        Draw.centered("OPTIONS", cx, cardY + 22, Theme.TEXT, 1.6f, true);
+        Draw.centered("KB Client preferences", cx, cardY + 42, Theme.MUTED, 0.85f, false);
+
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();
     }

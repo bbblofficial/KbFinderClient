@@ -8,7 +8,6 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 
-/** In-game overlay: status card (fades in/out) + hit toasts. */
 public final class Hud {
     private Hud() {}
 
@@ -32,7 +31,10 @@ public final class Hud {
     public static void render(Minecraft mc, KBTracker t) {
         ScaledResolution res = new ScaledResolution(mc);
         Draw.blend();
-        Draw.right("Created by muvixo", res.getScaledWidth() - 4, res.getScaledHeight() - 10, Theme.DIM, 0.7f, false);
+        if (Settings.watermark) {
+            Draw.right("Created by muvixo", res.getScaledWidth() - 4,
+                    res.getScaledHeight() - 6, Theme.DIM, 0.7f, false);
+        }
 
         long ns = System.nanoTime();
         float dt = Math.min(0.1f, (ns - lastNs) / 1.0e9f);
@@ -44,45 +46,54 @@ public final class Hud {
         KBProfile pr = t.getProfile();
         KBSample last = t.getLast();
         boolean goal = t.getGoal() > 0;
-        int x = 6, y = 6, w = 146, h = goal ? 52 : 46;
+        int x = 6, y = 6, w = 156;
+        int h = goal ? 58 : 50;
 
-        Draw.blend();
-        Draw.panel(x, y, w, h, 4, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
-        Draw.roundRect(x + 1, y + 1, 2, h - 2, 1, Draw.fade(t.isRecording() ? Theme.ACCENT : Theme.DIM, a));
+        Draw.panel(x, y, w, h, 5f, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
+        Draw.rect(x + 1, y + 1, 2, h - 2, Draw.fade(t.isRecording() ? Theme.accent() : Theme.DIM, a));
 
-        Draw.text("KB CLIENT", x + 8, y + 5, Draw.fade(Theme.ACCENT, a), 0.8f, false);
-        Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 5,
+        // Header
+        Draw.left("KB CLIENT", x + 8, y + 10, Draw.fade(Theme.accent(), a), 0.8f, false);
+        Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 10,
                 Draw.fade(t.isRecording() ? Theme.GOOD : Theme.WARN, a), 0.8f, false);
-        if (last != null) {
-            Draw.text("H " + KBProfile.f(last.h, 4) + "  V " + KBProfile.f(last.vy, 4), x + 8, y + 16, Draw.fade(Theme.TEXT, a), 0.9f, false);
-        } else {
-            Draw.text("Waiting for hits...", x + 8, y + 16, Draw.fade(Theme.MUTED, a), 0.9f, false);
-        }
-        Draw.text(pr.used + " used / " + pr.total + " samples", x + 8, y + 27, Draw.fade(Theme.MUTED, a), 0.75f, false);
 
-        // 12 confidence pips, one per parameter
+        // Stats
+        if (last != null) {
+            Draw.left("H " + KBProfile.f(last.h, 4) + "   V " + KBProfile.f(last.vy, 4),
+                    x + 8, y + 24, Draw.fade(Theme.TEXT, a), 0.9f, false);
+        } else {
+            Draw.left("Waiting for hits...", x + 8, y + 24, Draw.fade(Theme.MUTED, a), 0.9f, false);
+        }
+        Draw.left(pr.used + " / " + pr.total + " samples", x + 8, y + 36,
+                Draw.fade(Theme.MUTED, a), 0.75f, false);
+
+        // Confidence pips
         for (int i = 0; i < KBProfile.COUNT; i++) {
             int c = pr.src[i] == KBProfile.SRC_NONE ? Theme.PANEL3 : Draw.confColor(pr.conf[i]);
-            Draw.rect(x + 8 + i * 11, y + 38, 9, 2, Draw.fade(c, a));
+            Draw.rect(x + 8 + i * 11, y + 44, 9, 2, Draw.fade(c, a));
         }
         if (goal) {
-            Draw.bar(x + 8, y + 44, w - 16, 3, t.getSessionHits() / (double) t.getGoal(), Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.ACCENT, a));
+            Draw.bar(x + 8, y + h - 10, w - 16, 3,
+                    t.getSessionHits() / (double) t.getGoal(),
+                    Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.accent(), a));
         }
 
+        // Toasts زیر HUD
         long now = System.currentTimeMillis();
-        for (int i = toasts.size() - 1; i >= 0; i--) if (now - toasts.get(i).born > 3600) toasts.remove(i);
+        for (int i = toasts.size() - 1; i >= 0; i--) {
+            if (now - toasts.get(i).born > 3600) toasts.remove(i);
+        }
         int ty = y + h + 4;
         for (int i = toasts.size() - 1; i >= 0; i--) {
             Toast to = toasts.get(i);
             long age = now - to.born;
-            float in = age < 160 ? age / 160f : 1f; // fade in only - no slide
+            float in   = age < 160 ? age / 160f : 1f;
             float fade = (age > 2800 ? 1f - (age - 2800) / 800f : 1f) * in * a;
-            int tw = Draw.width(to.text, 0.85f) + 12;
-            Draw.blend();
-            Draw.roundRect(x, ty, tw, 12, 3, Draw.alpha(0x101826, 0.85f * fade));
-            int al = (int) (255 * fade);
-            if (al > 4) Draw.text(to.text, x + 6, ty + 2, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
-            ty += 14;
+            int tw = Draw.width(to.text, 0.85f) + 14;
+            Draw.roundRect(x, ty, tw, 14, 3f, Draw.alpha(0x101826, 0.85f * fade));
+            int al = (int)(255 * fade);
+            if (al > 4) Draw.left(to.text, x + 7, ty + 7, (al << 24) | (to.color & 0xFFFFFF), 0.85f, false);
+            ty += 16;
         }
         Draw.blend();
     }
