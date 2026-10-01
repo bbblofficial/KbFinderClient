@@ -87,12 +87,13 @@ public class KBClientMod {
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
           try {
-              Minecraft mcFont = Minecraft.getMinecraft();
+              Minecraft mcF = Minecraft.getMinecraft();
               modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(
-                      mcFont.gameSettings,
+                      mcF.gameSettings,
                       new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
-                      mcFont.renderEngine, false);
-              logger.info("[KBClient] ModernFontRenderer ready for UI");
+                      mcF.renderEngine, false);
+              mcF.fontRendererObj = modernFont;
+              logger.info("[KBClient] ModernFontRenderer attached to mc.fontRendererObj");
           } catch (Throwable t) {
               logger.error("[KBClient] ModernFontRenderer failed: " + t);
           }

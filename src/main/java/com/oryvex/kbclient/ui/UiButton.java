@@ -131,7 +131,7 @@ public class UiButton extends GuiButton {
                     : Draw.fade(Draw.lerp(Draw.lerp(Theme.MUTED, Theme.SOFT, 0.5f),
                             Draw.lerp(accent, 0xFFFFFFFF, 0.25f), hv), ap);
             if (style == DANGER) ic = Draw.fade(Draw.lerp(Theme.BAD, 0xFFFFFFFF, hv * 0.5f), ap);
-            if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic, 0);
+            if (icon == ICON_GEAR) Draw.gear(ix, cy, isz * 1.15f, spin, ic);
             else Draw.icon(icon, ix, cy, isz * 1.15f, ic);
             startX += isz + 6f;
         }

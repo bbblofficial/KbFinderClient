@@ -164,30 +164,142 @@ public final class Draw {
         circle(cx, cy, r, color);
     }
 
+    /**
+     * Pixel-perfect vector gear icon, drawn with GL lines + triangles.
+     * Looks the same at any size — the old roundRect-based version broke
+     * on small buttons (see issue with Options button).
+     */
+    public static void gear(float cx, float cy, float r, float angle, int color) {
+        if (((color >>> 24) & 255) <= 4) return;
+        if (r < 1.5f) return;
+
+        float or = r;          // outer radius (tooth tip)
+        float ir = r * 0.62f;  // inner radius (body)
+        float tr = r * 0.28f;  // tooth width
+        int teeth = 8;
+
+        float ar = (float) Math.toRadians(angle);
+
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+
+        float rr = ((color >> 16) & 255) / 255f;
+        float gg = ((color >> 8)  & 255) / 255f;
+        float bb = ( color        & 255) / 255f;
+        float aa = ((color >>> 24)      ) / 255f;
+        GlStateManager.color(rr, gg, bb, aa);
+
+        // --- teeth as quads ---
+        for (int i = 0; i < teeth; i++) {
+            double a0 = ar + (2 * Math.PI * i) / teeth;
+            double a1 = a0 + (2 * Math.PI / teeth) * 0.55;
+
+            float x0 = cx + (float)Math.cos(a0) * ir;
+            float y0 = cy + (float)Math.sin(a0) * ir;
+            float x1 = cx + (float)Math.cos(a1) * ir;
+            float y1 = cy + (float)Math.sin(a1) * ir;
+
+            float dx = x1 - x0, dy = y1 - y0;
+            float len = (float)Math.sqrt(dx * dx + dy * dy);
+            if (len < 0.001f) continue;
+            float nx = -dy / len * (tr * 0.5f);
+            float ny =  dx / len * (tr * 0.5f);
+
+            float tx0 = x0 + nx, ty0 = y0 + ny;
+            float tx1 = x1 + nx, ty1 = y1 + ny;
+            float tx2 = x1 - nx, ty2 = y1 - ny;
+            float tx3 = x0 - nx, ty3 = y0 - ny;
+
+            float ex0 = cx + (float)Math.cos(a0) * or;
+            float ey0 = cy + (float)Math.sin(a0) * or;
+            float ex1 = cx + (float)Math.cos(a1) * or;
+            float ey1 = cy + (float)Math.sin(a1) * or;
+
+            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
+            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
+            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
+            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
+            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
+            org.lwjgl.opengl.GL11.glEnd();
+
+            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
+            org.lwjgl.opengl.GL11.glVertex2f(tx1, ty1);
+            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
+            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
+            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
+            org.lwjgl.opengl.GL11.glEnd();
+
+            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
+            org.lwjgl.opengl.GL11.glVertex2f(tx2, ty2);
+            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
+            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
+            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
+            org.lwjgl.opengl.GL11.glEnd();
+
+            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_QUADS);
+            org.lwjgl.opengl.GL11.glVertex2f(tx3, ty3);
+            org.lwjgl.opengl.GL11.glVertex2f(tx0, ty0);
+            org.lwjgl.opengl.GL11.glVertex2f(ex1, ey1);
+            org.lwjgl.opengl.GL11.glVertex2f(ex0, ey0);
+            org.lwjgl.opengl.GL11.glEnd();
+        }
+
+        // --- inner disc ---
+        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
+        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 32; i++) {
+            double a = ar + (2 * Math.PI * i) / 32;
+            org.lwjgl.opengl.GL11.glVertex2f(
+                cx + (float)Math.cos(a) * ir,
+                cy + (float)Math.sin(a) * ir);
+        }
+        org.lwjgl.opengl.GL11.glEnd();
+
+        // --- centre hole ---
+        int bg = 0;
+        try {
+            bg = (org.lwjgl.opengl.GL11.glGetInteger(org.lwjgl.opengl.GL11.GL_BLEND) != 0) ? 0x00000000 : 0x00000000;
+        } catch (Throwable ignored) {}
+        org.lwjgl.opengl.GL11.glColor4f(0f, 0f, 0f, 0f);
+        org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLE_FAN);
+        org.lwjgl.opengl.GL11.glVertex2f(cx, cy);
+        for (int i = 0; i <= 24; i++) {
+            double a = (2 * Math.PI * i) / 24;
+            org.lwjgl.opengl.GL11.glVertex2f(
+                cx + (float)Math.cos(a) * (r * 0.24f),
+                cy + (float)Math.sin(a) * (r * 0.24f));
+        }
+        org.lwjgl.opengl.GL11.glEnd();
+
+        GlStateManager.color(1f, 1f, 1f, 1f);
+        GlStateManager.enableTexture2D();
+    }
+
+    /** Legacy signature (angle + hole). Kept so old callers keep compiling. */
     public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
-        GlStateManager.pushMatrix();
-        GlStateManager.translate(cx, cy, 0f);
-        GlStateManager.rotate(angle, 0f, 0f, 1f);
-        roundRect(-r,       -r / 3f, r * 2f, r / 1.5f, 1f, color);
-        GlStateManager.rotate(90f, 0f, 0f, 1f);
-        roundRect(-r,       -r / 3f, r * 2f, r / 1.5f, 1f, color);
-        GlStateManager.rotate(45f, 0f, 0f, 1f);
-        roundRect(-r,       -r / 3f, r * 2f, r / 1.5f, 1f, color);
-        GlStateManager.rotate(90f, 0f, 0f, 1f);
-        roundRect(-r,       -r / 3f, r * 2f, r / 1.5f, 1f, color);
-        roundRect(-r * .75f, -r * .75f, r * 1.5f, r * 1.5f, r * 0.75f, color);
-        roundRect(-r * .35f, -r * .35f, r * 0.7f, r * 0.7f, r * 0.35f, hole);
-        GlStateManager.popMatrix();
+        gear(cx, cy, r, angle, color);
     }
 
     public static void icon(int type, float cx, float cy, float size, int color) {
         float h = size / 2f;
         if (type == ICON_ARROW) {
-            for (int i = 0; i < (int) size; i++) {
-                rect(cx - h + i, cy - h + i, 1, Math.max(1, (int)(size - i * 2)), color);
-            }
+            GlStateManager.disableTexture2D();
+            GlStateManager.enableBlend();
+            float rr = ((color >> 16) & 255) / 255f;
+            float gg = ((color >> 8)  & 255) / 255f;
+            float bb = ( color        & 255) / 255f;
+            float aa = ((color >>> 24)      ) / 255f;
+            GlStateManager.color(rr, gg, bb, aa);
+            org.lwjgl.opengl.GL11.glBegin(org.lwjgl.opengl.GL11.GL_TRIANGLES);
+            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy - h);
+            org.lwjgl.opengl.GL11.glVertex2f(cx - h * 0.6f, cy + h);
+            org.lwjgl.opengl.GL11.glVertex2f(cx + h * 0.9f, cy);
+            org.lwjgl.opengl.GL11.glEnd();
+            GlStateManager.color(1f, 1f, 1f, 1f);
+            GlStateManager.enableTexture2D();
         } else if (type == ICON_GEAR) {
-            gear(cx, cy, h, 0, color, 0);
+            gear(cx, cy, h, 0, color);
         } else {
             rect(cx - h, cy - h, size, size, color);
         }

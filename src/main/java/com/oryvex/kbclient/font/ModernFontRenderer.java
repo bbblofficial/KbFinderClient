@@ -5,10 +5,12 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
+import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.text.AttributedString;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +25,14 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
 
+/**
+ * AWT-backed font renderer with proper Arabic/Persian shaping and RTL support.
+ * Used for both the custom UI and the vanilla chat by replacing mc.fontRendererObj.
+ *
+ * The renderer draws the whole string through a single TextLayout so bidi
+ * reordering is correct. Colour formatting codes (\u00a7x) are handled by
+ * splitting the string into coloured runs before shaping.
+ */
 public class ModernFontRenderer extends FontRenderer {
 
     private static final int FONT_SIZE   = 32;
@@ -52,10 +62,10 @@ public class ModernFontRenderer extends FontRenderer {
         GlyphTex(int id, int w, int h, float s) { this.id = id; this.width = w; this.height = h; this.scale = s; }
     }
 
-    private final Map<String, GlyphTex> cache = new LinkedHashMap<String, GlyphTex>(512, 0.75f, true) {
+    private final Map<String, GlyphTex> cache = new LinkedHashMap<String, GlyphTex>(1024, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, GlyphTex> eldest) {
-            if (size() > 512) {
+            if (size() > 1024) {
                 try { GlStateManager.deleteTexture(eldest.getValue().id); } catch (Throwable ignored) {}
                 return true;
             }
@@ -95,14 +105,25 @@ public class ModernFontRenderer extends FontRenderer {
         return false;
     }
 
+    /** Mixed script: from position 0, is the visual order RTL? */
+    public static boolean isRtlDominant(String text) {
+        int rtl = 0, ltr = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= 0x0590 && c <= 0x08FF) rtl++;
+            else if (Character.isLetter(c)) ltr++;
+        }
+        return rtl > ltr;
+    }
+
+    /** Bake whole string via TextLayout. Bidi handled internally. */
     private GlyphTex bake(String text) {
         Font font = hasRtl(text) ? vazir : inter;
-        TextLayout layout = new TextLayout(text, font, frc);
 
+        TextLayout layout = new TextLayout(text, font, frc);
         int ascent  = (int) Math.ceil(layout.getAscent());
         int descent = (int) Math.ceil(layout.getDescent());
         int leading = (int) Math.ceil(layout.getLeading());
-
         Rectangle2D bounds = layout.getBounds();
         int naturalW = (int) Math.ceil(Math.max(bounds.getWidth(), layout.getAdvance()));
 
@@ -122,7 +143,6 @@ public class ModernFontRenderer extends FontRenderer {
 
         int id = TextureUtil.glGenTextures();
         TextureUtil.uploadTextureImageAllocate(id, img, true, false);
-
         float scale = (float) BASE_HEIGHT / FONT_SIZE;
         return new GlyphTex(id, w, h, scale);
     }
@@ -144,6 +164,9 @@ public class ModernFontRenderer extends FontRenderer {
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GlStateManager.enableTexture2D();
 
+        // Split by § codes into (substring, color) runs, keeping bidi correctness
+        // inside each run. Since § only appears at run boundaries, each run is
+        // shaped independently by TextLayout — this is exactly what we want.
         float curX = x;
         int curColor = color;
         if ((curColor & 0xFC000000) == 0) curColor |= 0xFF000000;
@@ -151,8 +174,14 @@ public class ModernFontRenderer extends FontRenderer {
 
         int i = 0;
         final int n = text.length();
+        StringBuilder run = new StringBuilder();
         while (i < n) {
             if (text.charAt(i) == '\u00a7' && i + 1 < n) {
+                // flush current run
+                if (run.length() > 0) {
+                    curX = drawRun(run.toString(), curX, y, curColor);
+                    run.setLength(0);
+                }
                 char code = Character.toLowerCase(text.charAt(i + 1));
                 int ci = "0123456789abcdef".indexOf(code);
                 if (ci >= 0) {
@@ -166,46 +195,47 @@ public class ModernFontRenderer extends FontRenderer {
                 i += 2;
                 continue;
             }
-            int j = i;
-            while (j < n && text.charAt(j) != '\u00a7') j++;
-            String piece = text.substring(i, j);
-            i = j;
-            if (piece.isEmpty()) continue;
-
-            GlyphTex tex = cache.get(piece);
-            if (tex == null) { tex = bake(piece); cache.put(piece, tex); }
-
-            GlStateManager.bindTexture(tex.id);
-            float r = (curColor >> 16 & 255) / 255f;
-            float g = (curColor >> 8  & 255) / 255f;
-            float b = ( curColor       & 255) / 255f;
-            float a = (curColor >>> 24      ) / 255f;
-            GlStateManager.color(r, g, b, a);
-
-            float s = tex.scale;
-            GlStateManager.pushMatrix();
-            GlStateManager.scale(s, s, 1f);
-
-            float dx = curX / s;
-            float dy = y / s;
-            float dw = tex.width;
-            float dh = tex.height;
-
-            Tessellator t = Tessellator.getInstance();
-            WorldRenderer wr = t.getWorldRenderer();
-            wr.begin(7, DefaultVertexFormats.POSITION_TEX);
-            wr.pos(dx,      dy + dh, 0.0D).tex(0.0D, 1.0D).endVertex();
-            wr.pos(dx + dw, dy + dh, 0.0D).tex(1.0D, 1.0D).endVertex();
-            wr.pos(dx + dw, dy,      0.0D).tex(1.0D, 0.0D).endVertex();
-            wr.pos(dx,      dy,      0.0D).tex(0.0D, 0.0D).endVertex();
-            t.draw();
-
-            GlStateManager.popMatrix();
-            curX += tex.width * s;
+            run.append(text.charAt(i));
+            i++;
         }
+        if (run.length() > 0) curX = drawRun(run.toString(), curX, y, curColor);
 
         GlStateManager.color(1f, 1f, 1f, 1f);
         return (int) curX;
+    }
+
+    private float drawRun(String run, float x, float y, int color) {
+        if (run.isEmpty()) return x;
+        GlyphTex tex = cache.get(run);
+        if (tex == null) { tex = bake(run); cache.put(run, tex); }
+
+        GlStateManager.bindTexture(tex.id);
+        float r = (color >> 16 & 255) / 255f;
+        float g = (color >> 8  & 255) / 255f;
+        float b = ( color       & 255) / 255f;
+        float a = (color >>> 24      ) / 255f;
+        GlStateManager.color(r, g, b, a);
+
+        float s = tex.scale;
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(s, s, 1f);
+
+        float dx = x / s;
+        float dy = y / s;
+        float dw = tex.width;
+        float dh = tex.height;
+
+        Tessellator t = Tessellator.getInstance();
+        WorldRenderer wr = t.getWorldRenderer();
+        wr.begin(7, DefaultVertexFormats.POSITION_TEX);
+        wr.pos(dx,      dy + dh, 0.0D).tex(0.0D, 1.0D).endVertex();
+        wr.pos(dx + dw, dy + dh, 0.0D).tex(1.0D, 1.0D).endVertex();
+        wr.pos(dx + dw, dy,      0.0D).tex(1.0D, 0.0D).endVertex();
+        wr.pos(dx,      dy,      0.0D).tex(0.0D, 0.0D).endVertex();
+        t.draw();
+
+        GlStateManager.popMatrix();
+        return x + tex.width * s;
     }
 
     @Override
@@ -214,18 +244,28 @@ public class ModernFontRenderer extends FontRenderer {
         float w = 0;
         int i = 0;
         final int n = text.length();
+        StringBuilder run = new StringBuilder();
         while (i < n) {
-            if (text.charAt(i) == '\u00a7' && i + 1 < n) { i += 2; continue; }
-            int j = i;
-            while (j < n && text.charAt(j) != '\u00a7') j++;
-            String piece = text.substring(i, j);
-            i = j;
-            if (piece.isEmpty()) continue;
-            GlyphTex tex = cache.get(piece);
-            if (tex == null) { tex = bake(piece); cache.put(piece, tex); }
-            w += tex.width * tex.scale;
+            if (text.charAt(i) == '\u00a7' && i + 1 < n) {
+                if (run.length() > 0) {
+                    w += runWidth(run.toString());
+                    run.setLength(0);
+                }
+                i += 2;
+                continue;
+            }
+            run.append(text.charAt(i));
+            i++;
         }
+        if (run.length() > 0) w += runWidth(run.toString());
         return (int) Math.ceil(w);
+    }
+
+    private float runWidth(String run) {
+        if (run.isEmpty()) return 0;
+        GlyphTex tex = cache.get(run);
+        if (tex == null) { tex = bake(run); cache.put(run, tex); }
+        return tex.width * tex.scale;
     }
 
     @Override
