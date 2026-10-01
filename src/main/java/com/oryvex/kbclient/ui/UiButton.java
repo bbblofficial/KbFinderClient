@@ -44,41 +44,38 @@ public class UiButton extends GuiButton {
         int fill, text;
         switch (style) {
             case PRIMARY:
-                fill = Draw.lerp(Theme.ACCENT_DK, Theme.ACCENT, hover);
-                text = Theme.TEXT;
+                fill = Draw.lerp(0x00000000, Theme.ACCENT, hover);
+                text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
                 break;
             case DANGER:
-                fill = Draw.lerp(0xAA7F1D1D, Theme.BAD, hover);
-                text = Theme.TEXT;
+                fill = Draw.lerp(0x00000000, Theme.BAD, hover);
+                text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
                 break;
             case TAB:
                 fill = selected ? Theme.PANEL2 : Draw.lerp(0x00000000, Theme.PANEL, hover);
                 text = selected ? Theme.ACCENT : Draw.lerp(Theme.MUTED, Theme.TEXT, hover);
                 break;
             default:
-                fill = Draw.lerp(Theme.PANEL, Theme.PANEL2, hover);
+                fill = Draw.lerp(0x00000000, Theme.PANEL3, hover);
                 text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
         }
-        if (!enabled) { fill = Theme.PANEL; text = Theme.DIM; }
+        if (!enabled) { fill = 0x00000000; text = Theme.DIM; }
 
         Draw.blend();
-        
-        // Matrix Scale Animation (The "Rise" button pop effect)
-        float scale = 1.0f + (hover * 0.04f); // Expands 4%
-        float cx = xPosition + width / 2f;
-        float cy = yPosition + height / 2f;
-        
-        GlStateManager.pushMatrix();
-        GlStateManager.translate(cx, cy, 0);
-        GlStateManager.scale(scale, scale, 1f);
-        GlStateManager.translate(-cx, -cy, 0);
-
         int y = yPosition + (int) ((1f - ap) * 8f);
         
-        if(style != TAB) Draw.shadow(xPosition, y, width, height, 4f, Draw.fade(fill, ap * 0.8f), 6f);
-        Draw.roundRect(xPosition, y, width, height, 4f, Draw.fade(fill, ap));
-        
-        if (style == TAB && selected) Draw.roundRect(xPosition + 8, y + height - 2, width - 16, 2, 1f, Draw.fade(Theme.ACCENT, ap));
+        // Premium Sidebar Hover Effect (Fill fades in, left indicator line slides up)
+        if (style != TAB && style != TOGGLE) {
+            Draw.roundRect(xPosition, y, width, height, 4f, Draw.fade(fill, ap * 0.4f));
+            if (hover > 0.01f) {
+                float lineH = height * hover * 0.6f;
+                int lineColor = style == PRIMARY ? Theme.ACCENT : (style == DANGER ? Theme.BAD : Theme.SOFT);
+                Draw.roundRect(xPosition, y + (height - lineH)/2f, 2f, lineH, 1f, Draw.fade(lineColor, ap * hover));
+                Draw.shadow(xPosition, y + (height - lineH)/2f, 2f, lineH, 1f, Draw.fade(lineColor, ap * hover), 4f);
+            }
+        } else {
+            Draw.roundRect(xPosition, y, width, height, 4f, Draw.fade(fill, ap));
+        }
 
         int tc = Draw.fade(text, ap);
         if (style == TOGGLE) {
@@ -93,9 +90,9 @@ public class UiButton extends GuiButton {
             Draw.gear(startX + 6f, y + height / 2f, 4.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
             Draw.text(displayString, startX + 18f, y + (height - 8) / 2f, tc, 1f, true);
         } else {
-            Draw.centered(displayString, xPosition + width / 2f, y + (height - 8) / 2f, tc, 1f, style != TAB);
+            // Text pushes slightly to the right on hover
+            float push = hover * 4f;
+            Draw.text(displayString, xPosition + 12f + push, y + (height - 8) / 2f, tc, 1f, false);
         }
-        
-        GlStateManager.popMatrix();
     }
 }

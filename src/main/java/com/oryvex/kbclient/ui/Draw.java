@@ -47,7 +47,6 @@ public final class Draw {
         }
     }
 
-    /** Pure OpenGL Anti-Aliased Rounded Rectangle */
     public static void roundRect(float x, float y, float w, float h, float r, int color) {
         float alpha = (color >> 24 & 0xFF) / 255.0F;
         if (alpha <= 0.01f) return;
@@ -59,17 +58,9 @@ public final class Draw {
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
         GlStateManager.color(red, green, blue, alpha);
 
         GL11.glBegin(GL11.GL_POLYGON);
-        for (int i = 180; i <= 270; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
-        for (int i = 270; i <= 360; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
-        for (int i = 0; i <= 90; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
-        for (int i = 90; i <= 180; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
-        GL11.glEnd();
-
-        GL11.glBegin(GL11.GL_LINE_LOOP);
         for (int i = 180; i <= 270; i += 5) GL11.glVertex2d(x + r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
         for (int i = 270; i <= 360; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + r + Math.sin(Math.toRadians(i)) * r);
         for (int i = 0; i <= 90; i += 5) GL11.glVertex2d(x + w - r + Math.cos(Math.toRadians(i)) * r, y + h - r + Math.sin(Math.toRadians(i)) * r);
@@ -80,7 +71,6 @@ public final class Draw {
         GlStateManager.enableTexture2D();
     }
 
-    /** Rise-style Drop Shadow Effect */
     public static void shadow(float x, float y, float w, float h, float r, int color, float spread) {
         float alpha = (color >> 24 & 0xFF) / 255.0F;
         if (alpha <= 0.01f) return;
@@ -111,7 +101,7 @@ public final class Draw {
     }
 
     public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
-        shadow(x, y, w, h, r, 0xFF000000, 6f); // Global shadow
+        shadow(x, y, w, h, r, 0xFF000000, 8f);
         roundRect(x, y, w, h, r, fill);
         if (border != 0) {
             roundRect(x - 0.5f, y - 0.5f, w + 1f, h + 1f, r + 0.5f, border);
@@ -123,7 +113,7 @@ public final class Draw {
         roundRect(x, y, w, h, h / 2f, bg);
         float fw = (float) (w * Math.max(0, Math.min(1, frac)));
         if (fw > 0) {
-            shadow(x, y, fw, h, h / 2f, fg, 4f); // Glow
+            shadow(x, y, fw, h, h / 2f, fg, 4f);
             roundRect(x, y, fw, h, h / 2f, fg);
         }
     }
@@ -167,16 +157,54 @@ public final class Draw {
         text(s, rx - font().getStringWidth(s) * scale, y, color, scale, shadow);
     }
 
-    public static void particles(int w, int h, int count, int rgb, float maxAlpha) {
-        float t = (System.currentTimeMillis() % 1000000L) / 1000f;
+    /** Premium LiquidBounce/Rise Plexus Effect */
+    public static void plexusBackground(int w, int h, float maxAlpha) {
+        float t = (System.currentTimeMillis() % 100000L) / 1000f;
+        int count = 65;
+        float[] px = new float[count];
+        float[] py = new float[count];
+        
         for (int i = 0; i < count; i++) {
-            float sp = 4f + (i%5) * 2f;
-            float x = (i * 37 + t * sp * 0.6f) % w;
-            float y = (i * 19 - t * sp) % h;
-            if(y < 0) y += h;
-            float tw = 0.5f + 0.5f * (float) Math.sin(t * 1.5f + i);
-            int a = (int) (maxAlpha * 255f * tw);
-            roundRect(x, y, 2f, 2f, 1f, (a << 24) | (rgb & 0xFFFFFF));
+            float sp = 2f + (i % 4) * 1.2f;
+            px[i] = (i * 93 + t * sp * 18f) % (w + 100) - 50;
+            py[i] = (i * 61 - t * sp * 12f) % (h + 100) - 50;
+            if (py[i] < -50) py[i] += h + 100;
         }
+
+        blend();
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glEnable(GL11.GL_LINE_SMOOTH);
+        GL11.glLineWidth(1.0f);
+        
+        // Draw Connecting Lines
+        GL11.glBegin(GL11.GL_LINES);
+        for (int i = 0; i < count; i++) {
+            for (int j = i + 1; j < count; j++) {
+                float dx = px[i] - px[j];
+                float dy = py[i] - py[j];
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist < 90f) {
+                    float a = (1f - dist / 90f) * maxAlpha * 0.5f;
+                    int color = alpha(Theme.ACCENT, a);
+                    float red = (color >> 16 & 0xFF) / 255.0F;
+                    float green = (color >> 8 & 0xFF) / 255.0F;
+                    float blue = (color & 0xFF) / 255.0F;
+                    GlStateManager.color(red, green, blue, a);
+                    GL11.glVertex2d(px[i], py[i]);
+                    GL11.glVertex2d(px[j], py[j]);
+                }
+            }
+        }
+        GL11.glEnd();
+
+        // Draw Nodes
+        for (int i = 0; i < count; i++) {
+            float tw = 0.5f + 0.5f * (float) Math.sin(t * 2f + i);
+            int a = (int) (maxAlpha * 255f * tw);
+            roundRect(px[i] - 1.5f, py[i] - 1.5f, 3f, 3f, 1.5f, (a << 24) | (Theme.ACCENT & 0xFFFFFF));
+        }
+        
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_LINE_SMOOTH);
     }
 }

@@ -1,8 +1,8 @@
 package com.oryvex.kbclient.ui;
 
+import com.oryvex.kbclient.KBClientMod;
 import com.oryvex.kbclient.KBTracker;
 import com.oryvex.kbclient.kb.KBProfile;
-import java.awt.Color;
 import java.io.IOException;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiMultiplayer;
@@ -10,7 +10,7 @@ import net.minecraft.client.gui.GuiSelectWorld;
 
 public class GuiModernMenu extends FadeScreen {
     private final KBTracker tracker;
-    private int panelX, panelY, panelW, panelH, titleY;
+    private int sidebarW;
 
     public GuiModernMenu(KBTracker tracker) {
         this.tracker = tracker;
@@ -19,23 +19,17 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        int bw = 200, bh = 22, gap = 6, cx = this.width / 2;
-        int rows = 5;
-        int total = rows * bh + (rows - 1) * gap;
-        int top = this.height / 2 - total / 2 + 26;
-        panelW = bw + 28;
-        panelH = total + 28;
-        panelX = cx - panelW / 2;
-        panelY = top - 14;
-        titleY = Math.max(8, panelY - 72);
+        sidebarW = 200;
+        int bw = 160, bh = 24, gap = 8;
+        int bx = 20; 
+        int top = this.height / 2 - (6 * bh + 5 * gap) / 2 + 10;
 
-        int half = (bw - gap) / 2;
-        this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
-        this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
-        this.buttonList.add(new UiButton(6, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(260));
-        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 3 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(330));
-        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 4 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(400));
-        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 4 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(470));
+        this.buttonList.add(new UiButton(1, bx, top, bw, bh, "Singleplayer").delay(100));
+        this.buttonList.add(new UiButton(2, bx, top + (bh + gap), bw, bh, "Multiplayer").delay(150));
+        this.buttonList.add(new UiButton(6, bx, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(200));
+        this.buttonList.add(new UiButton(3, bx, top + 3 * (bh + gap), bw, bh, "Analyzer").style(UiButton.PRIMARY).delay(250));
+        this.buttonList.add(new UiButton(4, bx, top + 4 * (bh + gap), bw, bh, "Options").icon(UiButton.ICON_GEAR).delay(300));
+        this.buttonList.add(new UiButton(5, bx, top + 5 * (bh + gap), bw, bh, "Quit").style(UiButton.DANGER).delay(350));
     }
 
     @Override
@@ -44,8 +38,8 @@ public class GuiModernMenu extends FadeScreen {
             case 1: closeTo(new GuiSelectWorld(this)); break;
             case 2: closeTo(new GuiMultiplayer(this)); break;
             case 3: closeTo(new GuiAnalyzer(tracker, this)); break;
-            case 6: closeTo(new GuiAltManager(this)); break;
             case 4: closeTo(new GuiKbOptions(tracker, this)); break;
+            case 6: closeTo(new GuiAltManager(this)); break;
             case 5:
                 closeThen(new Runnable() {
                     @Override
@@ -63,42 +57,41 @@ public class GuiModernMenu extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
+        // Dark animated gradient background
+        Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
+        
+        // Premium Plexus Effect
         if (Settings.particles) {
-            Draw.particles(this.width, this.height, 70, 0x22D3EE, 0.35f);
-            Draw.particles(this.width, this.height, 25, 0xA78BFA, 0.30f);
+            Draw.plexusBackground(this.width, this.height, 0.45f);
         }
 
-        int cx = this.width / 2;
-        float t = (System.currentTimeMillis() % 100000L) / 1000f;
+        // Glass Sidebar
+        Draw.shadow(0, 0, sidebarW, this.height, 0f, 0xFF000000, 20f);
+        Draw.rect(0, 0, sidebarW, this.height, Theme.PANEL);
+        Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
 
-        String title = "ORYVEX";
-        float sc = 4f;
-        float tx = cx - fontRendererObj.getStringWidth(title) * sc / 2f;
-        for (int i = 0; i < title.length(); i++) {
-            String ch = title.substring(i, i + 1);
-            float hue = 0.50f + 0.17f * (0.5f + 0.5f * (float) Math.sin(t * 0.9f + i * 0.6f));
-            int col = Color.HSBtoRGB(hue, 0.55f, 1f) | 0xFF000000;
-            Draw.text(ch, tx, titleY, col, sc, true);
-            tx += fontRendererObj.getStringWidth(ch) * sc;
-        }
-        Draw.centered("K N O C K B A C K   C L I E N T", cx, titleY + 38, Theme.MUTED, 0.9f, false);
-        Draw.rect(cx - 30, titleY + 52, 60, 1, Theme.ACCENT_DK);
+        // Logo on sidebar
+        Draw.text("K B   C L I E N T", 20, 35, Theme.TEXT, 1.4f, true);
+        Draw.text("v" + KBClientMod.VERSION, 22, 52, Theme.ACCENT, 0.85f, false);
+        Draw.rect(20, 70, sidebarW - 40, 1, Theme.BORDER);
 
-        Draw.panel(panelX, panelY, panelW, panelH, 8, Theme.GLASS, Theme.BORDER);
-
+        // Info Panel on the right (Rise Style Status)
         KBProfile p = tracker.getProfile();
         if (p.hasData) {
-            String s = "Last profile   " + p.summary() + "   (" + p.used + " hits)";
-            int w = Draw.width(s, 0.85f) + 20;
-            int py = panelY + panelH + 10;
-            Draw.panel(cx - w / 2, py, w, 15, 7, Theme.PANEL, Theme.BORDER);
-            Draw.centered(s, cx, py + 4, Theme.SOFT, 0.85f, false);
+            String s = "Last Profile: " + p.summary() + " (" + p.used + " hits)";
+            int w = Draw.width(s, 0.85f) + 24;
+            int px = this.width - w - 20;
+            int py = 20;
+            Draw.shadow(px, py, w, 20, 6f, 0xFF000000, 8f);
+            Draw.roundRect(px, py, w, 20, 6f, Theme.PANEL);
+            Draw.roundRect(px, py, w, 20, 6f, Theme.BORDER);
+            Draw.text(s, px + 12, py + 6.5f, Theme.SOFT, 0.85f, false);
+            Draw.roundRect(px - 4, py + 6, 8, 8, 4f, Theme.GOOD); // Online dot
         }
 
-        Draw.text("KB Client 1.0", 6, this.height - 12, Theme.DIM, 0.8f, false);
-        Draw.right("Forge 1.8.9", this.width - 6, this.height - 12, Theme.DIM, 0.8f, false);
-        Draw.right("Created by muvixo", this.width - 6, this.height - 22, Theme.DIM, 0.7f, false);
+        // Account Display Bottom Left
+        String acc = "User: " + mc.getSession().getUsername();
+        Draw.text(acc, 20, this.height - 20, Theme.MUTED, 0.85f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();
