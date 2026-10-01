@@ -12,9 +12,7 @@ public final class Hud {
     private Hud() {}
 
     private static final class Toast {
-        final String text;
-        final int color;
-        final long born;
+        final String text; final int color; final long born;
         Toast(String t, int c) { text = t; color = c; born = System.currentTimeMillis(); }
     }
 
@@ -52,12 +50,10 @@ public final class Hud {
         Draw.panel(x, y, w, h, 5f, Draw.fade(0xE6101826, a), Draw.fade(Theme.BORDER, a));
         Draw.rect(x + 1, y + 1, 2, h - 2, Draw.fade(t.isRecording() ? Theme.accent() : Theme.DIM, a));
 
-        // Header
         Draw.left("KB CLIENT", x + 8, y + 10, Draw.fade(Theme.accent(), a), 0.8f, false);
         Draw.right(t.isRecording() ? "REC" : "PAUSED", x + w - 6, y + 10,
                 Draw.fade(t.isRecording() ? Theme.GOOD : Theme.WARN, a), 0.8f, false);
 
-        // Stats
         if (last != null) {
             Draw.left("H " + KBProfile.f(last.h, 4) + "   V " + KBProfile.f(last.vy, 4),
                     x + 8, y + 24, Draw.fade(Theme.TEXT, a), 0.9f, false);
@@ -67,7 +63,6 @@ public final class Hud {
         Draw.left(pr.used + " / " + pr.total + " samples", x + 8, y + 36,
                 Draw.fade(Theme.MUTED, a), 0.75f, false);
 
-        // Confidence pips
         for (int i = 0; i < KBProfile.COUNT; i++) {
             int c = pr.src[i] == KBProfile.SRC_NONE ? Theme.PANEL3 : Draw.confColor(pr.conf[i]);
             Draw.rect(x + 8 + i * 11, y + 44, 9, 2, Draw.fade(c, a));
@@ -78,7 +73,6 @@ public final class Hud {
                     Draw.fade(Theme.PANEL3, a), Draw.fade(Theme.accent(), a));
         }
 
-        // Toasts زیر HUD
         long now = System.currentTimeMillis();
         for (int i = toasts.size() - 1; i >= 0; i--) {
             if (now - toasts.get(i).born > 3600) toasts.remove(i);

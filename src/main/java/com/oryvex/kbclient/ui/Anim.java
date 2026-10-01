@@ -3,10 +3,8 @@ package com.oryvex.kbclient.ui;
 public final class Anim {
     public float v;
     private long last = System.nanoTime();
-
     public Anim() {}
     public Anim(float start) { v = start; }
-
     public float to(float target, float speed) {
         long n = System.nanoTime();
         float dt = Math.min(0.1f, (n - last) / 1.0e9f);
@@ -15,9 +13,5 @@ public final class Anim {
         if (Math.abs(target - v) < 0.0006f) v = target;
         return v;
     }
-
-    public void set(float x) {
-        v = x;
-        last = System.nanoTime();
-    }
+    public void set(float x) { v = x; last = System.nanoTime(); }
 }

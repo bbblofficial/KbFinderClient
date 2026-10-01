@@ -19,7 +19,6 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-
         sidebarW = Math.max(180, Math.min(320, (int)(this.width * 0.28f)));
 
         int padding = Math.max(12, sidebarW / 10);
@@ -62,22 +61,20 @@ public class GuiModernMenu extends FadeScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
 
-        // -------- Sidebar --------
         Draw.rect(0, 0, sidebarW, this.height, Theme.PANEL);
         Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
 
-        // -------- Title --------
         float titleScale = Math.max(1.4f, Math.min(2.4f, sidebarW / 130f));
         String title = "ORYVEX";
         Draw.centered(title, sidebarW / 2f, 50f, Theme.TEXT, titleScale, true);
 
         float subScale = 0.85f;
-        Draw.centered("KB Client v" + KBClientMod.VERSION, sidebarW / 2f, 50f + Draw.lineH(titleScale) + 4f,
+        Draw.centered("KB Client v" + KBClientMod.VERSION, sidebarW / 2f,
+                50f + Draw.lineH(titleScale) + 4f,
                 Theme.ACCENT, subScale, false);
 
         Draw.rect(20, 50 + Draw.lineH(titleScale) + Draw.lineH(subScale) + 12, sidebarW - 40, 1, Theme.BORDER);
 
-        // -------- Profile widget (بالا-راست) --------
         KBProfile p = tracker.getProfile();
         if (p.hasData && this.width > sidebarW + 120) {
             String s = "Profile:  " + p.summary();
@@ -90,7 +87,6 @@ public class GuiModernMenu extends FadeScreen {
             Draw.left(s, px + 22, py + 11, Theme.TEXT, 0.85f, false);
         }
 
-        // -------- User card (پایین sidebar) --------
         int userY = this.height - 28;
         Draw.rect(20, userY - 14, sidebarW - 40, 1, Theme.BORDER);
 

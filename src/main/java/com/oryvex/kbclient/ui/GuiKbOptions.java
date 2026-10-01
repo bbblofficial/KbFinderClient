@@ -25,7 +25,6 @@ public class GuiKbOptions extends FadeScreen {
         int gap = 6;
         int cx = this.width / 2;
 
-        // ارتفاع کارت: عنوان (40) + 6 ردیف + دکمه‌ها + footer
         int rows = 6;
         int innerH = rows * (bh + gap) + gap + 2 * (bh + gap) + 8;
         cardW = bw + 40;
@@ -94,7 +93,6 @@ public class GuiKbOptions extends FadeScreen {
         Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
 
         float cx = this.width / 2f;
-
         Draw.centered("OPTIONS", cx, cardY + 22, Theme.TEXT, 1.6f, true);
         Draw.centered("KB Client preferences", cx, cardY + 42, Theme.MUTED, 0.85f, false);
 

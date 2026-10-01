@@ -4,8 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
-import org.lwjgl.opengl.GL11;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +12,6 @@ public final class Draw {
 
     public static final int ICON_NONE = 0, ICON_GEAR = 1, ICON_ARROW = 2;
 
-    // ---- math ----
     public static float clamp(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
     public static float ease(float t) { t = clamp(t); return t * t * (3f - 2f * t); }
     public static float easeOut(float t) { t = clamp(t); return 1f - (1f - t) * (1f - t); }
@@ -55,7 +52,6 @@ public final class Draw {
                         : lerp(Theme.WARN, Theme.GOOD, (f - 0.5f) * 2f);
     }
 
-    // ---- GL state ----
     public static void blend() {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
@@ -67,7 +63,6 @@ public final class Draw {
         GlStateManager.disableBlend();
     }
 
-    // ---- primitives ----
     public static void rect(float x, float y, float w, float h, int color) {
         Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), color);
     }
@@ -92,33 +87,28 @@ public final class Draw {
         }
     }
 
-    /** ساده‌ترین roundRect: چند مستطیل + گوشه‌های مربعی (بدون GL_POLYGON ناپایدار) */
     public static void roundRect(float x, float y, float w, float h, float r, int color) {
         if (w <= 0 || h <= 0) return;
         if (((color >>> 24) & 255) <= 4) return;
         r = Math.min(r, Math.min(w, h) / 2f);
         int ir = (int) Math.ceil(r);
-        // middle
-        Gui.drawRect((int)x,         (int)(y + r),  (int)(x + w), (int)(y + h - r), color);
-        // top + bottom bands
-        Gui.drawRect((int)(x + r),   (int)y,        (int)(x + w - r), (int)(y + r),   color);
-        Gui.drawRect((int)(x + r),   (int)(y + h - r), (int)(x + w - r), (int)(y + h), color);
-        // corners
+        Gui.drawRect((int)x,       (int)(y + r), (int)(x + w), (int)(y + h - r), color);
+        Gui.drawRect((int)(x + r), (int)y,       (int)(x + w - r), (int)(y + r),   color);
+        Gui.drawRect((int)(x + r), (int)(y + h - r), (int)(x + w - r), (int)(y + h), color);
         for (int i = 0; i < ir; i++) {
             double dy = ir - i - 0.5;
             int inset = (int) Math.round(ir - Math.sqrt(Math.max(0, ir * ir - dy * dy)));
-            Gui.drawRect((int)(x + inset),         (int)(y + i),           (int)(x + w - inset), (int)(y + i + 1),         color);
-            Gui.drawRect((int)(x + inset),         (int)(y + h - i - 1),   (int)(x + w - inset), (int)(y + h - i),         color);
+            Gui.drawRect((int)(x + inset), (int)(y + i),         (int)(x + w - inset), (int)(y + i + 1),   color);
+            Gui.drawRect((int)(x + inset), (int)(y + h - i - 1), (int)(x + w - inset), (int)(y + h - i),   color);
         }
     }
 
-    public static void roundOutline(float x, float y, float w, float h, float r, float thickness, int color) {
+    public static void roundOutline(float x, float y, float w, float h, float r, float t, int color) {
         if (((color >>> 24) & 255) <= 4) return;
-        // high-level: چهار خط مستقیم + چهار گوشه
-        rect(x + r, y,         w - 2 * r, thickness, color);
-        rect(x + r, y + h - thickness, w - 2 * r, thickness, color);
-        rect(x,         y + r, thickness, h - 2 * r, color);
-        rect(x + w - thickness, y + r, thickness, h - 2 * r, color);
+        rect(x + r, y,             w - 2 * r, t, color);
+        rect(x + r, y + h - t,     w - 2 * r, t, color);
+        rect(x,             y + r, t, h - 2 * r, color);
+        rect(x + w - t,     y + r, t, h - 2 * r, color);
     }
 
     public static void panel(float x, float y, float w, float h, float r, int fill, int border) {
@@ -158,7 +148,6 @@ public final class Draw {
     }
 
     public static void glow(float x, float y, float w, float h, float r, int color, float spread) {
-        // فقط یک halo ملایم با چند rect — بدون GL polygon
         if (((color >>> 24) & 255) <= 4) return;
         for (int i = 1; i <= (int) spread; i++) {
             int a = (int) (((color >>> 24) & 255) * (1f - i / spread) * 0.08f);
@@ -172,11 +161,9 @@ public final class Draw {
     }
 
     public static void radial(float cx, float cy, float r, int color, boolean fill) {
-        // approximation - not used heavily in 3.x
         circle(cx, cy, r, color);
     }
 
-    // ---- icons ----
     public static void gear(float cx, float cy, float r, float angle, int color, int hole) {
         GlStateManager.pushMatrix();
         GlStateManager.translate(cx, cy, 0f);
@@ -197,7 +184,6 @@ public final class Draw {
         float h = size / 2f;
         if (type == ICON_ARROW) {
             for (int i = 0; i < (int) size; i++) {
-                float t = i / size;
                 rect(cx - h + i, cy - h + i, 1, Math.max(1, (int)(size - i * 2)), color);
             }
         } else if (type == ICON_GEAR) {
@@ -207,12 +193,17 @@ public final class Draw {
         }
     }
 
-    // ---- text ----
-    public static FontRenderer font() { return Minecraft.getMinecraft().fontRendererObj; }
+    /** فونت UI ما: ModernFontRenderer اگر آماده باشد، وگرنه vanilla */
+    public static FontRenderer font() {
+        try {
+            com.oryvex.kbclient.font.ModernFontRenderer mf = com.oryvex.kbclient.KBClientMod.modernFont;
+            if (mf != null) return mf;
+        } catch (Throwable ignored) { }
+        return Minecraft.getMinecraft().fontRendererObj;
+    }
+
     public static int width(String s, float scale) { return (int)(font().getStringWidth(s) * scale); }
     public static int w(String s, float scale, boolean bold) { return width(s, scale); }
-
-    /** ارتفاع خط متن در مقیاس داده شده */
     public static float lineH(float scale) { return font().FONT_HEIGHT * scale; }
 
     public static void text(String s, float x, float y, int color, float scale, boolean shadow) {
@@ -224,7 +215,6 @@ public final class Draw {
         GlStateManager.popMatrix();
     }
 
-    /** مرکز افقی + مرکز عمودی دقیق با احتساب ارتفاع واقعی فونت */
     public static void centered(String s, float cx, float cy, int color, float scale, boolean shadow) {
         if (s == null || s.isEmpty()) return;
         float tw = font().getStringWidth(s) * scale;
@@ -282,7 +272,6 @@ public final class Draw {
     }
 
     public static void plexusBackground(int w, int h, float maxAlpha) {
-        // ساده: چند خط محو
         long t = System.currentTimeMillis() / 50L;
         int n = Math.min(60, Math.max(20, (w * h) / 12000));
         for (int i = 0; i < n; i++) {

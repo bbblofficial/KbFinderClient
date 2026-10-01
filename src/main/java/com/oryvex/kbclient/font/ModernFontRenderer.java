@@ -9,7 +9,9 @@ import java.awt.font.TextLayout;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
@@ -21,14 +23,11 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
 
-/**
- * AWT-backed font renderer with proper Arabic/Persian shaping via TextLayout.
- * Width measurement and drawing use the same cached texture, so layout never drifts.
- */
 public class ModernFontRenderer extends FontRenderer {
 
-    private static final int FONT_SIZE  = 32;
+    private static final int FONT_SIZE   = 32;
     private static final int BASE_HEIGHT = 9;
+    private static final int PAD         = 2;
 
     private static final int[] COLOR_CODES = new int[32];
     static {
@@ -36,10 +35,10 @@ public class ModernFontRenderer extends FontRenderer {
             int j = (i >> 3 & 1) * 85;
             int k = (i >> 2 & 1) * 170 + j;
             int l = (i >> 1 & 1) * 170 + j;
-            int i1 = (i >> 0 & 1) * 170 + j;
+            int m = (i & 1) * 170 + j;
             if (i == 6) k += 85;
-            if (i >= 16) { k /= 4; l /= 4; i1 /= 4; }
-            COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | i1 & 255;
+            if (i >= 16) { k /= 4; l /= 4; m /= 4; }
+            COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | m & 255;
         }
     }
 
@@ -50,9 +49,7 @@ public class ModernFontRenderer extends FontRenderer {
     private static final class GlyphTex {
         final int id, width, height;
         final float scale;
-        GlyphTex(int id, int w, int h, float s) {
-            this.id = id; this.width = w; this.height = h; this.scale = s;
-        }
+        GlyphTex(int id, int w, int h, float s) { this.id = id; this.width = w; this.height = h; this.scale = s; }
     }
 
     private final Map<String, GlyphTex> cache = new LinkedHashMap<String, GlyphTex>(512, 0.75f, true) {
@@ -100,21 +97,27 @@ public class ModernFontRenderer extends FontRenderer {
 
     private GlyphTex bake(String text) {
         Font font = hasRtl(text) ? vazir : inter;
-
         TextLayout layout = new TextLayout(text, font, frc);
-        Rectangle2D b = layout.getBounds();
-        int pad = 2;
-        int w = Math.max(1, (int) Math.ceil(b.getWidth())  + pad * 2);
-        int h = Math.max(1, (int) Math.ceil(b.getHeight()) + pad * 2);
-        int baseline = (int) Math.ceil(layout.getAscent()) + pad;
+
+        int ascent  = (int) Math.ceil(layout.getAscent());
+        int descent = (int) Math.ceil(layout.getDescent());
+        int leading = (int) Math.ceil(layout.getLeading());
+
+        Rectangle2D bounds = layout.getBounds();
+        int naturalW = (int) Math.ceil(Math.max(bounds.getWidth(), layout.getAdvance()));
+
+        int w = Math.max(1, naturalW + PAD * 2);
+        int h = Math.max(1, ascent + descent + leading + PAD * 2);
+        int baseline = PAD + ascent;
 
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,        RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,   RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS,   RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,    RenderingHints.VALUE_STROKE_PURE);
         g.setColor(Color.WHITE);
-        layout.draw(g, pad, baseline);
+        layout.draw(g, PAD, baseline);
         g.dispose();
 
         int id = TextureUtil.glGenTextures();
@@ -175,7 +178,7 @@ public class ModernFontRenderer extends FontRenderer {
             GlStateManager.bindTexture(tex.id);
             float r = (curColor >> 16 & 255) / 255f;
             float g = (curColor >> 8  & 255) / 255f;
-            float b = (curColor       & 255) / 255f;
+            float b = ( curColor       & 255) / 255f;
             float a = (curColor >>> 24      ) / 255f;
             GlStateManager.color(r, g, b, a);
 
@@ -235,7 +238,76 @@ public class ModernFontRenderer extends FontRenderer {
     public boolean getUnicodeFlag() { return false; }
 
     @Override
-    public void onResourceManagerReload(net.minecraft.client.resources.IResourceManager rm) {
-        // keep our fonts across reloads
+    public String trimStringToWidth(String text, int width) {
+        return trimStringToWidth(text, width, false);
     }
+
+    @Override
+    public String trimStringToWidth(String text, int width, boolean reverse) {
+        if (text == null || text.isEmpty()) return "";
+        StringBuilder out = new StringBuilder();
+        float w = 0;
+        int i = reverse ? text.length() - 1 : 0;
+        int step = reverse ? -1 : 1;
+        while (i >= 0 && i < text.length()) {
+            char c = text.charAt(i);
+            if (c == '\u00a7' && i + step >= 0 && i + step < text.length()) {
+                out.append(c).append(text.charAt(i + step));
+                i += step * 2;
+                continue;
+            }
+            float cw = getStringWidth(String.valueOf(c));
+            if (w + cw > width) break;
+            out.append(c);
+            w += cw;
+            i += step;
+        }
+        if (reverse) out.reverse();
+        return out.toString();
+    }
+
+    @Override
+    public List<String> listFormattedStringToWidth(String text, int width) {
+        List<String> out = new ArrayList<String>();
+        if (text == null || text.isEmpty()) return out;
+        String[] lines = text.split("\n", -1);
+        for (String line : lines) out.addAll(wrapFormattedStringToWidth(line, width));
+        return out;
+    }
+
+    private List<String> wrapFormattedStringToWidth(String s, int width) {
+        List<String> out = new ArrayList<String>();
+        if (s == null || s.isEmpty()) { out.add(""); return out; }
+        StringBuilder line = new StringBuilder();
+        float w = 0;
+        int i = 0;
+        while (i < s.length()) {
+            char c = s.charAt(i);
+            if (c == '\u00a7' && i + 1 < s.length()) {
+                line.append(c).append(s.charAt(i + 1));
+                i += 2;
+                continue;
+            }
+            if (c == ' ') {
+                float sw = getStringWidth(" ");
+                if (w + sw > width) { out.add(line.toString()); line.setLength(0); w = 0; }
+                else { line.append(c); w += sw; }
+                i++;
+                continue;
+            }
+            int j = i;
+            while (j < s.length() && s.charAt(j) != ' ' && s.charAt(j) != '\u00a7') j++;
+            String word = s.substring(i, j);
+            float ww = getStringWidth(word);
+            if (w + ww > width && line.length() > 0) { out.add(line.toString()); line.setLength(0); w = 0; }
+            line.append(word);
+            w += ww;
+            i = j;
+        }
+        if (line.length() > 0) out.add(line.toString());
+        return out;
+    }
+
+    @Override
+    public void onResourceManagerReload(net.minecraft.client.resources.IResourceManager rm) { }
 }

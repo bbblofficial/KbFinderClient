@@ -3,7 +3,6 @@ package com.oryvex.kbclient.ui;
 public final class Theme {
     private Theme() {}
 
-    // ---- surfaces ----
     public static final int BG0 = 0xFF05060B;
     public static final int BG1 = 0xFF0B0D16;
     public static final int PANEL = 0xFF121A29;
@@ -19,18 +18,15 @@ public final class Theme {
     public static final int SURFACE2 = 0xFF141722;
     public static final int SURFACE3 = 0xFF1C2030;
 
-    // ---- status ----
     public static final int GOOD = 0xFF34D399;
     public static final int WARN = 0xFFFBBF24;
     public static final int BAD = 0xFFFB7185;
 
-    // ---- text ----
     public static final int TEXT = 0xFFF4F6FB;
     public static final int SOFT = 0xFFB4BCCF;
     public static final int MUTED = 0xFF7C86A2;
     public static final int DIM = 0xFF4A5169;
 
-    // ---- type scale (ضریب روی فونت 9px) ----
     public static final float T_XS = 0.75f;
     public static final float T_SM = 0.85f;
     public static final float T_MD = 1.00f;
@@ -39,7 +35,6 @@ public final class Theme {
 
     public static final String S = "\u00a7";
 
-    // ---- accent themes ----
     public static final String[] THEME_NAMES = { "Ocean", "Violet", "Sunset", "Mint", "Rose", "Mono" };
     private static final int[][] PAL = {
         { 0xFF38BDF8, 0xFF6366F1 },
@@ -68,7 +63,6 @@ public final class Theme {
 
     public static float phase() { return (System.currentTimeMillis() % 7000L) / 7000f; }
 
-    // aliases برای سازگاری با کد قدیمی
     public static final int ACCENT = 0xFF22D3EE;
     public static final int ACCENT_DK = 0xFF0E7490;
     public static final int ACCENT2 = 0xFFA78BFA;

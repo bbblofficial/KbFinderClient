@@ -52,6 +52,9 @@ public class KBClientMod {
     private static KBClientMod instance;
     public static Logger logger;
 
+      /** فونت مدرن فقط برای UI خودمون — mc.fontRendererObj دست‌نخورده می‌مونه تا چت سالم بمونه. */
+      public static com.oryvex.kbclient.font.ModernFontRenderer modernFont;
+
     private final KBTracker tracker = new KBTracker();
     private KeyBinding openKey;
     private Channel hookedChannel;
@@ -83,15 +86,17 @@ public class KBClientMod {
         openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
         ClientRegistry.registerKeyBinding(openKey);
         installLoading();
+          try {
+              Minecraft mcFont = Minecraft.getMinecraft();
+              modernFont = new com.oryvex.kbclient.font.ModernFontRenderer(
+                      mcFont.gameSettings,
+                      new net.minecraft.util.ResourceLocation("textures/font/ascii.png"),
+                      mcFont.renderEngine, false);
+              logger.info("[KBClient] ModernFontRenderer ready for UI");
+          } catch (Throwable t) {
+              logger.error("[KBClient] ModernFontRenderer failed: " + t);
+          }
         DiscordRPC.start();
-
-        try {
-            Minecraft mc = Minecraft.getMinecraft();
-            mc.fontRendererObj = new com.oryvex.kbclient.font.ModernFontRenderer(mc.gameSettings, new net.minecraft.util.ResourceLocation("textures/font/ascii.png"), mc.renderEngine, false);
-            logger.info("[KBClient] ModernFontRenderer attached to client.");
-        } catch (Throwable t) {
-            logger.error("[KBClient] Failed to attach ModernFontRenderer: " + t);
-        }
 
     }
 

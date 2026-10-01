@@ -15,7 +15,6 @@ public final class Ui {
         float w = 24f, h = 12f, y = cy - h / 2f;
         int off = Draw.fade(0x38FFFFFF, alpha);
         int c1 = Draw.lerp(off, Draw.fade(Theme.accent(), alpha), knob);
-        int c2 = Draw.lerp(off, Draw.fade(Theme.accent2(), alpha), knob);
         Draw.roundRect(x, y, w, h, h / 2f, c1);
         Draw.circle(x + 6f + (w - 12f) * knob, cy, 4.2f, Draw.fade(0xFFFFFFFF, alpha));
     }
