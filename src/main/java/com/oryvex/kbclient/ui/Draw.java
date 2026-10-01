@@ -549,4 +549,30 @@ public final class Draw {
             line(x1, y1, x2, y2, 1f, alpha(Theme.accent(), maxAlpha * 0.35f));
         }
     }
+
+    /** Radial gradient approximation: soft circle fading to transparent. */
+    public static void radial(float cx, float cy, float r, int color, boolean fill) {
+        if (((color >>> 24) & 255) <= 4) return;
+        int steps = Math.max(3, (int) r / 4);
+        for (int i = steps; i >= 1; i--) {
+            float t = i / (float) steps;
+            float rr = r * t;
+            int a = (int) (((color >>> 24) & 255) * (1f - t) * 0.5f);
+            if (a <= 0) continue;
+            circle(cx, cy, rr, (a << 24) | (color & 0xFFFFFF));
+        }
+        circle(cx, cy, r, color);
+    }
+
+    /** Soft drop shadow behind a rounded rect. */
+    public static void shadow(float x, float y, float w, float h, float r, int color, float spread) {
+        if (((color >>> 24) & 255) <= 4) return;
+        for (int i = 1; i <= (int) spread; i++) {
+            int a = (int) (((color >>> 24) & 255) * (1f - i / spread) * 0.10f);
+            if (a <= 0) continue;
+            roundRect(x - i, y - i + 1f, w + i * 2f, h + i * 2f, r + i,
+                      (a << 24) | (color & 0xFFFFFF));
+        }
+    }
+
 }

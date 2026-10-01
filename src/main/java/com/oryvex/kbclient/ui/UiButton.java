@@ -19,6 +19,10 @@ public class UiButton extends GuiButton {
     public static final int TOGGLE  = 4;
     public static final int GHOST   = 5;
 
+    // Legacy aliases — older code references UiButton.ICON_* directly
+    public static final int ICON_NONE = Draw.ICON_NONE;
+    public static final int ICON_GEAR = Draw.ICON_GEAR;
+
     public int style = NORMAL;
     public int icon = Draw.ICON_NONE;
     public boolean selected;
