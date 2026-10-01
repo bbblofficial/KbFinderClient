@@ -322,17 +322,10 @@ public final class Draw {
 
     // ---- text ----
     public static FontRenderer font() {
-          /* Inside KB Client screens we prefer the modern font.
-           * Vanilla text (chat, scoreboard, nametags) is drawn with
-           * mc.fontRendererObj, which we never overwrite, so
-           * server resource-pack emojis keep working. */
-          try {
-              com.oryvex.kbclient.font.ModernFontRenderer mf =
-                      com.oryvex.kbclient.KBClientMod.modernFont;
-              if (mf != null) return mf;
-          } catch (Throwable ignored) { }
-          return Minecraft.getMinecraft().fontRendererObj;
-      } catch (Throwable ignored) { }
+        try {
+            com.oryvex.kbclient.font.ModernFontRenderer mf = com.oryvex.kbclient.KBClientMod.modernFont;
+            if (mf != null) return mf;
+        } catch (Throwable ignored) { }
         return Minecraft.getMinecraft().fontRendererObj;
     }
 
