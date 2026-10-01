@@ -38,5 +38,12 @@ public final class Theme {
     public static final int ACCENT_DK = 0xFF1E40AF;
     public static final int ACCENT2   = 0xFFA78BFA; // Secondary accent (Purple)
 
+    // ---- Typography Scale ----
+    public static final float T_XS = 0.75f;
+    public static final float T_SM = 0.85f;
+    public static final float T_MD = 1.00f;
+    public static final float T_LG = 1.25f;
+    public static final float T_XL = 1.60f;
+
     public static final String S = "\u00a7";
 }
