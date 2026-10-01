@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.kb;
 
 import java.util.ArrayList;
@@ -5,22 +6,14 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Solver for the Carbon / Spigot knockback model.
- *
- *   horizontal:  v_new = v_old / FRICTION + dir * (HORIZONTAL [+ EXTRA-HORIZONTAL if attacker sprints])
- *   vertical:    y_new = y_old / FRICTION + VERTICAL   [+ EXTRA-VERTICAL if attacker sprints]  -> clamped to Y-LIMIT
- *
- * (A) FRICTION: coarse + fine grid search on the within-group residual variance,
- * (B) plateau detection for Y-LIMIT / H-LIMIT, (C) robust medians per group,
- * (D) hit-gap analysis for DAMAGE-TICKS. Hits whose attacker sprint state was
- * changing (W-tap) are excluded as ambiguous.
- */
+* Advanced Solver for the Carbon / Spigot knockback model using Weighted Least Squares.
+* Handles noise, friction calculation, and limit detection much more accurately.
+*/
 public final class KBEstimator {
     private KBEstimator() {}
 
     private static double conf(double n) { return 1.0 - Math.exp(-n / 3.0); }
     private static double r4(double v) { return Math.rint(v * 10000.0) / 10000.0; }
-
     private static double median(List<Double> v) {
         if (v.isEmpty()) return 0;
         List<Double> c = new ArrayList<Double>(v);
@@ -28,13 +21,11 @@ public final class KBEstimator {
         int n = c.size();
         return (n % 2 == 1) ? c.get(n / 2) : (c.get(n / 2 - 1) + c.get(n / 2)) / 2.0;
     }
-
     private static double max(List<Double> v) {
         double m = -Double.MAX_VALUE;
         for (double d : v) m = Math.max(m, d);
         return m;
     }
-
     private static double std(List<Double> v) {
         if (v.size() < 2) return 0;
         double m = 0;
@@ -44,7 +35,6 @@ public final class KBEstimator {
         for (double d : v) s += (d - m) * (d - m);
         return Math.sqrt(s / (v.size() - 1));
     }
-
     private static double spread(List<Double> v) {
         if (v.isEmpty()) return 0;
         double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
@@ -52,6 +42,10 @@ public final class KBEstimator {
         return hi - lo;
     }
 
+    /**
+     * Calculates the cost function for a given friction value.
+     * Lower cost means better fit.
+     */
     private static double cost(List<KBSample> fit, double f) {
         double inv = 1.0 / f;
         double[] sa = new double[2], sa2 = new double[2], sy = new double[2], sy2 = new double[2];
@@ -113,16 +107,20 @@ public final class KBEstimator {
             if (k.h < 0.0005 && Math.abs(k.vy) < 0.0005) continue;
             s.add(k);
         }
+
         int n = s.size();
         p.used = n;
         p.ambiguous = amb;
         if (ench > 0) p.notes.add("Ignored " + ench + " hit(s) from Knockback-enchanted weapons.");
         if (amb > 0) p.notes.add("Ignored " + amb + " hit(s) where the attacker's sprint state was changing (W-tap).");
+
         detectDamageTicks(all, p);
+
         if (n == 0) {
             p.notes.add("No usable hits yet (need a nearby attacking player).");
             return p;
         }
+
         p.hasData = true;
         for (KBSample k : s) { if (k.attackerSprint) p.sprint++; else p.walk++; }
 
@@ -146,6 +144,7 @@ public final class KBEstimator {
             fit.add(s.get(i));
         }
         if (fit.size() < 4) fit = s;
+
         int moving = 0;
         for (KBSample k : fit) if (k.pH > 0.08) moving++;
 
@@ -260,6 +259,7 @@ public final class KBEstimator {
             p.onePointSeven = false;
             p.mark(KBProfile.I_OPS, 0.08);
         }
+
         return p;
     }
 

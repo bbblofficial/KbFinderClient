@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.ui;
 
 import java.io.IOException;
@@ -5,8 +6,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
-/** Base class for all KB Client screens: fades in on open, fades out on close. */
+/** Base class for all KB Client screens: fades in on open, fades out on close, animated backdrop. */
 public abstract class FadeScreen extends GuiScreen {
     private long openedAt = System.currentTimeMillis();
     private boolean closing;
@@ -57,6 +59,15 @@ public abstract class FadeScreen extends GuiScreen {
         }
     }
 
+    /** 0..1 eased "how open is this screen" - use it to scale / fade panels in and out */
+    protected final float openAnim() {
+        long ms = Fade.ms();
+        long now = System.currentTimeMillis();
+        float a = ms <= 0 ? 1f : Draw.easeOut((now - openedAt) / (float) (ms + 120));
+        if (closing) a = Math.min(a, 1f - Draw.ease((now - closeAt) / (float) closeDur));
+        return a;
+    }
+
     /** call as the LAST step of drawScreen */
     protected final void drawFade() {
         long ms = Fade.ms();
@@ -65,15 +76,11 @@ public abstract class FadeScreen extends GuiScreen {
         float a = 1f - Fade.ease((now - openedAt) / (float) ms);
         if (closing) a = Math.max(a, Fade.ease((now - closeAt) / (float) closeDur));
         if (a > 0.004f) Gui.drawRect(0, 0, this.width, this.height, ((int) (a * 255f)) << 24);
+        Draw.resetColor();
     }
 
-    protected void drawBackdrop(int particleCount) {
-        if (this.mc != null && this.mc.theWorld != null) {
-            this.drawGradientRect(0, 0, this.width, this.height, 0xD0070A11, 0xE0111A2B);
-        } else {
-            this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
-        }
-        if (Settings.particles && particleCount > 0) Draw.plexusBackground(this.width, this.height, 0.35f);
+    protected void drawBackdrop(int mx, int my) {
+        Background.draw(this.width, this.height, mx, my, this.mc != null && this.mc.theWorld != null, 1f);
     }
 
     @Override
@@ -81,6 +88,16 @@ public abstract class FadeScreen extends GuiScreen {
         if (closing) return;
         super.mouseClicked(x, y, b);
     }
+
+    @Override
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+        int d = Mouse.getEventDWheel();
+        if (d != 0 && !closing) onScroll(d > 0 ? -1 : 1);
+    }
+
+    /** mouse wheel: -1 = up, +1 = down */
+    protected void onScroll(int dir) { }
 
     @Override
     protected final void keyTyped(char c, int key) throws IOException {

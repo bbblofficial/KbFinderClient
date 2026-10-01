@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.ui;
 
 import java.io.IOException;
@@ -25,12 +26,10 @@ public class GuiAltManager extends FadeScreen {
     public void initGui() {
         this.buttonList.clear();
         Keyboard.enableRepeatEvents(true);
-
         bw = 200;
         int bh = 22, gap = 6;
         cx = this.width / 2;
         y = this.height / 2 - 45;
-        
         cardW = bw + 40;
         cardX = cx - cardW / 2;
         cardY = y - 35;
@@ -107,19 +106,16 @@ public class GuiAltManager extends FadeScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawBackdrop(20);
         Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
-        
         Draw.centered("ALT MANAGER", cx, cardY + 12, Theme.TEXT, 1.4f, true);
         Draw.centered("Current: " + this.mc.getSession().getUsername(), cx, cardY + 30, Theme.ACCENT, 0.85f, false);
         
         // استایل مدرن دور Text Box
         Draw.roundRect(cx - bw / 2f, y + 10, bw, 20, 4f, Theme.PANEL3);
         if (nameField.isFocused()) Draw.shadow(cx - bw / 2f, y + 10, bw, 20, 4f, Draw.fade(Theme.ACCENT, 0.4f), 3f);
-        
         nameField.drawTextBox();
-        
+
         // رسم وضعیت ارور یا موفقیت
         Draw.centered(status, cx, cardY + cardH - 16, statusColor, 0.85f, false);
-
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();
     }

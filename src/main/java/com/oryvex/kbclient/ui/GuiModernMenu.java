@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.ui;
 
 import com.oryvex.kbclient.KBClientMod;
@@ -19,13 +20,12 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        
         // FULLY RESPONSIVE CALCULATION
         sidebarW = Math.max(220, Math.min(300, this.width / 4)); // Adapts to screen width perfectly
         int padding = 24;
-        int bw = sidebarW - (padding * 2); 
+        int bw = sidebarW - (padding * 2);
         int bh = 28, gap = 8;
-        
+
         // Vertically center the buttons exactly
         int totalHeight = (6 * bh) + (5 * gap);
         int top = (this.height - totalHeight) / 2 + 10;
@@ -64,9 +64,8 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
-        
         if (Settings.particles) {
-            Draw.plexusBackground(this.width, this.height, 0.65f); // Beautiful dense plexus
+            // Draw.plexusBackground(this.width, this.height, 0.65f); // Beautiful dense plexus
         }
 
         // Sidebar Background
@@ -79,11 +78,11 @@ public class GuiModernMenu extends FadeScreen {
         float scale = 2.2f;
         float titleW = Draw.font().getStringWidth(title) * scale;
         Draw.text(title, (sidebarW - titleW) / 2f, 40, Theme.TEXT, scale, true);
-        
+
         String sub = "KB Client v" + KBClientMod.VERSION;
         float subW = Draw.font().getStringWidth(sub) * 0.9f;
         Draw.text(sub, (sidebarW - subW) / 2f, 65, Theme.ACCENT, 0.9f, false);
-        
+
         Draw.rect(30, 85, sidebarW - 60, 1, Theme.BORDER);
 
         // Premium Floating Widget
@@ -96,7 +95,6 @@ public class GuiModernMenu extends FadeScreen {
             Draw.shadow(px, py, w, 24, 6f, 0xFF000000, 12f);
             Draw.roundRect(px, py, w, 24, 6f, Theme.PANEL2);
             Draw.roundRect(px, py, w, 24, 6f, Theme.BORDER);
-            
             Draw.roundRect(px + 10, py + 9, 6, 6, 3f, Theme.GOOD);
             Draw.shadow(px + 10, py + 9, 6, 6, 3f, Theme.GOOD, 5f);
             Draw.text(s, px + 24, py + 8.5f, Theme.TEXT, 0.85f, false);
@@ -105,14 +103,11 @@ public class GuiModernMenu extends FadeScreen {
         // Improved User Card
         int userY = this.height - 45;
         Draw.rect(30, userY - 15, sidebarW - 60, 1, Theme.BORDER);
-        
         // Avatar Circle Placeholder
-        Draw.roundRect(24, userY - 3, 22, 22, 11f, Theme.PANEL3); 
+        Draw.roundRect(24, userY - 3, 22, 22, 11f, Theme.PANEL3);
         Draw.text("L", 32, userY + 4, Theme.SOFT, 1.0f, false);
-        
         Draw.text("Logged in as", 56, userY, Theme.MUTED, 0.75f, false);
         String name = mc.getSession().getUsername();
-        
         // Truncate name if too long
         if (Draw.font().getStringWidth(name) > (sidebarW - 70)) {
             name = name.substring(0, 10) + "...";

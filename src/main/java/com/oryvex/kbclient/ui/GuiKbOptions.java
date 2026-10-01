@@ -1,3 +1,4 @@
+
 package com.oryvex.kbclient.ui;
 
 import com.oryvex.kbclient.KBTracker;
@@ -33,7 +34,7 @@ public class GuiKbOptions extends FadeScreen {
         bLoad = new UiButton(4, cx - bw / 2, y + 3 * (bh + gap), bw, bh, "Custom loading screen").style(UiButton.TOGGLE).delay(210);
         bFade = new UiButton(5, cx - bw / 2, y + 4 * (bh + gap), bw, bh, "").delay(260);
         bDisc = new UiButton(8, cx - bw / 2, y + 5 * (bh + gap), bw, bh, "Discord Rich Presence").style(UiButton.TOGGLE).delay(285);
-        
+
         this.buttonList.add(bHud);
         this.buttonList.add(bPart);
         this.buttonList.add(bToast);
