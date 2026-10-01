@@ -54,9 +54,8 @@ public final class Draw {
         float green = (color >> 8 & 0xFF) / 255.0F;
         float blue = (color & 0xFF) / 255.0F;
 
-        GlStateManager.enableBlend();
+        blend();
         GlStateManager.disableTexture2D();
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GlStateManager.color(red, green, blue, alpha);
 
@@ -78,9 +77,8 @@ public final class Draw {
         float green = (color >> 8 & 0xFF) / 255.0F;
         float blue = (color & 0xFF) / 255.0F;
 
-        GlStateManager.enableBlend();
+        blend();
         GlStateManager.disableTexture2D();
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
         GL11.glLineWidth(1.5f);
 
@@ -157,15 +155,15 @@ public final class Draw {
         text(s, rx - font().getStringWidth(s) * scale, y, color, scale, shadow);
     }
 
-    /** Premium LiquidBounce/Rise Plexus Effect */
+    /** Denser Premium Plexus Effect */
     public static void plexusBackground(int w, int h, float maxAlpha) {
         float t = (System.currentTimeMillis() % 100000L) / 1000f;
-        int count = 65;
+        int count = 100; // INCREASED DENSITY
         float[] px = new float[count];
         float[] py = new float[count];
         
         for (int i = 0; i < count; i++) {
-            float sp = 2f + (i % 4) * 1.2f;
+            float sp = 1.5f + (i % 4) * 0.8f;
             px[i] = (i * 93 + t * sp * 18f) % (w + 100) - 50;
             py[i] = (i * 61 - t * sp * 12f) % (h + 100) - 50;
             if (py[i] < -50) py[i] += h + 100;
@@ -174,17 +172,16 @@ public final class Draw {
         blend();
         GL11.glDisable(GL11.GL_TEXTURE_2D);
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glLineWidth(1.0f);
+        GL11.glLineWidth(1.2f);
         
-        // Draw Connecting Lines
         GL11.glBegin(GL11.GL_LINES);
         for (int i = 0; i < count; i++) {
             for (int j = i + 1; j < count; j++) {
                 float dx = px[i] - px[j];
                 float dy = py[i] - py[j];
                 float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                if (dist < 90f) {
-                    float a = (1f - dist / 90f) * maxAlpha * 0.5f;
+                if (dist < 120f) { // WIDER RANGE FOR CONNECTIONS
+                    float a = (1f - dist / 120f) * maxAlpha * 0.6f;
                     int color = alpha(Theme.ACCENT, a);
                     float red = (color >> 16 & 0xFF) / 255.0F;
                     float green = (color >> 8 & 0xFF) / 255.0F;
@@ -197,7 +194,6 @@ public final class Draw {
         }
         GL11.glEnd();
 
-        // Draw Nodes
         for (int i = 0; i < count; i++) {
             float tw = 0.5f + 0.5f * (float) Math.sin(t * 2f + i);
             int a = (int) (maxAlpha * 255f * tw);

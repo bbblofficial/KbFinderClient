@@ -41,37 +41,43 @@ public class UiButton extends GuiButton {
         float ap = Fade.ease((System.currentTimeMillis() - born - delay) / 320f);
         if (ap <= 0.01f) return;
 
-        int fill, text;
+        int fill, text, accent;
         switch (style) {
             case PRIMARY:
-                fill = Draw.lerp(0x00000000, Theme.ACCENT, hover);
-                text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
+                fill = Draw.lerp(Theme.PANEL3, Theme.ACCENT_DK, hover);
+                accent = Theme.ACCENT;
+                text = Theme.TEXT;
                 break;
             case DANGER:
-                fill = Draw.lerp(0x00000000, Theme.BAD, hover);
-                text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
+                fill = Draw.lerp(Theme.PANEL3, 0x88EF4444, hover);
+                accent = Theme.BAD;
+                text = Theme.TEXT;
                 break;
             case TAB:
                 fill = selected ? Theme.PANEL2 : Draw.lerp(0x00000000, Theme.PANEL, hover);
+                accent = Theme.ACCENT;
                 text = selected ? Theme.ACCENT : Draw.lerp(Theme.MUTED, Theme.TEXT, hover);
                 break;
             default:
-                fill = Draw.lerp(0x00000000, Theme.PANEL3, hover);
+                fill = Draw.lerp(Theme.PANEL2, Theme.PANEL3, hover);
+                accent = Theme.ACCENT2;
                 text = Draw.lerp(Theme.SOFT, Theme.TEXT, hover);
         }
-        if (!enabled) { fill = 0x00000000; text = Theme.DIM; }
+        if (!enabled) { fill = Theme.PANEL; text = Theme.DIM; accent = Theme.DIM; }
 
         Draw.blend();
         int y = yPosition + (int) ((1f - ap) * 8f);
         
-        // Premium Sidebar Hover Effect (Fill fades in, left indicator line slides up)
+        // Solid visible capsule for buttons so they aren't floating text
         if (style != TAB && style != TOGGLE) {
-            Draw.roundRect(xPosition, y, width, height, 4f, Draw.fade(fill, ap * 0.4f));
+            Draw.roundRect(xPosition, y, width, height, 6f, Draw.fade(fill, ap));
+            
+            // Hover Indicator Line
             if (hover > 0.01f) {
-                float lineH = height * hover * 0.6f;
-                int lineColor = style == PRIMARY ? Theme.ACCENT : (style == DANGER ? Theme.BAD : Theme.SOFT);
-                Draw.roundRect(xPosition, y + (height - lineH)/2f, 2f, lineH, 1f, Draw.fade(lineColor, ap * hover));
-                Draw.shadow(xPosition, y + (height - lineH)/2f, 2f, lineH, 1f, Draw.fade(lineColor, ap * hover), 4f);
+                float lineH = height * 0.4f + (height * 0.4f * hover);
+                float lineY = y + (height - lineH) / 2f;
+                Draw.roundRect(xPosition + 6, lineY, 2.5f, lineH, 1.25f, Draw.fade(accent, ap * hover));
+                Draw.shadow(xPosition + 6, lineY, 2.5f, lineH, 1.25f, Draw.fade(accent, ap * hover), 5f);
             }
         } else {
             Draw.roundRect(xPosition, y, width, height, 4f, Draw.fade(fill, ap));
@@ -84,15 +90,17 @@ public class UiButton extends GuiButton {
             Draw.roundRect(sx, sy, sw, sh, 5f, Draw.fade(Draw.lerp(Theme.PANEL3, Theme.ACCENT_DK, knob), ap));
             Draw.roundRect(sx + 1 + (sw - sh) * knob, sy + 1, sh - 2, sh - 2, 4f, Draw.fade(Theme.TEXT, ap));
             if(knob > 0.1f) Draw.shadow(sx + 1 + (sw - sh) * knob, sy + 1, sh - 2, sh - 2, 4f, Draw.fade(Theme.ACCENT, ap * knob), 4f);
-        } else if (icon == ICON_GEAR) {
-            int tw = Draw.width(displayString, 1f);
-            float startX = xPosition + (width - (tw + 18)) / 2f;
-            Draw.gear(startX + 6f, y + height / 2f, 4.5f, spin, Draw.fade(Draw.lerp(Theme.MUTED, Theme.ACCENT, hover), ap), Draw.fade(fill, ap));
-            Draw.text(displayString, startX + 18f, y + (height - 8) / 2f, tc, 1f, true);
+        } else if (style != TAB) {
+            float push = hover * 5f; // Text slides right on hover
+            if (icon == ICON_GEAR) {
+                Draw.gear(xPosition + 18f + push, y + height / 2f, 4.5f, spin, Draw.fade(Theme.SOFT, ap), Draw.fade(fill, ap));
+                Draw.text(displayString, xPosition + 30f + push, y + (height - 8) / 2f, tc, 1f, false);
+            } else {
+                Draw.text(displayString, xPosition + 16f + push, y + (height - 8) / 2f, tc, 1f, false);
+            }
         } else {
-            // Text pushes slightly to the right on hover
-            float push = hover * 4f;
-            Draw.text(displayString, xPosition + 12f + push, y + (height - 8) / 2f, tc, 1f, false);
+            Draw.centered(displayString, xPosition + width / 2f, y + (height - 8) / 2f, tc, 1f, false);
+            if (selected) Draw.roundRect(xPosition + 8, y + height - 2, width - 16, 2, 1f, Draw.fade(Theme.ACCENT, ap));
         }
     }
 }

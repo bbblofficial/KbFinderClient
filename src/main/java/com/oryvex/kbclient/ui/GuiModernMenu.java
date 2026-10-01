@@ -19,17 +19,23 @@ public class GuiModernMenu extends FadeScreen {
     @Override
     public void initGui() {
         this.buttonList.clear();
-        sidebarW = 200;
-        int bw = 160, bh = 24, gap = 8;
-        int bx = 20; 
-        int top = this.height / 2 - (6 * bh + 5 * gap) / 2 + 10;
+        
+        // FULLY RESPONSIVE CALCULATION
+        sidebarW = Math.max(220, Math.min(300, this.width / 4)); // Adapts to screen width perfectly
+        int padding = 24;
+        int bw = sidebarW - (padding * 2); 
+        int bh = 28, gap = 8;
+        
+        // Vertically center the buttons exactly
+        int totalHeight = (6 * bh) + (5 * gap);
+        int top = (this.height - totalHeight) / 2 + 10;
 
-        this.buttonList.add(new UiButton(1, bx, top, bw, bh, "Singleplayer").delay(100));
-        this.buttonList.add(new UiButton(2, bx, top + (bh + gap), bw, bh, "Multiplayer").delay(150));
-        this.buttonList.add(new UiButton(6, bx, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(200));
-        this.buttonList.add(new UiButton(3, bx, top + 3 * (bh + gap), bw, bh, "Analyzer").style(UiButton.PRIMARY).delay(250));
-        this.buttonList.add(new UiButton(4, bx, top + 4 * (bh + gap), bw, bh, "Options").icon(UiButton.ICON_GEAR).delay(300));
-        this.buttonList.add(new UiButton(5, bx, top + 5 * (bh + gap), bw, bh, "Quit").style(UiButton.DANGER).delay(350));
+        this.buttonList.add(new UiButton(1, padding, top, bw, bh, "Singleplayer").delay(100));
+        this.buttonList.add(new UiButton(2, padding, top + (bh + gap), bw, bh, "Multiplayer").delay(150));
+        this.buttonList.add(new UiButton(6, padding, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(200));
+        this.buttonList.add(new UiButton(3, padding, top + 3 * (bh + gap), bw, bh, "Analyzer").style(UiButton.PRIMARY).delay(250));
+        this.buttonList.add(new UiButton(4, padding, top + 4 * (bh + gap), bw, bh, "Options").icon(UiButton.ICON_GEAR).delay(300));
+        this.buttonList.add(new UiButton(5, padding, top + 5 * (bh + gap), bw, bh, "Quit").style(UiButton.DANGER).delay(350));
     }
 
     @Override
@@ -57,41 +63,61 @@ public class GuiModernMenu extends FadeScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Dark animated gradient background
         Draw.vgradient(this.width, this.height, Theme.BG0, Theme.BG1);
         
-        // Premium Plexus Effect
         if (Settings.particles) {
-            Draw.plexusBackground(this.width, this.height, 0.45f);
+            Draw.plexusBackground(this.width, this.height, 0.65f); // Beautiful dense plexus
         }
 
-        // Glass Sidebar
-        Draw.shadow(0, 0, sidebarW, this.height, 0f, 0xFF000000, 20f);
+        // Sidebar Background
+        Draw.shadow(0, 0, sidebarW, this.height, 0f, 0xFF000000, 30f);
         Draw.rect(0, 0, sidebarW, this.height, Theme.PANEL);
         Draw.rect(sidebarW, 0, 1, this.height, Theme.BORDER);
 
-        // Logo on sidebar
-        Draw.text("K B   C L I E N T", 20, 35, Theme.TEXT, 1.4f, true);
-        Draw.text("v" + KBClientMod.VERSION, 22, 52, Theme.ACCENT, 0.85f, false);
-        Draw.rect(20, 70, sidebarW - 40, 1, Theme.BORDER);
+        // Perfect Typography Logo
+        String title = "ORYVEX";
+        float scale = 2.2f;
+        float titleW = Draw.font().getStringWidth(title) * scale;
+        Draw.text(title, (sidebarW - titleW) / 2f, 40, Theme.TEXT, scale, true);
+        
+        String sub = "KB Client v" + KBClientMod.VERSION;
+        float subW = Draw.font().getStringWidth(sub) * 0.9f;
+        Draw.text(sub, (sidebarW - subW) / 2f, 65, Theme.ACCENT, 0.9f, false);
+        
+        Draw.rect(30, 85, sidebarW - 60, 1, Theme.BORDER);
 
-        // Info Panel on the right (Rise Style Status)
+        // Premium Floating Widget
         KBProfile p = tracker.getProfile();
         if (p.hasData) {
-            String s = "Last Profile: " + p.summary() + " (" + p.used + " hits)";
-            int w = Draw.width(s, 0.85f) + 24;
+            String s = "Profile: " + p.summary();
+            int w = Draw.width(s, 0.85f) + 36;
             int px = this.width - w - 20;
             int py = 20;
-            Draw.shadow(px, py, w, 20, 6f, 0xFF000000, 8f);
-            Draw.roundRect(px, py, w, 20, 6f, Theme.PANEL);
-            Draw.roundRect(px, py, w, 20, 6f, Theme.BORDER);
-            Draw.text(s, px + 12, py + 6.5f, Theme.SOFT, 0.85f, false);
-            Draw.roundRect(px - 4, py + 6, 8, 8, 4f, Theme.GOOD); // Online dot
+            Draw.shadow(px, py, w, 24, 6f, 0xFF000000, 12f);
+            Draw.roundRect(px, py, w, 24, 6f, Theme.PANEL2);
+            Draw.roundRect(px, py, w, 24, 6f, Theme.BORDER);
+            
+            Draw.roundRect(px + 10, py + 9, 6, 6, 3f, Theme.GOOD);
+            Draw.shadow(px + 10, py + 9, 6, 6, 3f, Theme.GOOD, 5f);
+            Draw.text(s, px + 24, py + 8.5f, Theme.TEXT, 0.85f, false);
         }
 
-        // Account Display Bottom Left
-        String acc = "User: " + mc.getSession().getUsername();
-        Draw.text(acc, 20, this.height - 20, Theme.MUTED, 0.85f, false);
+        // Improved User Card
+        int userY = this.height - 45;
+        Draw.rect(30, userY - 15, sidebarW - 60, 1, Theme.BORDER);
+        
+        // Avatar Circle Placeholder
+        Draw.roundRect(24, userY - 3, 22, 22, 11f, Theme.PANEL3); 
+        Draw.text("L", 32, userY + 4, Theme.SOFT, 1.0f, false);
+        
+        Draw.text("Logged in as", 56, userY, Theme.MUTED, 0.75f, false);
+        String name = mc.getSession().getUsername();
+        
+        // Truncate name if too long
+        if (Draw.font().getStringWidth(name) > (sidebarW - 70)) {
+            name = name.substring(0, 10) + "...";
+        }
+        Draw.text(name, 56, userY + 9, Theme.TEXT, 0.95f, false);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawFade();
