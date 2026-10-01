@@ -419,29 +419,4 @@ public final class Draw {
         if (cur.length() > 0) lines.add(cur.toString());
         return lines;
     }
-
-
-    /* ------------------------------------------------------------------ */
-    /*  Dashed rules (restored — the Graph tab and section headers use them) */
-    /* ------------------------------------------------------------------ */
-
-    /** Dashed horizontal rule from (x, y) with length w. */
-    public static void dashedH(float x, float y, float w, int color) {
-        if (w <= 0f || ((color >>> 24) & 255) <= 4) return;
-        for (float i = 0f; i < w; i += 6f) {
-            int x0 = (int) (x + i);
-            int x1 = (int) (x + Math.min(w, i + 3f));
-            Gui.drawRect(x0, (int) y, x1, (int) y + 1, color);
-        }
-    }
-
-    /** Dashed vertical rule from (x, y) with length h. */
-    public static void dashedV(float x, float y, float h, int color) {
-        if (h <= 0f || ((color >>> 24) & 255) <= 4) return;
-        for (float i = 0f; i < h; i += 6f) {
-            int y0 = (int) (y + i);
-            int y1 = (int) (y + Math.min(h, i + 3f));
-            Gui.drawRect((int) x, y0, (int) x + 1, y1, color);
-        }
-    }
 }
