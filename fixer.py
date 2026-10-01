@@ -1,181 +1,269 @@
 import os
-import re
 
-def add_alt_manager():
-    print("🚀 Adding Alt Manager to KB Client...")
+def apply_real_loading():
+    print("🛠️ Removing fake delays and applying real UI on native loading screens...")
 
-    # 1. Create GuiAltManager.java
-    alt_manager_code = """package com.oryvex.kbclient.ui;
+    clean_kbclient_code = """package com.oryvex.kbclient;
 
-import java.io.IOException;
+import com.oryvex.kbclient.ui.Fade;
+import com.oryvex.kbclient.ui.FadeScreen;
+import com.oryvex.kbclient.ui.GuiAnalyzer;
+import com.oryvex.kbclient.ui.GuiModernMenu;
+import com.oryvex.kbclient.ui.Hud;
+import com.oryvex.kbclient.ui.KBLoading;
+import com.oryvex.kbclient.ui.LoadingArt;
+import com.oryvex.kbclient.ui.Settings;
+import com.oryvex.kbclient.ui.UiButton;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPipeline;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.gui.GuiDownloadTerrain;
+import net.minecraft.client.gui.GuiIngameMenu;
+import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiTextField;
-import net.minecraft.util.Session;
+import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
+import net.minecraftforge.client.ClientCommandHandler;
+import net.minecraftforge.client.event.GuiOpenEvent;
+import net.minecraftforge.client.event.GuiScreenEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.input.Keyboard;
 
-public class GuiAltManager extends FadeScreen {
-    private final GuiScreen parent;
-    private GuiTextField nameField;
-    private String status = "Ready";
-    private int statusColor = Theme.DIM;
-    private int cardX, cardY, cardW, cardH;
-    private int cx, y, bw;
+@Mod(modid = KBClientMod.MODID, name = KBClientMod.NAME, version = KBClientMod.VERSION,
+     acceptedMinecraftVersions = "[1.8.9]", clientSideOnly = true)
+public class KBClientMod {
+    public static final String MODID = "kbclient";
+    public static final String NAME = "KB Client";
+    public static final String VERSION = "3.0.0";
+    private static final String HOOK = "kb_client_handler";
 
-    public GuiAltManager(GuiScreen parent) {
-        this.parent = parent;
+    private static KBClientMod instance;
+    public static Logger logger;
+
+    private final KBTracker tracker = new KBTracker();
+    private KeyBinding openKey;
+    private Channel hookedChannel;
+    private boolean pendingOpen;
+    private Object lastWorld;
+    private boolean loadingInstalled;
+    
+    public static net.minecraft.client.multiplayer.ServerData lastServerData;
+
+    public static KBClientMod getInstance() { return instance; }
+    public KBTracker getTracker() { return tracker; }
+
+    public void requestOpenAnalyzer() { pendingOpen = true; }
+
+    @EventHandler
+    public void preInit(FMLPreInitializationEvent e) {
+        logger = e.getModLog();
+        instance = this;
+        Settings.load();
     }
 
-    @Override
-    public void initGui() {
-        this.buttonList.clear();
-        Keyboard.enableRepeatEvents(true);
-
-        bw = 200;
-        int bh = 22, gap = 6;
-        cx = this.width / 2;
-        y = this.height / 2 - 45;
-        
-        cardW = bw + 40;
-        cardX = cx - cardW / 2;
-        cardY = y - 35;
-        cardH = 175;
-
-        // فیلد متنی کاستوم بدون پس‌زمینه دیفالت ماینکرفت
-        nameField = new GuiTextField(0, this.fontRendererObj, cx - bw / 2 + 5, y + 14, bw - 10, 12);
-        nameField.setMaxStringLength(16);
-        nameField.setFocused(true);
-        nameField.setEnableBackgroundDrawing(false);
-        nameField.setTextColor(Theme.TEXT);
-
-        this.buttonList.add(new UiButton(1, cx - bw / 2, y + 45, bw, bh, "Login (Offline)").style(UiButton.PRIMARY).delay(60));
-        this.buttonList.add(new UiButton(2, cx - bw / 2, y + 45 + bh + gap, bw, bh, "Generate Random Alt").delay(110));
-        this.buttonList.add(new UiButton(3, cx - bw / 2, y + 45 + 2 * (bh + gap), bw, bh, "Back").style(UiButton.DANGER).delay(160));
+    @EventHandler
+    public void init(FMLInitializationEvent e) {
+        com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
+        MinecraftForge.EVENT_BUS.register(__fix);
+        net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
+        MinecraftForge.EVENT_BUS.register(this);
+        ClientCommandHandler.instance.registerCommand(new KBCommand());
+        openKey = new KeyBinding("Open KB Analyzer", Keyboard.KEY_RSHIFT, "KB Client");
+        ClientRegistry.registerKeyBinding(openKey);
+        installLoading();
+        DiscordRPC.start();
     }
 
-    @Override
-    public void onGuiClosed() {
-        Keyboard.enableRepeatEvents(false);
-    }
-
-    @Override
-    protected void actionPerformed(GuiButton b) throws IOException {
-        switch (b.id) {
-            case 1:
-                login(nameField.getText());
-                break;
-            case 2:
-                String randomName = "KBAlt_" + (1000 + new java.util.Random().nextInt(9000));
-                nameField.setText(randomName);
-                login(randomName);
-                break;
-            case 3:
-                closeTo(parent);
-                break;
-        }
-    }
-
-    private void login(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            status = "Username cannot be empty!";
-            statusColor = Theme.BAD;
-            return;
-        }
+    private void installLoading() {
+        if (loadingInstalled) return;
+        Minecraft mc = Minecraft.getMinecraft();
         try {
-            // تغییر توکن سشن ماینکرفت از طریق Reflection برای بای‌پس حالت آفلاین
-            Session newSession = new Session(name.trim(), "", "", "mojang");
-            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, this.mc, newSession, "session", "field_71449_j");
-            status = "Logged in as " + name;
-            statusColor = Theme.GOOD;
-        } catch (Exception e) {
-            status = "Failed to set session!";
-            statusColor = Theme.BAD;
+            ObfuscationReflectionHelper.setPrivateValue(Minecraft.class, mc, new KBLoading(mc), "loadingScreen", "field_71461_s");
+            loadingInstalled = true;
+            logger.info("[KBClient] custom loading screen installed");
+        } catch (Throwable t) {
+            logger.error("[KBClient] could not install loading screen: " + t);
         }
     }
 
-    @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (nameField.isFocused()) {
-            nameField.textboxKeyTyped(typedChar, keyCode);
-            if (keyCode == Keyboard.KEY_RETURN) login(nameField.getText());
+    @SubscribeEvent
+    public void onGuiOpen(GuiOpenEvent e) {
+        Minecraft mc = Minecraft.getMinecraft();
+        
+        if (e.gui instanceof GuiMainMenu) {
+            e.gui = new GuiModernMenu(tracker);
         }
-        if (keyCode == Keyboard.KEY_ESCAPE) closeTo(parent);
+
+        if (e.gui == null) {
+            if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
+                Fade.world.trigger(0.45f);
+            }
+        } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
+            Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
+        }
     }
 
-    @Override
-    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        super.mouseClicked(mouseX, mouseY, mouseButton);
-        nameField.mouseClicked(mouseX, mouseY, mouseButton);
+    @SubscribeEvent
+    public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
+        GuiScreen g = e.gui;
+        if (g == null || g instanceof FadeScreen) return;
+        
+        // Native override: Draw your design seamlessly over the ugly dirt background
+        if (Settings.customLoading) {
+            if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
+                LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
+            } else if (g instanceof GuiDownloadTerrain) {
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
+            }
+        }
+        Fade.screen.draw(g.width, g.height);
     }
 
-    @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        drawBackdrop(20);
-        Draw.panel(cardX, cardY, cardW, cardH, 8, Theme.GLASS, Theme.BORDER);
-        
-        Draw.centered("ALT MANAGER", cx, cardY + 12, Theme.TEXT, 1.4f, true);
-        Draw.centered("Current: " + this.mc.getSession().getUsername(), cx, cardY + 30, Theme.ACCENT, 0.85f, false);
-        
-        // استایل مدرن دور Text Box
-        Draw.roundRect(cx - bw / 2f, y + 10, bw, 20, 4f, Theme.PANEL3);
-        if (nameField.isFocused()) Draw.shadow(cx - bw / 2f, y + 10, bw, 20, 4f, Draw.fade(Theme.ACCENT, 0.4f), 3f);
-        
-        nameField.drawTextBox();
-        
-        // رسم وضعیت ارور یا موفقیت
-        Draw.centered(status, cx, cardY + cardH - 16, statusColor, 0.85f, false);
+    @SubscribeEvent
+    public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+        if (e.gui instanceof GuiIngameMenu) {
+            for (int i = 0; i < e.buttonList.size(); i++) {
+                GuiButton b = e.buttonList.get(i);
+                if (b.id == 0) {
+                    UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
+                    u.icon = UiButton.ICON_GEAR;
+                    e.buttonList.set(i, u);
+                }
+            }
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected) {
+            for (GuiButton b : e.buttonList) {
+                if (b.id == 0) { // Back button
+                    e.buttonList.add(new UiButton(999, b.xPosition, b.yPosition + b.height + 6, b.width, b.height, "Reconnect").style(UiButton.PRIMARY));
+                    break;
+                }
+            }
+        }
+    }
 
-        super.drawScreen(mouseX, mouseY, partialTicks);
-        drawFade();
+    @SubscribeEvent
+    public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
+        if (e.gui instanceof GuiIngameMenu && e.button.id == 0) {
+            e.setCanceled(true);
+            Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+        } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected && e.button.id == 999) {
+            if (lastServerData != null) {
+                Minecraft mc = Minecraft.getMinecraft();
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiModernMenu(tracker), mc, lastServerData));
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onOverlay(RenderGameOverlayEvent.Post e) {
+        if (e.type != RenderGameOverlayEvent.ElementType.ALL) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer == null) return;
+        if (!mc.gameSettings.showDebugInfo && !(mc.currentScreen instanceof GuiAnalyzer)) Hud.render(mc, tracker);
+        Fade.world.draw(e.resolution.getScaledWidth(), e.resolution.getScaledHeight());
+    }
+
+    @SubscribeEvent
+    public void onTick(TickEvent.ClientTickEvent e) {
+        if (e.phase != TickEvent.Phase.END) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        
+        if (mc.getCurrentServerData() != null) lastServerData = mc.getCurrentServerData();
+        
+        tracker.tick();
+        DiscordRPC.tick();
+
+        if (mc.theWorld != lastWorld) {
+            lastWorld = mc.theWorld;
+            if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
+        }
+
+        while (openKey.isPressed()) {
+            if (mc.currentScreen == null) pendingOpen = true;
+        }
+        if (pendingOpen && mc.currentScreen == null) {
+            pendingOpen = false;
+            mc.displayGuiScreen(new GuiAnalyzer(tracker, null));
+        }
+
+        if (mc.thePlayer != null && mc.thePlayer.sendQueue != null) {
+            NetworkManager nm = mc.thePlayer.sendQueue.getNetworkManager();
+            if (nm != null && nm.channel() != null && nm.channel() != hookedChannel) inject(mc, nm.channel());
+        }
+    }
+
+    private void inject(Minecraft mc, Channel ch) {
+        hookedChannel = ch;
+        try {
+            ChannelPipeline pl = ch.pipeline();
+            if (pl.get(HOOK) != null) pl.remove(HOOK);
+            if (pl.get("packet_handler") != null) pl.addBefore("packet_handler", HOOK, new VelocityHook());
+            else pl.addLast(HOOK, new VelocityHook());
+
+            String name = mc.isSingleplayer() ? "Singleplayer"
+                    : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
+            tracker.onConnect(name);
+            logger.info("[KBClient] velocity hook installed on " + name);
+        } catch (Throwable t) {
+            logger.error("[KBClient] hook failed: " + t);
+        }
+    }
+
+    private static class VelocityHook extends ChannelDuplexHandler {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (msg instanceof S12PacketEntityVelocity) {
+                S12PacketEntityVelocity v = (S12PacketEntityVelocity) msg;
+                final int id = v.getEntityID();
+                final int x = v.getMotionX(), y = v.getMotionY(), z = v.getMotionZ();
+                final Minecraft mc = Minecraft.getMinecraft();
+                mc.addScheduledTask(new Runnable() {
+                    @Override
+                    public void run() {
+                        EntityPlayerSP p = mc.thePlayer;
+                        if (p != null && p.getEntityId() == id) {
+                            KBClientMod.getInstance().getTracker().capture(x, y, z);
+                        }
+                    }
+                });
+            }
+            super.channelRead(ctx, msg);
+        }
     }
 }
 """
-    os.makedirs("src/main/java/com/oryvex/kbclient/ui", exist_ok=True)
-    with open("src/main/java/com/oryvex/kbclient/ui/GuiAltManager.java", "w", encoding="utf-8") as f:
-        f.write(alt_manager_code)
-    print("✅ Created GuiAltManager.java")
 
-    # 2. Patch GuiModernMenu.java
-    modern_menu_path = "src/main/java/com/oryvex/kbclient/ui/GuiModernMenu.java"
-    if os.path.exists(modern_menu_path):
-        with open(modern_menu_path, "r", encoding="utf-8") as f:
-            content = f.read()
+    kbclient_path = "src/main/java/com/oryvex/kbclient/KBClientMod.java"
+    os.makedirs(os.path.dirname(kbclient_path), exist_ok=True)
+    with open(kbclient_path, "w", encoding="utf-8") as f:
+        f.write(clean_kbclient_code)
+        
+    # فایل‌های اضافه‌ای که قبلاً برای Fake Loading ساخته بودیم رو پاک می‌کنیم تا کلاینتت کاملاً کلین بشه
+    fake_loading_paths = [
+        "src/main/java/com/oryvex/kbclient/ui/GuiFakeLoading.java",
+        "src/main/java/com/oryvex/kbclient/ui/GuiFakeWorldLoad.java"
+    ]
+    for p in fake_loading_paths:
+        if os.path.exists(p):
+            os.remove(p)
 
-        if "GuiAltManager" not in content:
-            # جا دادن دکمه Alt Manager در منو (افزایش سطرها از ۴ به ۵)
-            content = content.replace("int rows = 4;", "int rows = 5;")
-
-            button_patch = """this.buttonList.add(new UiButton(1, cx - bw / 2, top, bw, bh, "Singleplayer").delay(120));
-        this.buttonList.add(new UiButton(2, cx - bw / 2, top + (bh + gap), bw, bh, "Multiplayer").delay(190));
-        this.buttonList.add(new UiButton(6, cx - bw / 2, top + 2 * (bh + gap), bw, bh, "Alt Manager").delay(260));
-        this.buttonList.add(new UiButton(3, cx - bw / 2, top + 3 * (bh + gap), bw, bh, "Knockback Analyzer").style(UiButton.PRIMARY).delay(330));
-        this.buttonList.add(new UiButton(4, cx - bw / 2, top + 4 * (bh + gap), half, bh, "Options").icon(UiButton.ICON_GEAR).delay(400));
-        this.buttonList.add(new UiButton(5, cx - bw / 2 + half + gap, top + 4 * (bh + gap), bw - half - gap, bh, "Quit").style(UiButton.DANGER).delay(470));"""
-            
-            # ریپلیس کردن بلاک دکمه‌ها
-            start_str = 'this.buttonList.add(new UiButton(1'
-            end_str = 'Quit").style(UiButton.DANGER).delay(400));'
-            
-            if start_str in content and end_str in content:
-                start_idx = content.find(start_str)
-                end_idx = content.find(end_str) + len(end_str)
-                content = content[:start_idx] + button_patch + content[end_idx:]
-
-            # اضافه کردن اکشن کلیلک به سوییچ کیس
-            content = content.replace(
-                "case 3: closeTo(new GuiAnalyzer(tracker, this)); break;",
-                "case 3: closeTo(new GuiAnalyzer(tracker, this)); break;\n            case 6: closeTo(new GuiAltManager(this)); break;"
-            )
-
-            with open(modern_menu_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            print("✅ Patched GuiModernMenu.java to include Alt Manager.")
-        else:
-            print("ℹ️ GuiModernMenu.java already has Alt Manager.")
-    else:
-        print(f"❌ Error: Could not find {modern_menu_path}")
+    print("✅ Successfully updated loading mechanisms! Fake loading files removed.")
 
 if __name__ == "__main__":
-    add_alt_manager()
+    apply_real_loading()

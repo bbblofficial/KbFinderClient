@@ -17,14 +17,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiChat;
-import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiDownloadTerrain;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.client.multiplayer.GuiConnecting;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.S12PacketEntityVelocity;
@@ -49,9 +46,8 @@ import org.lwjgl.input.Keyboard;
 public class KBClientMod {
     public static final String MODID = "kbclient";
     public static final String NAME = "KB Client";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "3.0.0";
     private static final String HOOK = "kb_client_handler";
-    private static final int RECONNECT_BTN_ID = 9001;
 
     private static KBClientMod instance;
     public static Logger logger;
@@ -62,9 +58,8 @@ public class KBClientMod {
     private boolean pendingOpen;
     private Object lastWorld;
     private boolean loadingInstalled;
+    
     public static net.minecraft.client.multiplayer.ServerData lastServerData;
-    private boolean hasFakeLoaded = false;
-    private ServerData lastServer;
 
     public static KBClientMod getInstance() { return instance; }
     public KBTracker getTracker() { return tracker; }
@@ -81,7 +76,7 @@ public class KBClientMod {
     @EventHandler
     public void init(FMLInitializationEvent e) {
         com.oryvex.kbclient.GuiStateFixer __fix = new com.oryvex.kbclient.GuiStateFixer();
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(__fix);
+        MinecraftForge.EVENT_BUS.register(__fix);
         net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().register(__fix);
         MinecraftForge.EVENT_BUS.register(this);
         ClientCommandHandler.instance.registerCommand(new KBCommand());
@@ -106,20 +101,16 @@ public class KBClientMod {
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent e) {
         Minecraft mc = Minecraft.getMinecraft();
+        
         if (e.gui instanceof GuiMainMenu) {
-            if (!hasFakeLoaded) {
-                e.gui = new com.oryvex.kbclient.ui.GuiFakeLoading(tracker);
-                hasFakeLoaded = true;
-            } else {
-                e.gui = new GuiModernMenu(tracker);
-            }
+            e.gui = new GuiModernMenu(tracker);
         }
 
         if (e.gui == null) {
             if (mc.theWorld != null && !(mc.currentScreen instanceof GuiChat) && !(mc.currentScreen instanceof GuiContainer)) {
                 Fade.world.trigger(0.45f);
             }
-        } else if (!(e.gui instanceof FadeScreen) && (!(e.gui instanceof GuiChat)) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeLoading) && !(e.gui instanceof com.oryvex.kbclient.ui.GuiFakeWorldLoad)) {
+        } else if (!(e.gui instanceof FadeScreen) && !(e.gui instanceof GuiChat)) {
             Fade.screen.trigger(e.gui instanceof GuiContainer ? 0.35f : 0.75f);
         }
     }
@@ -128,17 +119,23 @@ public class KBClientMod {
     public void onDrawScreen(GuiScreenEvent.DrawScreenEvent.Post e) {
         GuiScreen g = e.gui;
         if (g == null || g instanceof FadeScreen) return;
-        if (Settings.customLoading && g instanceof GuiDownloadTerrain) {
-            LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain", -1);
+        
+        // Native override: Draw your design seamlessly over the ugly dirt background
+        if (Settings.customLoading) {
+            if (g instanceof net.minecraft.client.multiplayer.GuiConnecting) {
+                LoadingArt.draw(g.width, g.height, "Connecting", "Joining server...", -1);
+            } else if (g instanceof GuiDownloadTerrain) {
+                LoadingArt.draw(g.width, g.height, "Joining world", "Downloading terrain...", -1);
+            }
         }
         Fade.screen.draw(g.width, g.height);
     }
 
-        @SubscribeEvent
+    @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
         if (e.gui instanceof GuiIngameMenu) {
             for (int i = 0; i < e.buttonList.size(); i++) {
-                net.minecraft.client.gui.GuiButton b = e.buttonList.get(i);
+                GuiButton b = e.buttonList.get(i);
                 if (b.id == 0) {
                     UiButton u = new UiButton(0, b.xPosition, b.yPosition, b.width, b.height, b.displayString);
                     u.icon = UiButton.ICON_GEAR;
@@ -146,47 +143,24 @@ public class KBClientMod {
                 }
             }
         } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected) {
-            for (net.minecraft.client.gui.GuiButton b : e.buttonList) {
-                if (b.id == 0) { // دکمه Back دیفالت ماینکرفت
+            for (GuiButton b : e.buttonList) {
+                if (b.id == 0) { // Back button
                     e.buttonList.add(new UiButton(999, b.xPosition, b.yPosition + b.height + 6, b.width, b.height, "Reconnect").style(UiButton.PRIMARY));
                     break;
                 }
             }
         }
     }
-            }
-            return;
-        }
 
-        if (e.gui instanceof GuiDisconnected) {
-            int bw = 200, bh = 20;
-            UiButton reconnect = new UiButton(RECONNECT_BTN_ID, e.gui.width / 2 - bw / 2, e.gui.height / 4 + 108, bw, bh, "Reconnect");
-            reconnect.style(UiButton.PRIMARY);
-            reconnect.enabled = lastServer != null;
-            e.buttonList.add(reconnect);
-        }
-    }
-
-    /** Handles our injected "Reconnect" button on the Disconnected screen. */
     @SubscribeEvent
-    public void onAction(GuiScreenEvent.ActionPerformedEvent.Pre e) {
-        if (!(e.gui instanceof GuiDisconnected) || e.button == null || e.button.id != RECONNECT_BTN_ID) return;
-        e.setCanceled(true);
-        if (lastServer != null) {
-            Minecraft.getMinecraft().displayGuiScreen(new GuiConnecting(e.gui, Minecraft.getMinecraft(), lastServer));
-        }
-    }
-
-    
-        @SubscribeEvent
     public void onActionPerformed(net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre e) {
         if (e.gui instanceof GuiIngameMenu && e.button.id == 0) {
             e.setCanceled(true);
-            net.minecraft.client.Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
+            Minecraft.getMinecraft().displayGuiScreen(new com.oryvex.kbclient.ui.GuiKbOptions(tracker, e.gui));
         } else if (e.gui instanceof net.minecraft.client.gui.GuiDisconnected && e.button.id == 999) {
             if (lastServerData != null) {
-                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
-                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new com.oryvex.kbclient.ui.GuiModernMenu(tracker), mc, lastServerData));
+                Minecraft mc = Minecraft.getMinecraft();
+                mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new GuiModernMenu(tracker), mc, lastServerData));
             }
         }
     }
@@ -204,16 +178,15 @@ public class KBClientMod {
     public void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
+        
         if (mc.getCurrentServerData() != null) lastServerData = mc.getCurrentServerData();
+        
         tracker.tick();
         DiscordRPC.tick();
 
         if (mc.theWorld != lastWorld) {
             lastWorld = mc.theWorld;
-            if (mc.theWorld != null) {
-                if (Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
-                mc.displayGuiScreen(new com.oryvex.kbclient.ui.GuiFakeWorldLoad());
-            }
+            if (mc.theWorld != null && Fade.ms() > 0) Fade.world.trigger(1f, Fade.ms() * 3L);
         }
 
         while (openKey.isPressed()) {
@@ -240,7 +213,6 @@ public class KBClientMod {
 
             String name = mc.isSingleplayer() ? "Singleplayer"
                     : (mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "Server");
-            if (!mc.isSingleplayer() && mc.getCurrentServerData() != null) lastServer = mc.getCurrentServerData();
             tracker.onConnect(name);
             logger.info("[KBClient] velocity hook installed on " + name);
         } catch (Throwable t) {
