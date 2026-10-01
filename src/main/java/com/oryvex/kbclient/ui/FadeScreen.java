@@ -73,7 +73,7 @@ public abstract class FadeScreen extends GuiScreen {
         } else {
             this.drawGradientRect(0, 0, this.width, this.height, Theme.BG0, Theme.BG1);
         }
-        if (Settings.particles && particleCount > 0) Draw.particles(this.width, this.height, particleCount, 0x22D3EE, 0.25f);
+        if (Settings.particles && particleCount > 0) Draw.plexusBackground(this.width, this.height, 0.35f);
     }
 
     @Override

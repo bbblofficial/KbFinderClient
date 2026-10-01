@@ -20,8 +20,8 @@ public final class LoadingArt {
         Draw.blend();
         Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
         if (Settings.particles) {
-            Draw.particles(w, h, 60, 0x22D3EE, 0.35f);
-            Draw.particles(w, h, 20, 0xA78BFA, 0.30f);
+            Draw.plexusBackground(w, h, 0.45f);
+            
         }
         float t = (System.currentTimeMillis() % 100000L) / 1000f;
         int cx = w / 2, cy = h / 2;
