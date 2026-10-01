@@ -21,20 +21,33 @@ import net.minecraft.util.ResourceLocation;
 
 public class ModernFontRenderer extends FontRenderer {
     private Font inter, vazir;
-    private final float SCALE = 0.25f;
-    private final int FONT_SIZE = 36;
+    private final int FONT_SIZE = 48; // Rendered at high-res internally, scaled dynamically
     
+    // Custom color map to bypass Minecraft's private colorCode field
+    private static final int[] CUSTOM_COLOR_CODES = new int[32];
+    static {
+        for (int i = 0; i < 32; ++i) {
+            int j = (i >> 3 & 1) * 85;
+            int k = (i >> 2 & 1) * 170 + j;
+            int l = (i >> 1 & 1) * 170 + j;
+            int i1 = (i >> 0 & 1) * 170 + j;
+            if (i == 6) k += 85;
+            if (i >= 16) { k /= 4; l /= 4; i1 /= 4; }
+            CUSTOM_COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | i1 & 255;
+        }
+    }
+
     private static class StringTexture {
         int id, width, height;
-        StringTexture(int id, int width, int height) {
-            this.id = id; this.width = width; this.height = height;
+        float scale;
+        StringTexture(int id, int width, int height, float scale) {
+            this.id = id; this.width = width; this.height = height; this.scale = scale;
         }
         void delete() {
             GlStateManager.deleteTexture(id);
         }
     }
     
-    // LRU Cache for rendered strings to prevent VRAM overflow
     private final LinkedHashMap<String, StringTexture> cache = new LinkedHashMap<String, StringTexture>(1000, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, StringTexture> eldest) {
@@ -52,7 +65,7 @@ public class ModernFontRenderer extends FontRenderer {
         vazir = loadFont("/fonts/Vazirmatn-Regular.ttf", FONT_SIZE);
         if (inter == null) inter = new Font("SansSerif", Font.PLAIN, FONT_SIZE);
         if (vazir == null) vazir = new Font("SansSerif", Font.PLAIN, FONT_SIZE);
-        this.FONT_HEIGHT = 9; // Fit exactly into vanilla layouts
+        this.FONT_HEIGHT = 9; // Forces vanilla layout compatibility 
     }
 
     private Font loadFont(String path, float size) {
@@ -63,9 +76,7 @@ public class ModernFontRenderer extends FontRenderer {
                 is.close();
                 return f;
             }
-        } catch (Exception e) {
-            // Silently fallback on failure
-        }
+        } catch (Exception e) {}
         return null;
     }
 
@@ -80,7 +91,6 @@ public class ModernFontRenderer extends FontRenderer {
     }
 
     private StringTexture createTexture(String text) {
-        // Fallback to Vazirmatn if Persian text is detected
         Font font = hasPersian(text) ? vazir : inter;
         
         BufferedImage img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
@@ -104,29 +114,18 @@ public class ModernFontRenderer extends FontRenderer {
         g.dispose();
         
         int id = TextureUtil.glGenTextures();
-        TextureUtil.uploadTextureImageAllocate(id, img, true, false); // true = GL_LINEAR (bilinear filtering)
-        return new StringTexture(id, w, h);
+        TextureUtil.uploadTextureImageAllocate(id, img, true, false);
+        
+        // Dynamically calculate the precise scale needed to perfectly match Minecraft's 9px font height
+        float scale = (float) this.FONT_HEIGHT / h;
+        return new StringTexture(id, w, h, scale);
     }
 
     @Override
     public int drawString(String text, float x, float y, int color, boolean dropShadow) {
         if (text == null || text.isEmpty()) return (int) x;
-        if (dropShadow) renderText(text, x + 0.5f, y + 0.5f, color, true);
+        if (dropShadow) renderText(text, x + 0.6f, y + 0.6f, color, true);
         return renderText(text, x, y, color, false);
-    }
-
-
-    private static final int[] CUSTOM_COLOR_CODES = new int[32];
-    static {
-        for (int i = 0; i < 32; ++i) {
-            int j = (i >> 3 & 1) * 85;
-            int k = (i >> 2 & 1) * 170 + j;
-            int l = (i >> 1 & 1) * 170 + j;
-            int i1 = (i >> 0 & 1) * 170 + j;
-            if (i == 6) k += 85;
-            if (i >= 16) { k /= 4; l /= 4; i1 /= 4; }
-            CUSTOM_COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | i1 & 255;
-        }
     }
 
     private int renderText(String text, float x, float y, int color, boolean shadow) {
@@ -135,7 +134,6 @@ public class ModernFontRenderer extends FontRenderer {
         GlStateManager.enableTexture2D();
         
         float currentX = x;
-        // Split precisely via section sign to apply vanilla color codes dynamically
         String[] parts = text.split("(?=§)");
         
         int currentColor = color;
@@ -144,7 +142,6 @@ public class ModernFontRenderer extends FontRenderer {
 
         for (String part : parts) {
             if (part.isEmpty()) continue;
-            
             if (part.startsWith("§")) {
                 if (part.length() > 1) {
                     char code = part.charAt(1);
@@ -178,11 +175,12 @@ public class ModernFontRenderer extends FontRenderer {
             float a = (currentColor >> 24 & 255) / 255.0F;
             GlStateManager.color(r, g, b, a);
             
-            float drawX = currentX / SCALE;
-            float drawY = (y - 1f) / SCALE; 
+            float scale = tex.scale;
+            float drawX = currentX / scale;
+            float drawY = y / scale;
             
             GlStateManager.pushMatrix();
-            GlStateManager.scale(SCALE, SCALE, SCALE);
+            GlStateManager.scale(scale, scale, 1.0f);
             
             Tessellator tessellator = Tessellator.getInstance();
             WorldRenderer worldrenderer = tessellator.getWorldRenderer();
@@ -194,8 +192,10 @@ public class ModernFontRenderer extends FontRenderer {
             tessellator.draw();
             
             GlStateManager.popMatrix();
-            currentX += tex.width * SCALE;
+            currentX += tex.width * scale;
         }
+        
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         return (int) currentX;
     }
 
@@ -213,7 +213,7 @@ public class ModernFontRenderer extends FontRenderer {
                 tex = createTexture(part);
                 cache.put(part, tex);
             }
-            width += tex.width * SCALE;
+            width += tex.width * tex.scale;
         }
         return (int) Math.ceil(width);
     }
