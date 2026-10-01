@@ -1,13 +1,6 @@
 package com.oryvex.kbclient.kb;
 
-/**
- * One knockback event plus the extra context we now capture for accuracy.
- *
- *  attackerVx/Vz     - attacker's horizontal motion at hit time
- *  attackerLookDot   - how well the attacker's view aims at us [0..1]
- *  victimSpeed       - our pre-hit horizontal speed
- *  confidence        - composite 0..100 score for how trustworthy this sample is
- */
+/** One knockback event (velocity packet) plus the context it happened in. */
 public final class KBSample {
     public static final int WALK = 0, SPRINT = 1, AMBIGUOUS = 2;
 
@@ -24,26 +17,20 @@ public final class KBSample {
     public final double distance;
     public final String attacker;
 
-    /* --- accuracy additions --- */
-    public final double attackerVx, attackerVz;
-    public final double attackerLookDot;
-    public final double victimSpeed;
-    public final int confidence;
-
-    public KBSample(int id, long tick,
-                    double vx, double vy, double vz,
+    public KBSample(int id, long tick, double vx, double vy, double vz,
                     double px, double py, double pz,
                     boolean victimSprint, boolean victimGround,
                     boolean hasAttacker, int sprintState, int attackerKb,
-                    double ux, double uz, double distance, String attacker,
-                    double attackerVx, double attackerVz,
-                    double attackerLookDot, double victimSpeed,
-                    int confidence) {
+                    double ux, double uz, double distance, String attacker) {
         this.id = id;
         this.tick = tick;
-        this.vx = vx; this.vy = vy; this.vz = vz;
+        this.vx = vx;
+        this.vy = vy;
+        this.vz = vz;
         this.h = Math.sqrt(vx * vx + vz * vz);
-        this.px = px; this.py = py; this.pz = pz;
+        this.px = px;
+        this.py = py;
+        this.pz = pz;
         this.pH = Math.sqrt(px * px + pz * pz);
         this.victimSprint = victimSprint;
         this.victimGround = victimGround;
@@ -51,13 +38,9 @@ public final class KBSample {
         this.sprintState = sprintState;
         this.attackerSprint = sprintState == SPRINT;
         this.attackerKb = attackerKb;
-        this.ux = ux; this.uz = uz;
+        this.ux = ux;
+        this.uz = uz;
         this.distance = distance;
         this.attacker = attacker == null ? "?" : attacker;
-        this.attackerVx = attackerVx;
-        this.attackerVz = attackerVz;
-        this.attackerLookDot = attackerLookDot;
-        this.victimSpeed = victimSpeed;
-        this.confidence = confidence;
     }
 }

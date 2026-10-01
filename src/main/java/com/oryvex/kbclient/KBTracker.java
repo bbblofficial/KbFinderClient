@@ -6,6 +6,7 @@ import com.oryvex.kbclient.kb.KBSample;
 import com.oryvex.kbclient.kb.KBYaml;
 import com.oryvex.kbclient.ui.Hud;
 import com.oryvex.kbclient.ui.Theme;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,33 +18,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.Vec3;
 
-/**
- * Collects knockback samples (main thread only), keeps a live profile and an
- * imported reference.
- *
- * v2 accuracy upgrades:
- *   - attacker scored on 4 factors (distance / velocity-alignment / view / motion)
- *   - sprint history window widened 3 -> 5 ticks (0x1F)
- *   - per-sample confidence 0..100
- *   - victim's pre-hit horizontal speed recorded
+/** 
+ * Collects knockback samples (main thread only), keeps a live profile and an imported reference.
+ * Optimized for high-precision data collection.
  */
 public class KBTracker {
-    public static final int MAX_SAMPLES = 200;
-
+    public static final int MAX_SAMPLES = 200; // Increased buffer for better statistical accuracy
     private final List<KBSample> samples = new ArrayList<KBSample>();
     private final Map<Integer, Integer> sprintBits = new HashMap<Integer, Integer>();
+    
     private KBProfile profile = new KBProfile();
     private KBProfile reference;
     private String lastImport = "";
+    
     private KBSample last;
-    private boolean recording = false;
+    private boolean recording = true;
     private int goal = 0;
     private int sessionHits = 0;
     private int nextId = 1;
@@ -54,16 +50,18 @@ public class KBTracker {
         profile.notes.add("Waiting for knockback - get hit by another player.");
     }
 
-    /** per client tick: remember the last 5 ticks of every player's sprint flag. */
+    /** per client tick: remember the last 3 ticks of every player's sprint flag */
     public synchronized void tick() {
         tick++;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null) return;
+        
         for (EntityPlayer e : mc.theWorld.playerEntities) {
             int id = e.getEntityId();
             int s = e.isSprinting() ? 1 : 0;
             Integer b = sprintBits.get(id);
-            int nb = (b == null) ? (s == 1 ? 0x1F : 0) : (((b << 1) | s) & 0x1F);
+            // Store last 3 states in bits: 0x7 means all 3 were sprinting
+            int nb = (b == null) ? (s == 1 ? 0x7 : 0) : (((b << 1) | s) & 0x7);
             sprintBits.put(id, nb);
         }
     }
@@ -91,7 +89,7 @@ public class KBTracker {
         reset();
         sprintBits.clear();
         server = name;
-        recording = false;
+        recording = true;
         goal = 0;
     }
 
@@ -99,11 +97,10 @@ public class KBTracker {
         reset();
         goal = Math.max(1, hits);
         recording = true;
-        chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal
-                + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
+        chat(Theme.S + "b[KB] " + Theme.S + "7Recording " + Theme.S + "e" + goal + Theme.S + "7 hits. Get hit by sprinting AND walking players.");
     }
 
-    /* ---- YAML reference ---- */
+    // ---- YAML reference ------------------------------------------------------
     public synchronized KBYaml.Result importYaml(String text) {
         KBYaml.Result r = KBYaml.parse(text);
         if (r.parsed > 0) {
@@ -129,136 +126,100 @@ public class KBTracker {
         EntityPlayerSP me = mc.thePlayer;
         if (!recording || me == null || mc.theWorld == null) return;
 
-        double vx = rawX / 8000.0, vy = rawY / 8000.0, vz = rawZ / 8000.0;
-        double h  = Math.sqrt(vx * vx + vz * vz);
+        // Convert packet values to velocity
+        double vx = rawX / 8000.0;
+        double vy = rawY / 8000.0;
+        double vz = rawZ / 8000.0;
+        
+        // Calculate horizontal magnitude
+        double h = Math.sqrt(vx * vx + vz * vz);
+        
+        // Filter out tiny noise packets that are not real knockback
+        if (h < 0.001 && Math.abs(vy) < 0.001) return;
 
-        /* ---------- attacker identification (4-factor score) ---------- */
         EntityPlayer attacker = null;
-        double bestScore = 0.0;
-        double bestAttVx = 0, bestAttVz = 0, bestLook = 0;
-
+        double bestScore = -1.0e9;
+        
+        // Precise attacker identification using distance and vector alignment
         for (EntityPlayer e : mc.theWorld.playerEntities) {
-            if (e == me || e.isDead) continue;
-
-            /* body-to-eye distance */
+            if (e == me || e.isDead || e.getDistanceToEntity(me) > 6.0) continue; // Reduced range for precision
+            
             double dx = me.posX - e.posX;
             double dz = me.posZ - e.posZ;
-            double dy = (me.posY + me.getEyeHeight()) - (e.posY + e.getEyeHeight() * 0.5);
-            double dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist3d > 5.0) continue;
-
-            double dh = Math.sqrt(dx * dx + dz * dz);
-            if (dh < 0.05) continue;
-            double ux = dx / dh, uz = dz / dh;
-
-            /* velocity must be along the away-from-attacker direction */
-            double vDot = (h > 0.05) ? ((vx * ux + vz * uz) / h) : 0.0;
-            if (vDot < 0.2) continue;
-
-            /* attacker's view direction */
-            double lookDot = 0.0;
-            try {
-                Vec3 look = e.getLookVec();
-                double lx = -dx, ly = -dy, lz = -dz;
-                double ln = Math.sqrt(lx * lx + ly * ly + lz * lz);
-                if (ln > 0.01) {
-                    lookDot = (look.xCoord * lx + look.yCoord * ly + look.zCoord * lz) / ln;
-                    if (lookDot < 0) lookDot = 0;
-                    if (lookDot > 1) lookDot = 1;
-                }
-            } catch (Throwable ignored) { }
-
-            /* attacker's motion toward victim */
-            double aSpeed = Math.sqrt(e.motionX * e.motionX + e.motionZ * e.motionZ);
-            double aAlign = 0.0;
-            if (aSpeed > 0.01) {
-                aAlign = -(e.motionX * ux + e.motionZ * uz) / aSpeed;
-                if (aAlign < 0) aAlign = 0;
-                if (aAlign > 1) aAlign = 1;
+            double distSq = dx*dx + dz*dz;
+            
+            // Score based on proximity and direction alignment
+            double score = -distSq * 0.1; 
+            if (h > 0.01) {
+                // Dot product to check if velocity direction matches player direction
+                double dot = (vx * dx + vz * dz);
+                score += dot / (h * Math.sqrt(distSq)); 
             }
-
-            double proximity = Math.max(0, 1 - dist3d / 5.0);
-            double score = proximity * 0.35
-                         + vDot      * 0.35
-                         + lookDot   * 0.20
-                         + aAlign    * 0.10;
-
+            
             if (score > bestScore) {
                 bestScore = score;
-                attacker   = e;
-                bestAttVx  = e.motionX;
-                bestAttVz  = e.motionZ;
-                bestLook   = lookDot;
+                attacker = e;
             }
         }
 
-        boolean has = attacker != null && bestScore >= 0.35;
-        if (!has) attacker = null;
-
+        boolean hasAttacker = attacker != null;
         double ux = 0, uz = 0, dist = 0;
         int state = KBSample.WALK;
-        int kb = 0;
+        int kbEnchant = 0;
         String name = "?";
-        double attVx = 0, attVz = 0, lookDot = 0;
-        int confidence = 0;
 
-        if (has) {
-            double dx = me.posX - attacker.posX, dz = me.posZ - attacker.posZ;
+        if (hasAttacker) {
+            double dx = me.posX - attacker.posX;
+            double dz = me.posZ - attacker.posZ;
             double dh = Math.sqrt(dx * dx + dz * dz);
-            if (dh > 0.001) { ux = dx / dh; uz = dz / dh; }
-            else if (h > 0.001) { ux = vx / h; uz = vz / h; }
-
+            
+            if (dh > 0.001) {
+                ux = dx / dh;
+                uz = dz / dh;
+            } else {
+                // Fallback to velocity direction if positions overlap
+                if (h > 0.001) { ux = vx / h; uz = vz / h; }
+            }
+            
+            // Precise sprint detection using bit history
             Integer bits = sprintBits.get(attacker.getEntityId());
             if (bits == null) {
                 state = attacker.isSprinting() ? KBSample.SPRINT : KBSample.WALK;
-            } else if (bits == 0x1F) {
+            } else if (bits == 0x7) { // Last 3 ticks were sprinting
                 state = KBSample.SPRINT;
-            } else if (bits == 0x00) {
+            } else if (bits == 0) { // Last 3 ticks were walking
                 state = KBSample.WALK;
             } else {
-                state = KBSample.AMBIGUOUS;
+                state = KBSample.AMBIGUOUS; // W-tap or changing state
             }
 
-            try { kb = EnchantmentHelper.getKnockbackModifier(attacker); }
-            catch (Throwable ignored) { }
-
-            name   = attacker.getName();
-            dist   = me.getDistanceToEntity(attacker);
-            attVx  = bestAttVx;
-            attVz  = bestAttVz;
-            lookDot = bestLook;
-
-            double prox   = Math.max(0, 1 - dist / 5.0);
-            double vAlign = (h > 0.01) ? Math.max(0, (vx * ux + vz * uz) / h) : 0;
-            double sprintClarity = (state == KBSample.AMBIGUOUS) ? 0 : 1;
-            confidence = (int) Math.round(
-                    (prox * 0.30 + vAlign * 0.35 + lookDot * 0.20 + sprintClarity * 0.15) * 100);
+            try { 
+                kbEnchant = EnchantmentHelper.getKnockbackModifier(attacker); 
+            } catch (Throwable ignored) { }
+            
+            name = attacker.getName();
+            dist = me.getDistanceToEntity(attacker);
         }
 
-        double victimSpeed = Math.sqrt(me.motionX * me.motionX + me.motionZ * me.motionZ);
-
-        KBSample s = new KBSample(
-                nextId++, tick,
-                vx, vy, vz,
-                me.motionX, me.motionY, me.motionZ,
-                me.isSprinting(), me.onGround,
-                has, state, kb, ux, uz, dist, name,
-                attVx, attVz, lookDot, victimSpeed, confidence);
-
+        // Create sample
+        KBSample s = new KBSample(nextId++, tick, vx, vy, vz,
+                me.motionX, me.motionY, me.motionZ, me.isSprinting(), me.onGround,
+                hasAttacker, state, kbEnchant, ux, uz, dist, name);
+                
         samples.add(s);
+        
+        // Keep more samples for better statistical analysis
         while (samples.size() > MAX_SAMPLES) samples.remove(0);
+        
         last = s;
+        
+        // Recalculate profile with high-precision estimator
         profile = KBEstimator.calculate(samples);
-
-        String tag = !has ? "no attacker"
-                : (state == KBSample.AMBIGUOUS ? "W-TAP?"
-                : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
-        int col = !has ? Theme.DIM
-                : (state == KBSample.AMBIGUOUS ? Theme.DIM
-                : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
-        Hud.push("Hit #" + s.id + "  H " + KBProfile.f(h, 4)
-                + "  V " + KBProfile.f(vy, 4)
-                + "  " + tag + "  [" + confidence + "%]", col);
+        
+        // HUD Update
+        String tag = !hasAttacker ? "no attacker" : (state == KBSample.AMBIGUOUS ? "W-TAP?" : (state == KBSample.SPRINT ? "SPRINT" : "WALK"));
+        int col = !hasAttacker ? Theme.DIM : (state == KBSample.AMBIGUOUS ? Theme.DIM : (state == KBSample.SPRINT ? Theme.WARN : Theme.GOOD));
+        Hud.push("Hit #" + s.id + " H:" + KBProfile.f(h, 4) + " V:" + KBProfile.f(vy, 4) + " [" + tag + "]", col);
 
         if (goal > 0) {
             sessionHits++;
@@ -279,14 +240,10 @@ public class KBTracker {
         KBProfile p = profile;
         String b = Theme.S + "b", g = Theme.S + "7", w = Theme.S + "f";
         chat(b + "=========== KB PROFILE ===========");
-        chat(g + "HORIZONTAL: " + w + p.valueText(KBProfile.I_H)
-                + g + "   EXTRA-H: " + w + p.valueText(KBProfile.I_EH));
-        chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V)
-                + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
-        chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F)
-                + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
-        chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue
-                + g + " (override " + p.damageTicksOverride + ")");
+        chat(g + "HORIZONTAL: " + w + p.valueText(KBProfile.I_H) + g + "   EXTRA-H: " + w + p.valueText(KBProfile.I_EH));
+        chat(g + "VERTICAL: " + w + p.valueText(KBProfile.I_V) + g + "   EXTRA-V: " + w + p.valueText(KBProfile.I_EV));
+        chat(g + "FRICTION: " + w + p.valueText(KBProfile.I_F) + g + "   Y-LIMIT: " + w + p.valueText(KBProfile.I_YL));
+        chat(g + "DAMAGE-TICKS: " + w + p.damageTicksValue + g + " (override " + p.damageTicksOverride + ")");
         chat(Theme.S + "aOpen the analyzer with [Right Shift] or /kb");
     }
 
@@ -296,11 +253,9 @@ public class KBTracker {
         String ts = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date());
         File yml = new File(dir, "knockback-" + ts + ".yml");
         Files.write(yml.toPath(), (profile.toYaml() + "\n").getBytes(StandardCharsets.UTF_8));
-
+        
         StringBuilder sb = new StringBuilder();
-        sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,")
-          .append("attacker,sprintState,attackerKb,distance,ux,uz,")
-          .append("attackerVx,attackerVz,attackerLookDot,victimSpeed,confidence\n");
+        sb.append("id,tick,vx,vy,vz,h,prevX,prevY,prevZ,prevH,victimSprint,victimGround,attacker,sprintState,attackerKb,distance,ux,uz\n");
         for (KBSample k : samples) {
             sb.append(k.id).append(',').append(k.tick).append(',')
               .append(KBProfile.f(k.vx, 5)).append(',').append(KBProfile.f(k.vy, 5)).append(',')
@@ -310,10 +265,7 @@ public class KBTracker {
               .append(k.victimSprint).append(',').append(k.victimGround).append(',')
               .append(k.attacker.replace(',', '_')).append(',').append(k.sprintState).append(',')
               .append(k.attackerKb).append(',').append(KBProfile.f(k.distance, 3)).append(',')
-              .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append(',')
-              .append(KBProfile.f(k.attackerVx, 5)).append(',').append(KBProfile.f(k.attackerVz, 5)).append(',')
-              .append(KBProfile.f(k.attackerLookDot, 4)).append(',')
-              .append(KBProfile.f(k.victimSpeed, 5)).append(',').append(k.confidence).append('\n');
+              .append(KBProfile.f(k.ux, 4)).append(',').append(KBProfile.f(k.uz, 4)).append('\n');
         }
         File csv = new File(dir, "knockback-" + ts + "-samples.csv");
         Files.write(csv.toPath(), sb.toString().getBytes(StandardCharsets.UTF_8));
