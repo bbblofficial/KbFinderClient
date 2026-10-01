@@ -19,17 +19,15 @@ import net.minecraft.client.multiplayer.ServerData;
 
 /**
  * Discord Rich Presence with automatic Server Icon fetching.
- * Note: Discord IPC does NOT support dynamic image URLs. 
- * We download the icon locally for potential future use and update the status text accurately.
  */
 public final class DiscordRPC {
     public static final String APP_ID = "1554952903758716989";
     
-    // Default assets (Must be uploaded in Discord Dev Portal)
+    // Default assets (Must exist in Discord Developer Portal)
     private static final String LARGE_KEY = "oryvex"; 
     private static final String SMALL_KEY = "minecraft";
 
-    private static final long MIN_GAP_MS = 5000L;
+    private static final long MIN_GAP_MS = 4000L;
     private static final long RETRY_MS = 10000L;
     private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase().contains("win");
     private static final long PID = pid();
@@ -100,23 +98,25 @@ public final class DiscordRPC {
                 key = "sp";
                 details = analyzing ? "Analyzing knockback" : "Playing Singleplayer";
                 String world = "world";
-                try { if (mc.getIntegratedServer() != null) world = mc.getIntegratedServer().getWorldName(); } catch (Throwable ignored) { }
+                try { 
+                    if (mc.getIntegratedServer() != null) {
+                        world = mc.getIntegratedServer().getWorldName();
+                    } 
+                } catch (Throwable ignored) { }
                 state = "World: " + world;
                 lastServerIP = "";
             } else {
                 ServerData sd = mc.getCurrentServerData();
-                String ip = (sd != null) ? sd.serverIP : "unknown";
+                String ip = (sd != null && sd.serverIP != null) ? sd.serverIP : "unknown";
                 String name = (sd != null && sd.serverName != null) ? sd.serverName : ip;
                 
-                // Normalize IP for cache key
                 String cacheIp = ip.contains(":") && !ip.endsWith(":25565") ? ip : ip.split(":")[0];
                 
                 key = "mp:" + cacheIp;
                 details = analyzing ? "Analyzing knockback" : "Playing on " + name;
-                state = ip; // Show IP in state line
+                state = ip;
                 
-                // Fetch icon if server changed
-                if (!cacheIp.equals(lastServerIP)) {
+                if (!cacheIp.equalsIgnoreCase(lastServerIP) && !"unknown".equals(cacheIp)) {
                     lastServerIP = cacheIp;
                     fetchServerIcon(cacheIp);
                 }
@@ -139,26 +139,32 @@ public final class DiscordRPC {
         boolean warned = false;
         
         try {
-            while (generation == gen) {
+            while (generation == gen && active) {
                 try {
                     if (pipe == null) {
                         pipe = Pipe.open(APP_ID);
                         sent = null;
                         warned = false;
-                        log("Connected to Discord");
+                        log("Connected to Discord IPC");
                     }
                     
                     Activity a = pending;
                     long now = System.currentTimeMillis();
                     
-                    if (a != null && !a.sig().equals(sent) && now - lastSend >= MIN_GAP_MS) {
+                    if (a != null && !a.sig().equals(sent) && (now - lastSend >= MIN_GAP_MS)) {
                         pipe.send(a.json());
                         sent = a.sig();
                         lastSend = now;
                     }
+                    
                     Thread.sleep(1000L);
+                } catch (InterruptedException e) {
+                    break;
                 } catch (Exception e) {
-                    if (pipe != null) { pipe.close(); pipe = null; }
+                    if (pipe != null) { 
+                        pipe.close(); 
+                        pipe = null; 
+                    }
                     if (!warned) {
                         log("Discord not reachable (" + e.getMessage() + "), retrying...");
                         warned = true;
@@ -209,12 +215,13 @@ public final class DiscordRPC {
 
     // ---- Helpers ---------------------------------------------------------------
     private static String clip(String s) {
-        if (s == null) return "  ";
-        if (s.length() < 2) s = s + "  ";
+        if (s == null || s.trim().isEmpty()) return "  ";
+        s = s.trim();
         return s.length() > 128 ? s.substring(0, 128) : s;
     }
 
     private static String esc(String s) {
+        if (s == null) return "";
         StringBuilder b = new StringBuilder(s.length() + 8);
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
@@ -235,25 +242,25 @@ public final class DiscordRPC {
     private static long pid() {
         try {
             String n = ManagementFactory.getRuntimeMXBean().getName();
-            return Long.parseLong(n.substring(0, n.indexOf('@')));
-        } catch (Throwable t) { return 0L; }
+            int at = n.indexOf('@');
+            return at > 0 ? Long.parseLong(n.substring(0, at)) : 1234L;
+        } catch (Throwable t) { 
+            return 1234L; 
+        }
     }
 
     private static void log(String s) {
-        try { if (KBClientMod.logger != null) KBClientMod.logger.info("[KB-RPC] " + s); } catch (Throwable ignored) { }
+        try { 
+            if (KBClientMod.logger != null) KBClientMod.logger.info("[KB-RPC] " + s); 
+        } catch (Throwable ignored) { }
     }
     
-    /**
-     * Downloads server icon in a separate thread to avoid freezing the game.
-     * Uses mc-heads.net API which supports both IP and hostname.
-     */
     private static void fetchServerIcon(final String ip) {
-        new Thread(() -> {
+        Thread t = new Thread(() -> {
             try {
-                // Try to get favicon from mc-heads API
-                String urlString = "https://api.mc-heads.net/favicon/" + ip;
-                URL url = new URL(urlString);
+                URL url = new URL("https://api.mc-heads.net/favicon/" + ip);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) KBClient/1.0");
                 conn.setConnectTimeout(3000);
                 conn.setReadTimeout(3000);
                 conn.setRequestMethod("GET");
@@ -273,40 +280,98 @@ public final class DiscordRPC {
                     }
                     log("Server icon saved for: " + ip);
                 }
-            } catch (Exception e) {
-                // Silently fail - icon fetching is non-critical
-            }
-        }, "KB-IconFetcher").start();
+            } catch (Exception ignored) { }
+        }, "KB-IconFetcher");
+        t.setDaemon(true);
+        t.start();
     }
     
     // ---- Discord IPC (Named Pipe) --------------------------------------------
     private static final class Pipe {
-        private static final String[] PREFIXES = { "\\\\?\\pipe\\", "\\\\.\\pipe\\" };
         private final RandomAccessFile file;
-        String ready = "";
-        private Pipe(RandomAccessFile file) { this.file = file; }
+        
+        private Pipe(RandomAccessFile file) { 
+            this.file = file; 
+        }
+        
         static Pipe open(String appId) throws IOException {
-            StringBuilder errs = new StringBuilder();
             for (int i = 0; i < 10; i++) {
-                for (int k = 0; k < PREFIXES.length; k++) {
-                    RandomAccessFile f;
-                    try { f = new RandomAccessFile(PREFIXES[k] + "discord-ipc-" + i, "rw"); } 
-                    catch (IOException e) { continue; }
+                String pipePath = "\\\\.\\pipe\\discord-ipc-" + i;
+                RandomAccessFile f = null;
+                try {
+                    f = new RandomAccessFile(pipePath, "rw");
                     Pipe p = new Pipe(f);
-                    try { p.handshake(appId); return p; } 
-                    catch (IOException e) { p.close(); }
+                    p.handshake(appId);
+                    return p;
+                } catch (IOException e) {
+                    if (f != null) {
+                        try { f.close(); } catch (IOException ignored) {}
+                    }
                 }
             }
-            throw new IOException("no discord-ipc pipe found");
+            throw new IOException("Discord client not detected on local named pipes");
         }
+        
         private void handshake(String appId) throws IOException {
             write(0, "{\"v\":1,\"client_id\":\"" + appId + "\"}");
-            for (int i = 0; i < 4; i++) { Frame f = read(); if (f.op == 3) { write(4, f.body); continue; } if (f.op == 2) throw new IOException("rejected"); return; }
+            // Wait for Opcode 1 (FRAME) confirming READY
+            for (int i = 0; i < 8; i++) {
+                Frame f = read();
+                if (f.op == 1) {
+                    return; // Ready
+                } else if (f.op == 3) {
+                    write(4, f.body); // Ping -> Pong
+                } else if (f.op == 2) {
+                    throw new IOException("Discord rejected connection");
+                }
+            }
+            throw new IOException("Handshake timeout without READY event");
         }
-        String send(String json) throws IOException { write(1, json); for (int i = 0; i < 8; i++) { Frame f = read(); if (f.op == 3) { write(4, f.body); continue; } if (f.op == 2) throw new IOException("closed"); return f.body; } return ""; }
-        private void write(int op, String json) throws IOException { byte[] data = json.getBytes(StandardCharsets.UTF_8); ByteBuffer bb = ByteBuffer.allocate(8 + data.length).order(ByteOrder.LITTLE_ENDIAN); bb.putInt(op).putInt(data.length).put(data); file.write(bb.array()); }
-        private Frame read() throws IOException { byte[] head = new byte[8]; file.readFully(head); ByteBuffer hb = ByteBuffer.wrap(head).order(ByteOrder.LITTLE_ENDIAN); int op = hb.getInt(); int len = hb.getInt(); if (len < 0 || len > (1 << 20)) throw new IOException("bad len"); byte[] body = new byte[len]; file.readFully(body); return new Frame(op, new String(body, StandardCharsets.UTF_8)); }
-        void close() { try { file.close(); } catch (IOException ignored) { } }
+        
+        String send(String json) throws IOException {
+            write(1, json);
+            for (int i = 0; i < 8; i++) {
+                Frame f = read();
+                if (f.op == 3) {
+                    write(4, f.body);
+                    continue;
+                }
+                if (f.op == 2) throw new IOException("Discord pipe closed");
+                return f.body;
+            }
+            return "";
+        }
+        
+        private void write(int op, String json) throws IOException {
+            byte[] data = json.getBytes(StandardCharsets.UTF_8);
+            ByteBuffer bb = ByteBuffer.allocate(8 + data.length).order(ByteOrder.LITTLE_ENDIAN);
+            bb.putInt(op).putInt(data.length).put(data);
+            file.write(bb.array());
+        }
+        
+        private Frame read() throws IOException {
+            byte[] head = new byte[8];
+            file.readFully(head);
+            ByteBuffer hb = ByteBuffer.wrap(head).order(ByteOrder.LITTLE_ENDIAN);
+            int op = hb.getInt();
+            int len = hb.getInt();
+            if (len < 0 || len > (1 << 20)) throw new IOException("Invalid packet length: " + len);
+            byte[] body = new byte[len];
+            file.readFully(body);
+            return new Frame(op, new String(body, StandardCharsets.UTF_8));
+        }
+        
+        void close() {
+            try { file.close(); } catch (IOException ignored) { }
+        }
     }
-    private static final class Frame { final int op; final String body; Frame(int op, String body) { this.op = op; this.body = body; } }
+    
+    private static final class Frame {
+        final int op;
+        final String body;
+        Frame(int op, String body) {
+            this.op = op;
+            this.body = body;
+        }
+    }
 }
