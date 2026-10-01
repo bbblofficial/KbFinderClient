@@ -109,16 +109,24 @@ public class ModernFontRenderer extends FontRenderer {
     }
 
     @Override
-    public String bidiReorder(String text) {
-        // Java's Graphics2D handles RTL Bidirectional layout natively. Override to skip Vanilla's broken string reversal.
-        return text;
-    }
-
-    @Override
     public int drawString(String text, float x, float y, int color, boolean dropShadow) {
         if (text == null || text.isEmpty()) return (int) x;
         if (dropShadow) renderText(text, x + 0.5f, y + 0.5f, color, true);
         return renderText(text, x, y, color, false);
+    }
+
+
+    private static final int[] CUSTOM_COLOR_CODES = new int[32];
+    static {
+        for (int i = 0; i < 32; ++i) {
+            int j = (i >> 3 & 1) * 85;
+            int k = (i >> 2 & 1) * 170 + j;
+            int l = (i >> 1 & 1) * 170 + j;
+            int i1 = (i >> 0 & 1) * 170 + j;
+            if (i == 6) k += 85;
+            if (i >= 16) { k /= 4; l /= 4; i1 /= 4; }
+            CUSTOM_COLOR_CODES[i] = (k & 255) << 16 | (l & 255) << 8 | i1 & 255;
+        }
     }
 
     private int renderText(String text, float x, float y, int color, boolean shadow) {
@@ -142,7 +150,7 @@ public class ModernFontRenderer extends FontRenderer {
                     char code = part.charAt(1);
                     int colorIndex = "0123456789abcdef".indexOf(Character.toLowerCase(code));
                     if (colorIndex >= 0) {
-                        currentColor = this.colorCode[colorIndex];
+                        currentColor = CUSTOM_COLOR_CODES[colorIndex];
                         if (shadow) {
                             currentColor = (currentColor & 16579836) >> 2 | currentColor & -16777216;
                         } else {
