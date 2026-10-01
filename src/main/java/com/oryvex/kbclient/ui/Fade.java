@@ -14,9 +14,9 @@ public final class Fade {
     public static long ms() {
         switch (Settings.fade) {
             case 0: return 0L;
-            case 1: return 140L;
-            case 2: return 260L;
-            default: return 420L;
+            case 1: return 80L;
+            case 2: return 160L;
+            default: return 260L;
         }
     }
 

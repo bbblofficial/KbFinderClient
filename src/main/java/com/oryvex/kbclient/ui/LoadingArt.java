@@ -11,55 +11,56 @@ public final class LoadingArt {
     };
 
     public static void draw(int w, int h, String title, String sub, int pct) {
-        Draw.blend();
-        Draw.vgradient(w, h, Theme.BG0, Theme.BG1);
+        Draw.rect(0, 0, w, h, Theme.BG0);
 
         int cx = w / 2;
         int cy = h / 2;
-        float t = (System.currentTimeMillis() % 100000L) / 1000f;
 
-        String logo = "ORYVEX";
+        // logo
         float scale = 3f;
-        float tw = Draw.font().getStringWidth(logo) * scale;
-        Draw.text(logo, cx - tw / 2f, cy - 90, Theme.TEXT, scale, true);
-
+        Draw.centered("ORYVEX", cx, cy - 70, Theme.TEXT, scale, false);
         Draw.centered("K N O C K B A C K   C L I E N T", cx,
-                cy - 90 + Draw.lineH(scale) + 6, Theme.MUTED, 0.85f, false);
+                cy - 70 + Draw.lineH(scale) + 10, Theme.MUTED, 0.85f, false);
 
-        int sy = cy + 4;
-        Draw.roundRect(cx - 16, sy - 16, 32, 32, 16, Draw.alpha(Theme.accent(), 0.08f));
-        for (int i = 0; i < 12; i++) {
-            double ang = t * 3.4 - i * 0.5;
-            int dx = (int) Math.round(Math.cos(ang) * 13);
-            int dy = (int) Math.round(Math.sin(ang) * 13);
-            float fa = 1f - i / 12f;
-            int sz = i < 3 ? 3 : 2;
-            Draw.rect(cx + dx - sz / 2f, sy + dy - sz / 2f, sz, sz,
-                    Draw.alpha(i % 2 == 0 ? Theme.accent() : Theme.accent2(), fa));
+        // spinner (simple rotating dots)
+        long t = System.currentTimeMillis();
+        int sy = cy + 10;
+        int dots = 8;
+        for (int i = 0; i < dots; i++) {
+            double ang = (t / 300.0) + (Math.PI * 2 * i) / dots;
+            int dx = (int)Math.round(Math.cos(ang) * 14);
+            int dy = (int)Math.round(Math.sin(ang) * 14);
+            float fa = 0.25f + 0.75f * (i / (float)dots);
+            Draw.circle(cx + dx, sy + dy, 2f, Draw.alpha(Theme.ACCENT, fa));
         }
 
+        // text
         String ttl = (title == null || title.isEmpty()) ? "Loading" : title;
-        Draw.centered(ttl, cx, cy + 40, Theme.TEXT, 1.0f, true);
+        Draw.centered(ttl, cx, cy + 44, Theme.TEXT, 1.0f, false);
         if (sub != null && !sub.isEmpty()) {
-            Draw.centered(sub, cx, cy + 40 + Draw.lineH(1.0f) + 4, Theme.MUTED, 0.85f, false);
+            Draw.centered(sub, cx, cy + 44 + Draw.lineH(1.0f) + 6, Theme.MUTED, 0.85f, false);
         }
 
-        int bw = 180, bx = cx - bw / 2, by = cy + 76;
-        Draw.roundRect(bx, by, bw, 4, 2, Theme.PANEL3);
+        // progress bar
+        int bw = 200, bx = cx - bw / 2, by = cy + 78;
+        Draw.roundRect(bx, by, bw, 4, 2, Theme.SURFACE3);
         if (pct >= 0) {
-            Draw.roundRect(bx, by, Math.max(2, bw * Math.min(100, pct) / 100), 4, 2, Theme.accent());
-            Draw.centered(pct + "%", cx, by + 12, Theme.SOFT, 0.8f, false);
+            int fw = Math.max(2, bw * Math.min(100, pct) / 100);
+            Draw.roundRect(bx, by, fw, 4, 2, Theme.ACCENT);
+            Draw.centered(pct + "%", cx, by + 14, Theme.MUTED, 0.8f, false);
         } else {
-            float p = (t * 0.9f) % 1f;
-            int seg = 56;
+            // indeterminate
+            double p = (t % 1600L) / 1600.0;
+            int seg = 60;
             int sx = bx + (int)((bw + seg) * p) - seg;
             int x0 = Math.max(bx, sx);
             int x1 = Math.min(bx + bw, sx + seg);
-            if (x1 > x0) Draw.roundRect(x0, by, x1 - x0, 4, 2, Theme.accent());
+            if (x1 > x0) Draw.roundRect(x0, by, x1 - x0, 4, 2, Theme.ACCENT);
         }
 
+        // tip
         String tip = "TIP  " + TIPS[(int)((System.currentTimeMillis() / 4500L) % TIPS.length)];
-        Draw.centered(tip, cx, h - 22, Theme.DIM, 0.85f, false);
-        Draw.left("KB Client 3.0", 6, h - 10, Theme.DIM, 0.75f, false);
+        Draw.centered(tip, cx, h - 24, Theme.DIM, 0.85f, false);
+        Draw.left("KB Client 3.0", 8, h - 10, Theme.DIM, 0.75f, false);
     }
 }

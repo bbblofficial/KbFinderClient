@@ -1,32 +1,42 @@
 package com.oryvex.kbclient.ui;
 
+/** Flat colour palette. No gradients, no glows. */
 public final class Theme {
     private Theme() {}
 
-    public static final int BG0 = 0xFF05060B;
-    public static final int BG1 = 0xFF0B0D16;
-    public static final int PANEL = 0xFF121A29;
-    public static final int PANEL2 = 0xFF182235;
-    public static final int PANEL3 = 0xFF22304A;
-    public static final int BORDER = 0xFF25324B;
-    public static final int BORDER_HI = 0xFF3B5078;
-    public static final int GLASS = 0xA6090B12;
-    public static final int FILL = 0x16FFFFFF;
-    public static final int FILL_HI = 0x2AFFFFFF;
-    public static final int STROKE = 0x1FFFFFFF;
-    public static final int STROKE_HI = 0x47FFFFFF;
-    public static final int SURFACE2 = 0xFF141722;
-    public static final int SURFACE3 = 0xFF1C2030;
+    // ---- backgrounds ----
+    public static final int BG0   = 0xFF0A0E14;
+    public static final int BG1   = 0xFF11161F;
 
-    public static final int GOOD = 0xFF34D399;
+    // ---- surfaces ----
+    public static final int SURFACE   = 0xFF161B24;   // main panels
+    public static final int SURFACE2  = 0xFF1D232E;   // raised cards
+    public static final int SURFACE3  = 0xFF252C38;   // hovered
+    public static final int BORDER    = 0xFF2A323E;   // 1px outline
+    public static final int BORDER_HI = 0xFF3A4453;   // hovered outline
+
+    // ---- legacy aliases ----
+    public static final int PANEL   = 0xFF161B24;
+    public static final int PANEL2  = 0xFF1D232E;
+    public static final int PANEL3  = 0xFF252C38;
+    public static final int GLASS   = 0xFF161B24;
+    public static final int FILL    = 0x14FFFFFF;
+    public static final int FILL_HI = 0x22FFFFFF;
+    public static final int STROKE  = 0x1FFFFFFF;
+    public static final int STROKE_HI = 0x33FFFFFF;
+
+    // ---- status ----
+    public static final int GOOD = 0xFF4ADE80;
     public static final int WARN = 0xFFFBBF24;
-    public static final int BAD = 0xFFFB7185;
+    public static final int BAD  = 0xFFF87171;
 
-    public static final int TEXT = 0xFFF4F6FB;
-    public static final int SOFT = 0xFFB4BCCF;
-    public static final int MUTED = 0xFF7C86A2;
-    public static final int DIM = 0xFF4A5169;
+    // ---- text ----
+    public static final int TEXT  = 0xFFF1F5F9;
+    public static final int SOFT  = 0xFFCBD5E1;
+    public static final int MUTED = 0xFF94A3B8;
+    public static final int DIM   = 0xFF64748B;
 
+    // ---- type scale ----
     public static final float T_XS = 0.75f;
     public static final float T_SM = 0.85f;
     public static final float T_MD = 1.00f;
@@ -35,35 +45,17 @@ public final class Theme {
 
     public static final String S = "\u00a7";
 
-    public static final String[] THEME_NAMES = { "Ocean", "Violet", "Sunset", "Mint", "Rose", "Mono" };
-    private static final int[][] PAL = {
-        { 0xFF38BDF8, 0xFF6366F1 },
-        { 0xFFA78BFA, 0xFFEC4899 },
-        { 0xFFFB923C, 0xFFF43F5E },
-        { 0xFF34D399, 0xFF22D3EE },
-        { 0xFFF472B6, 0xFFFB7185 },
-        { 0xFFE5E7EB, 0xFF94A3B8 }
-    };
+    // ---- single accent (flat) ----
+    public static final int ACCENT    = 0xFF3B82F6;   // blue
+    public static final int ACCENT_HI = 0xFF60A5FA;
+    public static final int ACCENT_DK = 0xFF1E40AF;
+    public static final int ACCENT2   = 0xFF3B82F6;
 
-    private static int idx() {
-        int t = Settings.theme;
-        return t < 0 ? 0 : (t >= PAL.length ? PAL.length - 1 : t);
-    }
+    public static String[] THEME_NAMES = { "Blue" };
 
-    public static int accent() { return PAL[idx()][0]; }
-    public static int accent2() { return PAL[idx()][1]; }
-    public static int accentMid() { return Draw.lerp(accent(), accent2(), 0.5f); }
-
-    public static int flow(float offset) {
-        float p = ((System.currentTimeMillis() % 7000L) / 7000f + offset) % 1f;
-        if (p < 0f) p += 1f;
-        float tri = p < 0.5f ? p * 2f : (1f - p) * 2f;
-        return Draw.lerp(accent(), accent2(), tri);
-    }
-
-    public static float phase() { return (System.currentTimeMillis() % 7000L) / 7000f; }
-
-    public static final int ACCENT = 0xFF22D3EE;
-    public static final int ACCENT_DK = 0xFF0E7490;
-    public static final int ACCENT2 = 0xFFA78BFA;
+    public static int accent()  { return ACCENT; }
+    public static int accent2() { return ACCENT; }
+    public static int accentMid() { return ACCENT; }
+    public static int flow(float offset) { return ACCENT; }
+    public static float phase() { return 0f; }
 }
